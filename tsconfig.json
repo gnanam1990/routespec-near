@@ -12,6 +12,12 @@
     },
     {
       "path": "packages/live-dry-adapter"
+    },
+    {
+      "path": "packages/client-adapter"
+    },
+    {
+      "path": "packages/proxy"
     }
   ]
 }

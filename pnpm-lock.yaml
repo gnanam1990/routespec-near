@@ -78,6 +78,12 @@ importers:
 
   packages/cli: {}
 
+  packages/client-adapter:
+    dependencies:
+      '@routespec/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+
   packages/contracts:
     dependencies:
       zod:
@@ -97,7 +103,24 @@ importers:
         specifier: workspace:*
         version: link:../contracts
 
-  packages/proxy: {}
+  packages/proxy:
+    dependencies:
+      '@routespec/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@routespec/scenario':
+        specifier: workspace:*
+        version: link:../scenario
+      '@routespec/store':
+        specifier: workspace:*
+        version: link:../store
+    devDependencies:
+      '@defuse-protocol/one-click-sdk-typescript':
+        specifier: 0.1.26
+        version: 0.1.26
+      '@routespec/client-adapter':
+        specifier: workspace:*
+        version: link:../client-adapter
 
   packages/runner: {}
 

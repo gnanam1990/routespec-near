@@ -10,6 +10,7 @@
 import { createHash } from 'node:crypto';
 import { MIGRATION_001_SQL } from './001-core.ts';
 import { MIGRATION_002_SQL } from './002-results-maintenance.ts';
+import { MIGRATION_003_SQL } from './003-proxy-interceptor.ts';
 
 export interface Migration {
   readonly version: number;
@@ -20,6 +21,7 @@ export interface Migration {
 export const MIGRATIONS: readonly Migration[] = Object.freeze([
   { version: 1, name: 'core', sql: MIGRATION_001_SQL },
   { version: 2, name: 'results-maintenance', sql: MIGRATION_002_SQL },
+  { version: 3, name: 'proxy-interceptor', sql: MIGRATION_003_SQL },
 ]);
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.length;

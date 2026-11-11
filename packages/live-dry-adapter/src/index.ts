@@ -1,7 +1,18 @@
 /**
- * LIVE_DRY_PROBE adapter (M07) — NOT_STARTED.
+ * @routespec/live-dry-adapter — the separately launched LIVE_DRY_PROBE adapter (M07).
  *
- * M00 only pins the official SDK dependency in this package so that the networkless runtime
- * packages never depend on an upstream client. No adapter behavior is implemented here yet.
+ * The only RouteSpec component allowed to reach the network. Mutation denial, route allowlist,
+ * credential policy and the resolved-address policy all run before the provider credential is
+ * attached, before DNS and before any socket. Results go to a separate compatibility ledger and
+ * never into the local gate journal.
  */
-export const LIVE_DRY_ADAPTER_STATUS = 'NOT_STARTED' as const;
+export * from './address-policy.ts';
+export * from './strict-json.ts';
+export * from './policy.ts';
+export * from './credential.ts';
+export * from './egress.ts';
+export * from './compatibility.ts';
+export * from './ledger.ts';
+export * from './server.ts';
+export * from './process.ts';
+export * from './launch.ts';

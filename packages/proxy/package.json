@@ -2,7 +2,18 @@
   "name": "@routespec/proxy",
   "version": "0.0.0",
   "private": true,
-  "description": "Networkless scenario proxy, recording, and redaction (M02). NOT_STARTED: placeholder workspace boundary only.",
+  "description": "Networkless loopback scenario proxy, safe recording, redaction, case supervisor, and interceptor channel transport (M02).",
   "license": "UNLICENSED",
-  "type": "module"
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@routespec/contracts": "workspace:*",
+    "@routespec/scenario": "workspace:*",
+    "@routespec/store": "workspace:*"
+  }
 }

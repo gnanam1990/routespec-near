@@ -1,0 +1,17 @@
+{
+  "name": "@routespec/store",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Single-writer SQLite WAL journal, migrations, fenced repositories, and recovery (M01).",
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@routespec/contracts": "workspace:*"
+  }
+}

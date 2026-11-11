@@ -1,0 +1,8 @@
+{
+  "name": "@routespec/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "RouteSpec CLI with stable JSON/JUnit output and exit codes (M06). NOT_STARTED: placeholder workspace boundary only.",
+  "license": "UNLICENSED",
+  "type": "module"
+}

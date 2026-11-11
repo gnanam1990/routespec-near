@@ -1,0 +1,8 @@
+{
+  "name": "@routespec/kernel",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pure deterministic invariant kernel (INV-01..INV-12) (M04). NOT_STARTED: placeholder workspace boundary only.",
+  "license": "UNLICENSED",
+  "type": "module"
+}

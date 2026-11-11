@@ -119,7 +119,39 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
 
-  packages/control-api: {}
+  packages/control-api:
+    dependencies:
+      '@routespec/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@routespec/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+      '@routespec/proxy':
+        specifier: workspace:*
+        version: link:../proxy
+      '@routespec/regressions':
+        specifier: workspace:*
+        version: link:../regressions
+      '@routespec/runner':
+        specifier: workspace:*
+        version: link:../runner
+      '@routespec/scenario':
+        specifier: workspace:*
+        version: link:../scenario
+      '@routespec/store':
+        specifier: workspace:*
+        version: link:../store
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@defuse-protocol/one-click-sdk-typescript':
+        specifier: 0.1.26
+        version: 0.1.26
+      '@routespec/client-adapter':
+        specifier: workspace:*
+        version: link:../client-adapter
 
   packages/kernel:
     dependencies:

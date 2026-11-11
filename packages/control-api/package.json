@@ -2,7 +2,30 @@
   "name": "@routespec/control-api",
   "version": "0.0.0",
   "private": true,
-  "description": "Loopback-bound authenticated local control API (M08). NOT_STARTED: placeholder workspace boundary only.",
+  "description": "Loopback-bound authenticated local control API and project/revision/build matrix (M08).",
   "license": "UNLICENSED",
-  "type": "module"
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "serve": "node --no-warnings src/main.ts"
+  },
+  "dependencies": {
+    "@routespec/contracts": "workspace:*",
+    "@routespec/kernel": "workspace:*",
+    "@routespec/proxy": "workspace:*",
+    "@routespec/regressions": "workspace:*",
+    "@routespec/runner": "workspace:*",
+    "@routespec/scenario": "workspace:*",
+    "@routespec/store": "workspace:*",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@defuse-protocol/one-click-sdk-typescript": "0.1.26",
+    "@routespec/client-adapter": "workspace:*"
+  }
 }

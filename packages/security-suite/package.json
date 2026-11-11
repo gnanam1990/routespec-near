@@ -1,0 +1,23 @@
+{
+  "name": "@routespec/security-suite",
+  "version": "0.0.0",
+  "private": true,
+  "description": "M11 security and hardening acceptance tests (T-011, T-036, T-040, T-042) run against the assembled product.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "@routespec/cli": "workspace:*",
+    "@routespec/client-adapter": "workspace:*",
+    "@routespec/contracts": "workspace:*",
+    "@routespec/control-api": "workspace:*",
+    "@routespec/hardening": "workspace:*",
+    "@routespec/kernel": "workspace:*",
+    "@routespec/live-dry-adapter": "workspace:*",
+    "@routespec/proxy": "workspace:*",
+    "@routespec/regressions": "workspace:*",
+    "@routespec/runner": "workspace:*",
+    "@routespec/scenario": "workspace:*",
+    "@routespec/store": "workspace:*"
+  }
+}

@@ -8,6 +8,7 @@
  * characters), duplicate names, bad checksums, truncation, or trailing garbage.
  */
 import { RouteSpecError } from '@routespec/contracts';
+import { isPortableComponent } from '@routespec/hardening';
 
 const BLOCK = 512;
 export const MAX_BUNDLE_BYTES = 64 * 1024 * 1024;
@@ -20,8 +21,17 @@ export interface TarEntry {
   readonly content: Buffer;
 }
 
+/**
+ * Lowercase portable names only, and every segment must also be portable on Windows: no
+ * reserved device name (`nul`, `con.json`, `com1.txt`) and no trailing dot, which Windows
+ * strips so that `a.json.` would alias `a.json` (M11, T-040).
+ */
 export function isSafeEntryName(name: string): boolean {
-  return name.length <= 100 && SAFE_NAME.test(name) && !name.split('/').some((p) => p === '..' || p === '.');
+  return (
+    name.length <= 100 &&
+    SAFE_NAME.test(name) &&
+    name.split('/').every((p) => p !== '..' && p !== '.' && isPortableComponent(p))
+  );
 }
 
 function bad(reason: string): never {

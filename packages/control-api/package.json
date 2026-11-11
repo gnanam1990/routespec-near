@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@routespec/contracts": "workspace:*",
+    "@routespec/hardening": "workspace:*",
     "@routespec/kernel": "workspace:*",
     "@routespec/proxy": "workspace:*",
     "@routespec/regressions": "workspace:*",

@@ -10,7 +10,7 @@
     "node": ">=22.18.0"
   },
   "scripts": {
-    "typecheck": "tsc -b && tsc -p apps/console/tsconfig.json --noEmit",
+    "typecheck": "tsc -b && tsc -p apps/console/tsconfig.json --noEmit && tsc -p packages/security-suite/tsconfig.json --noEmit",
     "build": "tsc -b",
     "clean": "tsc -b --clean",
     "test": "vitest run",
@@ -22,7 +22,8 @@
     "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run test && pnpm run secret-scan",
     "test:e2e": "pnpm --filter @routespec/console e2e",
     "build:console": "pnpm --filter @routespec/console build",
-    "test:e2e:real": "pnpm --filter @routespec/console e2e:real"
+    "test:e2e:real": "pnpm --filter @routespec/console e2e:real",
+    "audit:supply-chain": "node --no-warnings packages/hardening/src/audit-cli.ts"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",
@@ -32,6 +33,6 @@
     "prettier": "3.6.2",
     "typescript": "5.9.3",
     "typescript-eslint": "8.46.2",
-    "vitest": "3.2.4"
+    "vitest": "3.2.7"
   }
 }

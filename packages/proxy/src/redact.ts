@@ -17,6 +17,7 @@ export type RedactionCategory =
   | 'bearer'
   | 'private-key'
   | 'case-token'
+  | 'control-token'
   | 'forbidden-field';
 
 export interface RedactionFinding {
@@ -29,6 +30,7 @@ const PATTERNS: ReadonlyArray<readonly [RedactionCategory, RegExp]> = [
   ['bearer', /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi],
   ['private-key', /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(-----END [A-Z ]*PRIVATE KEY-----|$)/g],
   ['case-token', /\brsct_[A-Za-z0-9_-]{20,}/g],
+  ['control-token', /\brsctl_[A-Za-z0-9_-]{20,}/g],
 ];
 
 const FORBIDDEN_FIELD =

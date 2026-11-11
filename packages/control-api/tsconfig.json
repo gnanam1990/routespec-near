@@ -6,13 +6,32 @@
   },
   "include": ["src/**/*.ts", "test/**/*.ts"],
   "references": [
-    { "path": "../contracts" },
-    { "path": "../store" },
-    { "path": "../scenario" },
-    { "path": "../kernel" },
-    { "path": "../proxy" },
-    { "path": "../regressions" },
-    { "path": "../runner" },
-    { "path": "../client-adapter" }
+    {
+      "path": "../contracts"
+    },
+    {
+      "path": "../hardening"
+    },
+    {
+      "path": "../store"
+    },
+    {
+      "path": "../scenario"
+    },
+    {
+      "path": "../kernel"
+    },
+    {
+      "path": "../proxy"
+    },
+    {
+      "path": "../regressions"
+    },
+    {
+      "path": "../runner"
+    },
+    {
+      "path": "../client-adapter"
+    }
   ]
 }

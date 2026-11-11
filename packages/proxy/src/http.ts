@@ -101,14 +101,18 @@ export async function readJsonBody(req: IncomingMessage, maxBytes: number, maxDe
   }
   const declared = Number(req.headers['content-length'] ?? NaN);
   if (Number.isFinite(declared) && declared > maxBytes) {
-    throw new RouteSpecError('RS_BODY_TOO_LARGE', 'Request body exceeds the limit.', { details: { maxBytes } });
+    throw new RouteSpecError('RS_BODY_TOO_LARGE', 'Request body exceeds the limit.', {
+      details: { maxBytes },
+    });
   }
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const chunk of req) {
     size += (chunk as Buffer).length;
     if (size > maxBytes) {
-      throw new RouteSpecError('RS_BODY_TOO_LARGE', 'Request body exceeds the limit.', { details: { maxBytes } });
+      throw new RouteSpecError('RS_BODY_TOO_LARGE', 'Request body exceeds the limit.', {
+        details: { maxBytes },
+      });
     }
     chunks.push(chunk as Buffer);
   }

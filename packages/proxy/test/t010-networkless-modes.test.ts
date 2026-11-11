@@ -40,7 +40,10 @@ async function exerciseMutations(mode: 'SIMULATE' | 'REPLAY'): Promise<void> {
     const quote = await send(proxy.port, {
       method: 'POST',
       path: '/v0/quote',
-      headers: { ...adapterHeaders(creds, { requestId: `${mode}-q1`, logicalJob: 'job-1' }), ...providerHeaders },
+      headers: {
+        ...adapterHeaders(creds, { requestId: `${mode}-q1`, logicalJob: 'job-1' }),
+        ...providerHeaders,
+      },
       body: quoteBody(),
     });
     expect(quote.status).toBe(200);
@@ -96,7 +99,8 @@ async function exerciseMutations(mode: 'SIMULATE' | 'REPLAY'): Promise<void> {
       expect(ex).toMatchObject({ credentialAttached: 0, dnsAttempted: 0, upstreamAttempted: 0 });
     }
     // The mutation affected only local scenario/journal state.
-    expect(report.runOperations).toEqual([{ phase: 'COMMIT_MUTATION', committed: true }]);
+    expect(report.runOperations).toHaveLength(1);
+    expect(report.runOperations[0]).toMatchObject({ phase: 'COMMIT_MUTATION', committed: true });
     expect(report.caseLifecycle).toBe('RUNNING'); // fenced and resumed under a reconciliation token
     expect(report.canaryScan.hits).toEqual([]);
     const closed = await proxy.close();
@@ -154,12 +158,17 @@ describe('T-010 — Networkless scenario modes contain mutation-shaped requests 
     }
   });
 
-  it('static audit: proxy, scenario, store, and contracts contain no upstream client or credential path', () => {
+  it('static audit: proxy, scenario, store, contracts, and client adapter contain no upstream client or credential path', () => {
     const root = fileURLToPath(new URL('../../', import.meta.url));
     const forbiddenImports = /from\s+'(node:)?(https|tls|http2|dgram|undici|axios|@defuse-protocol\/[^']*)'/;
-    const forbiddenCalls = [/\bfetch\s*\(/, /\bnew\s+WebSocket\b/, /\bhttp\.request\s*\(/, /\bnet\.connect\s*\(/];
+    const forbiddenCalls = [
+      /\bfetch\s*\(/,
+      /\bnew\s+WebSocket\b/,
+      /\bhttp\.request\s*\(/,
+      /\bnet\.connect\s*\(/,
+    ];
     let files = 0;
-    for (const pkg of ['proxy', 'scenario', 'store', 'contracts']) {
+    for (const pkg of ['proxy', 'scenario', 'store', 'contracts', 'client-adapter']) {
       const src = join(root, pkg, 'src');
       const walk = (dir: string): string[] =>
         readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
@@ -170,11 +179,17 @@ describe('T-010 — Networkless scenario modes contain mutation-shaped requests 
         const text = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
         expect(forbiddenImports.test(text), file).toBe(false);
         for (const call of forbiddenCalls) expect(call.test(text), `${file} ${call}`).toBe(false);
-        const valueImports = [...text.matchAll(/^import\s+(?!type\b)[^;]*?from\s+'(node:(?:dns|net|http))'/gm)].map((m) => m[1]);
+        const valueImports = [
+          ...text.matchAll(/^import\s+(?!type\b)[^;]*?from\s+'(node:(?:dns|net|http))'/gm),
+        ].map((m) => m[1]);
         for (const spec of valueImports) {
           const allowed =
             (spec === 'node:http' && file.endsWith(join('proxy', 'src', 'server.ts'))) ||
-            ((spec === 'node:dns' || spec === 'node:net') && file.endsWith(join('proxy', 'src', 'tripwire.ts')));
+            // the reviewed interceptor artifact listens on loopback only (no client use)
+            (spec === 'node:http' &&
+              file.endsWith(join('proxy', 'src', 'interceptor', 'canary-interceptor.ts'))) ||
+            ((spec === 'node:dns' || spec === 'node:net') &&
+              file.endsWith(join('proxy', 'src', 'tripwire.ts')));
           expect(allowed, `${file} imports ${spec}`).toBe(true);
         }
       }

@@ -86,7 +86,11 @@ export function installNetworkTripwire(): NetworkTripwire {
       if (typeof original !== 'function') continue;
       target[name] = function patchedDns(this: unknown, ...args: unknown[]) {
         const host = args[0];
-        if ((name === 'lookup' || name === 'lookupService') && typeof host === 'string' && net.isIP(host) !== 0) {
+        if (
+          (name === 'lookup' || name === 'lookupService') &&
+          typeof host === 'string' &&
+          net.isIP(host) !== 0
+        ) {
           literalLookups++;
           note(`${label}.${name}(ip-literal)`);
         } else {

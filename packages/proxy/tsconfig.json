@@ -5,5 +5,10 @@
     "outDir": "dist"
   },
   "include": ["src/**/*.ts", "test/**/*.ts"],
-  "references": [{ "path": "../contracts" }, { "path": "../store" }, { "path": "../scenario" }]
+  "references": [
+    { "path": "../contracts" },
+    { "path": "../store" },
+    { "path": "../scenario" },
+    { "path": "../client-adapter" }
+  ]
 }

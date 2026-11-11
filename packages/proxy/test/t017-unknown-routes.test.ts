@@ -51,7 +51,11 @@ describe('T-017 — Unknown proxy routes never pass through', () => {
     ];
     for (const target of [...sdkUnsupported, ...others]) {
       for (const headers of [{}, creds]) {
-        const r = await send(proxy.port, { ...target, headers, body: target.method === 'GET' ? undefined : { dry: true } });
+        const r = await send(proxy.port, {
+          ...target,
+          headers,
+          body: target.method === 'GET' ? undefined : { dry: true },
+        });
         expect(r.status, `${target.method} ${target.path}`).toBe(404);
         expect(r.code).toBe('RS_UNSUPPORTED_ROUTE');
         const details = (r.body as { error: { details: Record<string, unknown> } }).error.details;
@@ -74,7 +78,12 @@ describe('T-017 — Unknown proxy routes never pass through', () => {
       body: quoteBody(),
     });
     expect(sameHostAbsolute.code).toBe('RS_UNSUPPORTED_ROUTE');
-    const rebinding = await send(proxy.port, { method: 'POST', path: '/v0/quote', host: 'attacker.example:80', body: quoteBody() });
+    const rebinding = await send(proxy.port, {
+      method: 'POST',
+      path: '/v0/quote',
+      host: 'attacker.example:80',
+      body: quoteBody(),
+    });
     expect(rebinding.code).toBe('RS_HOST_REJECTED');
     const browser = await send(proxy.port, {
       method: 'POST',

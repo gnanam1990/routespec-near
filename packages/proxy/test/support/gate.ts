@@ -17,7 +17,10 @@ export function d(label: string): `sha256:${string}` {
 
 export function tempDir(prefix = 'routespec-proxy-'): { dir: string; cleanup: () => void } {
   const dir = mkdtempSync(join(tmpdir(), prefix));
-  return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }) };
+  return {
+    dir,
+    cleanup: () => rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }),
+  };
 }
 
 export function openStore(dir: string, options: Partial<StoreOptions> = {}): RouteSpecStore {
@@ -44,7 +47,10 @@ export function createGate(
   options: { cases?: number; label?: string; adapterRevision?: string; maxParallelCases?: number } = {},
 ): Gate {
   const label = options.label ?? 'proxy';
-  const { projectId } = store.createProject({ name: `project ${label}`, idempotencyKey: `project-${label}-key` });
+  const { projectId } = store.createProject({
+    name: `project ${label}`,
+    idempotencyKey: `project-${label}-key`,
+  });
   const profileId = store.registerProtocolProfile();
   const { integrationRevisionId } = store.createIntegrationRevision({
     projectId,
@@ -177,10 +183,19 @@ export function send(
     const payload = input.rawBody ?? (input.body === undefined ? undefined : JSON.stringify(input.body));
     const headers: Record<string, string> = {
       host: input.host ?? `127.0.0.1:${port}`,
-      ...(payload !== undefined ? { 'content-type': 'application/json', 'content-length': String(Buffer.byteLength(payload)) } : {}),
+      ...(payload !== undefined
+        ? { 'content-type': 'application/json', 'content-length': String(Buffer.byteLength(payload)) }
+        : {}),
       ...(input.headers ?? {}),
     };
-    const req = request({ host: '127.0.0.1', port, method: input.method, path: input.path, headers, setHost: false });
+    const req = request({
+      host: '127.0.0.1',
+      port,
+      method: input.method,
+      path: input.path,
+      headers,
+      setHost: false,
+    });
     req.on('response', (res) => {
       const chunks: Buffer[] = [];
       res.on('data', (c: Buffer) => chunks.push(c));

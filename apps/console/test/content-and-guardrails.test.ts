@@ -197,8 +197,9 @@ describe('form validation', () => {
   it('reports every invalid gate-run field and keeps valid input untouched', () => {
     const values = {
       ...emptyGateRunForm(),
-      revisionId: 'rev-1',
+      gateId: '7f0b8b3e-1d2c-4c3b-9a8e-0a1b2c3d4e5f',
       artifactDigest: 'sha256:abc',
+      corpusRevisionId: 'not-a-uuid',
       parallelism: '99',
     };
     const errors = validateGateRunForm(values);
@@ -206,22 +207,19 @@ describe('form validation', () => {
     expect(fields).toContain('artifactDigest');
     expect(fields).toContain('parallelism');
     expect(fields).toContain('buildRevisionId');
-    expect(fields).not.toContain('revisionId');
-    expect(values.revisionId).toBe('rev-1');
+    expect(fields).toContain('corpusRevisionId');
+    expect(fields).not.toContain('gateId');
+    expect(values.gateId).toBe('7f0b8b3e-1d2c-4c3b-9a8e-0a1b2c3d4e5f');
   });
 
   it('requires an attestation id only when one is chosen', () => {
     const ok = {
       ...emptyGateRunForm(),
-      revisionId: 'r',
-      buildRevisionId: 'b',
+      buildRevisionId: '00000000-0000-4000-8000-000000000001',
       artifactDigest: `sha256:${'a'.repeat(64)}`,
-      corpusRevisionId: 'c',
+      corpusRevisionId: '00000000-0000-4000-8000-000000000002',
       effectManifestDigest: `sha256:${'b'.repeat(64)}`,
       effectCoveragePolicyDigest: `sha256:${'c'.repeat(64)}`,
-      adapterRevision: 'a',
-      evaluatorRevision: 'e',
-      configurationDigest: `sha256:${'d'.repeat(64)}`,
     };
     expect(validateGateRunForm(ok)).toEqual([]);
     expect(validateGateRunForm({ ...ok, attestationChoice: 'ATTESTATION_ID' }).map((e) => e.field)).toEqual([

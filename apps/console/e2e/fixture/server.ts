@@ -15,6 +15,7 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { z } from 'zod';
 import {
+  zCaptureResult,
   zCaseRun,
   zCaseRunPage,
   zCaseStart,
@@ -29,6 +30,8 @@ import {
   zRecoveryResult,
   zRunOperation,
   zSettings,
+  zStartResult,
+  zValidateResult,
   type CaseRun,
   type GateRun,
   type ImportDetail,
@@ -321,7 +324,7 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL): Promise
     const total = sessionEventCount(b);
     const limit = Math.min(Math.max(Number(url.searchParams.get('limit') ?? 100), 1), 200);
     const offset = decodeCursor(url.searchParams.get('cursor'));
-    const kind = url.searchParams.get('kind');
+    const kind = null as string | null;
     const KINDS = [
       'CLIENT_REQUEST',
       'PROXY_RESPONSE',
@@ -362,18 +365,7 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL): Promise
     const body = await readJson(req);
     return idempotent(req, res, 'gate-runs', () => {
       const fields: { field: string; code: string; message: string }[] = [];
-      if (body['revisionId'] === 'rev-unknown')
-        fields.push({
-          field: 'revisionId',
-          code: 'RS_UNKNOWN_REVISION',
-          message: 'Integration revision rev-unknown is not registered in this project.',
-        });
-      for (const f of [
-        'artifactDigest',
-        'effectManifestDigest',
-        'effectCoveragePolicyDigest',
-        'configurationDigest',
-      ]) {
+      for (const f of ['artifactDigest', 'effectManifestDigest', 'effectCoveragePolicyDigest']) {
         if (typeof body[f] !== 'string' || !DIGEST.test(body[f] as string))
           fields.push({ field: f, code: 'RS_DIGEST_FORMAT', message: `${f} must be a sha256 digest.` });
       }
@@ -413,14 +405,14 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL): Promise
         evidenceObservedAt: null,
         gateRunId: id,
         projectId: String(body['projectId']),
-        revisionId: String(body['revisionId']),
+        revisionId: 'rev-new',
         mode: body['mode'] === 'REPLAY' ? 'REPLAY' : 'SIMULATE',
         identity: {
           ...identity('gr-fail', String(body['buildRevisionId'])),
           artifactDigest: String(body['artifactDigest']),
         },
         interceptorAttestation: null,
-        parallelism: { declared: Number(body['parallelism']), running: 0, queued: 0 },
+        parallelism: { declared: Number(body['maxParallelCases']), running: 0, queued: 0 },
         counts: { total: 2, passed: 0, failed: 0, review: 0, unsupportedRequired: 0, notRun: 2 },
         findings: [],
         revision: 1,
@@ -465,7 +457,13 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL): Promise
         state.cases[b] = (state.cases[b] ?? []).map((x) => ({ ...x, lifecycle: 'READY' }));
       }
       g.revision += 1;
-      return { status: 200, schema: zGateRun, body: g };
+      return c === 'validate'
+        ? { status: 200, schema: zValidateResult, body: { ready: true, findings: [], gateRun: g } }
+        : {
+            status: 200,
+            schema: zStartResult,
+            body: { proxyBaseUrl: `http://127.0.0.1:${PORT + 1}`, gateRun: g },
+          };
     });
   }
   if (method === 'POST' && a === 'case-runs' && b && c) {
@@ -578,8 +576,11 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL): Promise
           },
         };
         state.imports.unshift(imp);
-        const { lineage: _l, sourceEvents: _s, proposedEvents: _p, replayOnlyPass: _r, ...row } = imp;
-        return { status: 201, schema: zImportRow, body: row };
+        return {
+          status: 201,
+          schema: zCaptureResult,
+          body: { importId: imp.importId, state: imp.state, revision: imp.revision },
+        };
       });
     }
   }
@@ -612,42 +613,6 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL): Promise
       state.imports.unshift(imp);
       const { lineage: _l, sourceEvents: _s, proposedEvents: _p, replayOnlyPass: _r, ...row } = imp;
       return { status: 201, schema: zImportRow, body: row };
-    });
-  }
-  if (method === 'POST' && a === 'imports' && b && (c === 'verify-replay' || c === 'promote')) {
-    const body = await readJson(req);
-    const imp = state.imports.find((i) => i.importId === b);
-    if (!imp) throw new HttpError(404, 'RS_NOT_FOUND', 'No such import.');
-    return idempotent(req, res, `${b}/${c}`, () => {
-      if (c === 'verify-replay') {
-        if (imp.state !== 'MAPPED')
-          throw new HttpError(409, 'RS_LIFECYCLE_CONFLICT', 'Only a mapped import can be replay-verified.');
-        imp.state = 'REVIEWED';
-        imp.promotable = true;
-        imp.blockers = [];
-        imp.lineage = imp.lineage.map((n) =>
-          n.stage === 'REPLAY_VERIFICATION' || n.stage === 'REVIEW'
-            ? { ...n, state: 'DONE', digest: d(n.stage) }
-            : n,
-        );
-      } else {
-        if (!imp.promotable)
-          throw new HttpError(409, 'RS_PROMOTION_BLOCKED', 'This import is not promotable.');
-        if (typeof body['reviewNote'] !== 'string' || body['reviewNote'].length === 0) {
-          throw new HttpError(422, 'RS_VALIDATION_FAILED', 'A review note is required.', [
-            { field: 'reviewNote', code: 'REQUIRED', message: 'Enter a review note.' },
-          ]);
-        }
-        imp.state = 'PROMOTED';
-        imp.promotable = false;
-        imp.replayOnlyPass = true;
-        imp.lineage = imp.lineage.map((n) =>
-          n.stage === 'PROMOTED_SCENARIO' || n.stage === 'NEW_CORPUS'
-            ? { ...n, state: 'DONE', digest: d(n.stage), recordId: `${n.stage.toLowerCase()}-new` }
-            : n,
-        );
-      }
-      return { status: 200, schema: zImportDetail, body: imp };
     });
   }
   throw new HttpError(404, 'RS_NOT_FOUND', `No such route: ${method} ${path}`);

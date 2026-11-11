@@ -683,6 +683,7 @@ export function initialImports(): ImportDetail[] {
   return [
     {
       importId: 'imp-secret',
+      revision: 1,
       origin: 'INSTALLED_ARTIFACT_CAPTURE',
       source: {
         buildRevisionId: 'build-rev-140',
@@ -716,6 +717,7 @@ export function initialImports(): ImportDetail[] {
     },
     {
       importId: 'imp-mapped',
+      revision: 4,
       origin: 'INSTALLED_ARTIFACT_CAPTURE',
       source: {
         buildRevisionId: 'build-rev-140',

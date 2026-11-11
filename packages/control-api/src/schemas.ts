@@ -393,6 +393,19 @@ export const exportWrite = z
 
 export const captureCreate = z.object({}).strict();
 
+/**
+ * User trace upload (API-SPEC "POST /imports"). The trace travels as a JSON string field inside
+ * the bounded request body; the service never parses it with the request parser, only with the
+ * M05 bounded ingest after quarantine.
+ */
+export const importCreate = z
+  .object({
+    projectId: uuid,
+    fileName: z.string().min(1).max(255),
+    content: z.string().max(200_000),
+  })
+  .strict();
+
 export const mappingSave = z.object({ mapping: z.unknown() }).strict();
 export const importReview = z
   .object({

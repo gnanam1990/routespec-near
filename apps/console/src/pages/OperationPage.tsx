@@ -247,7 +247,7 @@ export function OperationPage() {
                     <StatusBadge content={coverageContent(op.effectCoverage)} />
                   </p>
                   {op.effectCoverage.missing.length > 0 ? (
-                    <ul>
+                    <ul className="missing-list" aria-label="Missing coverage">
                       {op.effectCoverage.missing.map((m) => (
                         <li key={m}>{m}</li>
                       ))}

@@ -1,0 +1,17 @@
+{
+  "name": "@routespec/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Closed, versioned RouteSpec protocol/domain contracts, canonical encoding, and digests (M00).",
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "zod": "3.25.76"
+  }
+}

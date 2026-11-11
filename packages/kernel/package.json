@@ -2,7 +2,21 @@
   "name": "@routespec/kernel",
   "version": "0.0.0",
   "private": true,
-  "description": "Pure deterministic invariant kernel (INV-01..INV-12) (M04). NOT_STARTED: placeholder workspace boundary only.",
+  "description": "Pure deterministic invariant kernel and evidence classification (M04).",
   "license": "UNLICENSED",
-  "type": "module"
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@routespec/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@routespec/proxy": "workspace:*",
+    "@routespec/scenario": "workspace:*",
+    "@routespec/store": "workspace:*"
+  }
 }

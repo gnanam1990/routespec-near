@@ -21,6 +21,9 @@
     },
     {
       "path": "packages/kernel"
+    },
+    {
+      "path": "packages/regressions"
     }
   ]
 }

@@ -86,6 +86,14 @@ export const ERROR_CODES = Object.freeze([
   // protected-effect observation and kernel input (M04)
   'RS_EFFECT_HOOK_UNDECLARED',
   'RS_KERNEL_INPUT_INVALID',
+  // trace quarantine, capture-to-regression, corpus, export scan (M05)
+  'RS_IMPORT_LIMIT_EXCEEDED',
+  'RS_IMPORT_STATE_INVALID',
+  'RS_IMPORT_BLOCKED',
+  'RS_IMPORT_CAPTURE_MISMATCH',
+  'RS_IMPORT_MAPPING_INVALID',
+  'RS_IMPORT_REVIEW_INVALID',
+  'RS_EXPORT_BLOCKED',
   'RS_INTERNAL',
 ] as const);
 export type ErrorCode = (typeof ERROR_CODES)[number];

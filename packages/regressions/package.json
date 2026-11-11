@@ -1,0 +1,25 @@
+{
+  "name": "@routespec/regressions",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Trace quarantine, sanitization, mapping, deterministic replay verification, review, immutable promotion, and corpus versioning (M05).",
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@routespec/contracts": "workspace:*",
+    "@routespec/kernel": "workspace:*",
+    "@routespec/scenario": "workspace:*",
+    "@routespec/store": "workspace:*"
+  },
+  "devDependencies": {
+    "@defuse-protocol/one-click-sdk-typescript": "0.1.26",
+    "@routespec/client-adapter": "workspace:*",
+    "@routespec/proxy": "workspace:*"
+  }
+}

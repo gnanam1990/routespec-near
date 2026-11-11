@@ -61,7 +61,8 @@ const INSTRUCTION_RULES: readonly RegExp[] = [
 const TERMINAL = /[\u001b\u009b]/;
 const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/;
 const BIDI = /[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/;
-const CONTROL_ALL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+const CONTROL_ALL =
+  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
 
 export interface ScanOptions {
   /** Configured secret values, in memory for this call only. Values shorter than 8 are ignored. */

@@ -1,0 +1,45 @@
+# Repository checks on Linux, macOS, and Windows, including the cross-platform canonical parity
+# regressions (T-027 canonical result digest, T-009 replay digest). Runs on push to main and on
+# pull requests (never pull_request_target), with read-only permissions and no secrets.
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    name: check (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: '22.23.1'
+      - name: Install pinned dependencies
+        shell: bash
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Typecheck, lint, format, tests, secret scan
+        shell: bash
+        run: pnpm run check
+      - name: Cross-platform canonical parity (T-027 and T-009 regressions)
+        shell: bash
+        run: pnpm exec vitest run packages/contracts/test/t027-canonical-result.test.ts packages/scenario/test/t009-replay-digest.test.ts
+      - name: Software bill of materials
+        shell: bash
+        run: node --no-warnings packages/ci/bin/routespec-ci.mjs sbom --lock pnpm-lock.yaml --out sbom.cdx.json

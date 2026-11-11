@@ -791,9 +791,10 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
         .map((st) => st['status']),
       mappingEffectCoverage: (proposed['mapping'] as J)['effectCoverage'],
       replay: {
-        canonicalDigest: verified['canonicalDigest'] ?? verified['replayDigest'] ?? null,
-        trials: verified['trials'] ?? null,
-        fidelity: verified['fidelity'] ?? verified['result'] ?? null,
+        verified: verified['verified'],
+        trialDigests: verified['trialDigests'] ?? null,
+        reportDigest: verified['reportDigest'] ?? null,
+        fidelity: verified['fidelity'] ?? null,
         networkAccessed: verified['networkAccessed'],
         keys: Object.keys(verified).sort(),
       },

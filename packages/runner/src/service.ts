@@ -94,6 +94,21 @@ export interface GateServiceOptions {
   readonly runtime?: RuntimeRevisions;
   /** Non-canonical run metadata for case envelopes (never exported). */
   readonly dataDirectory?: string;
+  /** Additional sink for re-issued credentials (control API: one-time hand-off on recover). */
+  readonly onCredentials?: (caseRunId: string, credentials: LaunchCredentials) => void;
+}
+
+/** What a control-API-driven launcher receives when it starts one case (no driver involved). */
+export interface ExternalCaseStart {
+  readonly handoff: CaseHandoff;
+}
+
+/** One-time reconciliation-only hand-off after fenced recovery. */
+export interface ExternalRecovery {
+  readonly caseRunId: string;
+  readonly previousEpoch: number;
+  readonly credentials: LaunchCredentials;
+  readonly revokedTokens: number;
 }
 
 const MODES: readonly string[] = ['SIMULATE', 'REPLAY'];
@@ -116,6 +131,7 @@ export class GateService {
   private proxyMode: RunnerMode | null = null;
   private driver: CaseDriver | null = null;
   private readonly startedAt = new Map<string, number>();
+  private readonly credentialSink: ((caseRunId: string, credentials: LaunchCredentials) => void) | null;
 
   constructor(store: RouteSpecStore, options: GateServiceOptions = {}) {
     this.store = store;
@@ -127,6 +143,7 @@ export class GateService {
     const ownerLabel = options.ownerLabel ?? `runner-${randomBytes(8).toString('hex')}`;
     this.owner = digestValue('routespec.runner-owner/1', ownerLabel);
     this.dataDirectory = options.dataDirectory ?? 'unspecified';
+    this.credentialSink = options.onCredentials ?? null;
     this.supervisor = new CaseSupervisor(store, {
       ownerLabel,
       leaseTtlMs: this.leaseTtlMs,
@@ -143,6 +160,7 @@ export class GateService {
     });
     this.logger.metrics.increment('reconciliation_tokens_issued');
     this.driver?.pushCredentials(caseRunId, credentials);
+    this.credentialSink?.(caseRunId, credentials);
   }
 
   // -------------------------------------------------------------------------------------------
@@ -622,6 +640,124 @@ export class GateService {
       this.logger.error('case.recovery-failed', { caseRun: caseRunId, details: { code: codeOf(error) } });
       return { caseRunId, verdict: null, code: codeOf(error) };
     }
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Control-API-driven cases: the caller is the reviewed launcher and receives the hand-off
+  // directly; the runner still owns the fence, teardown, and kernel evaluation.
+
+  /** Start (or reuse) the networkless proxy for this service and return its origin. */
+  async openProxy(mode: RunnerMode): Promise<string> {
+    return (await this.ensureProxy(mode)).origin;
+  }
+
+  /** Start one READY case of a RUNNING gate and return its one-time hand-off. */
+  startExternalCase(caseRunId: string, mode: RunnerMode): ExternalCaseStart {
+    if (this.proxy === null || this.proxyMode !== mode) {
+      throw new RouteSpecError('RS_MODE_POLICY_DENIED', 'The proxy for this mode is not running.');
+    }
+    const c = this.mustCase(caseRunId);
+    const gate = this.mustGate(String(c['gate_run_id']));
+    const compiled = this.compiledFor(caseRunId);
+    const firstCase = !this.caseRows(String(gate['gate_run_id'])).some(
+      (r) => r['case_run_id'] !== caseRunId && r['session_id'] !== null && r['session_id'] !== undefined,
+    );
+    const credentials = this.supervisor.startCase({ caseRunId, compiled, mode });
+    this.startedAt.set(caseRunId, Date.now());
+    this.logger.metrics.increment('cases_started');
+    return {
+      handoff: {
+        protocol: LAUNCHER_PROTOCOL,
+        gateRunId: String(gate['gate_run_id']),
+        caseRunId,
+        ordinal: Number(c['case_ordinal']),
+        scenarioRevisionId: String(c['scenario_revision_id']),
+        scenarioStableId: compiled.revisionInput.scenarioStableId,
+        mode,
+        proxyOrigin: this.proxy.origin,
+        credentials,
+        tokenTtlMs: this.tokenTtlMs,
+        buildAttestationClass: String(gate['build_attestation_class']),
+        firstCase,
+      },
+    };
+  }
+
+  /** Client input is closed: teardown (revoke tokens, record runtime evidence) and evaluate. */
+  finishExternalCase(caseRunId: string): Verdict {
+    if (this.supervisor.supervises(caseRunId)) return this.evaluateSupervisedCase(caseRunId);
+    const c = this.mustCase(caseRunId);
+    const fence: ExecutionFence = {
+      caseRunId,
+      leaseOwnerDigest: this.owner,
+      fencingEpoch: Number(c['fencing_epoch']),
+    };
+    this.store.closeCaseInput(fence);
+    return this.evaluateWithFence(caseRunId, fence);
+  }
+
+  /** Cancel a started case: revoke tokens, stop new exchanges, record ABORTED. */
+  abortExternalCase(caseRunId: string, reason: string): void {
+    if (this.supervisor.supervises(caseRunId)) {
+      this.supervisor.abort(caseRunId, reason);
+      return;
+    }
+    const c = this.mustCase(caseRunId);
+    this.store.abortCase(
+      { caseRunId, leaseOwnerDigest: this.owner, fencingEpoch: Number(c['fencing_epoch']) },
+      reason,
+    );
+  }
+
+  /**
+   * Fenced recovery for an external launcher: an expired lease (or RECOVERY_REQUIRED) is
+   * recorded as an interruption, the stale token is revoked, the epoch advances, and exactly
+   * one RECONCILIATION_ONLY token bound to the case's original client instance is returned.
+   */
+  recoverForReconciliation(caseRunId: string): ExternalRecovery {
+    const prior = this.mustCase(caseRunId);
+    // Fencing advances the epoch by one; the revoked authority belonged to the epoch before it.
+    const previousEpoch =
+      String(prior['execution_lifecycle']) === 'RECOVERY_REQUIRED'
+        ? Number(prior['fencing_epoch']) - 1
+        : Number(prior['fencing_epoch']);
+    this.store.recoverExpiredLeases();
+    const c = this.mustCase(caseRunId);
+    const lifecycle = String(c['execution_lifecycle']);
+    const epoch = Number(c['fencing_epoch']);
+    if (lifecycle !== 'RECOVERY_REQUIRED') {
+      if (lifecycle === 'RUNNING' || lifecycle === 'EVALUATING') {
+        throw new RouteSpecError('RS_LEASE_HELD', 'Case lease is still held; recovery is not permitted yet.');
+      }
+      throw new RouteSpecError('RS_RECOVERY_NOT_REQUIRED', 'Case run is not in a recoverable state.', {
+        details: { lifecycle },
+      });
+    }
+    this.gates.recordCaseInterruption({ caseRunId, fencingEpoch: epoch, kind: 'LEASE_EXPIRED' });
+    const recovered = this.store.recoverCase({
+      caseRunId,
+      recoveryOwnerDigest: this.owner,
+      clientInstanceDigest: String(c['client_instance_digest']),
+      expectedFencingEpoch: epoch,
+      leaseTtlMs: this.leaseTtlMs,
+      tokenTtlMs: this.tokenTtlMs,
+    });
+    this.supervisor.adoptFence(caseRunId, recovered.fencingEpoch);
+    this.logger.warn('case.recovered', { caseRun: caseRunId, epoch: recovered.fencingEpoch });
+    return {
+      caseRunId,
+      previousEpoch,
+      revokedTokens: recovered.revokedTokens,
+      credentials: {
+        purpose: 'RECONCILIATION_ONLY',
+        token: recovered.token,
+        sessionId: recovered.auth.sessionId,
+        caseRunId,
+        adapterRevision: recovered.auth.adapterRevision,
+        fencingEpoch: recovered.fencingEpoch,
+        clientInstanceId: this.supervisor.clientInstanceOf(caseRunId) ?? '',
+      },
+    };
   }
 
   // -------------------------------------------------------------------------------------------

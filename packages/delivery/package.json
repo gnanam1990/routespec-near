@@ -1,0 +1,16 @@
+{
+  "name": "@routespec/delivery",
+  "version": "0.0.0",
+  "private": true,
+  "description": "End-to-end delivery verification (M12): clean clone install, the full local product journey with the pinned official client, and bundle reproduction (T-054, T-055).",
+  "license": "UNLICENSED",
+  "type": "module",
+  "devDependencies": {
+    "@defuse-protocol/one-click-sdk-typescript": "0.1.26",
+    "@playwright/test": "1.65.0",
+    "@routespec/client-adapter": "workspace:*",
+    "@routespec/contracts": "workspace:*",
+    "@routespec/hardening": "workspace:*",
+    "@routespec/scenario": "workspace:*"
+  }
+}

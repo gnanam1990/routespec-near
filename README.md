@@ -5,7 +5,8 @@ authoritative specification is the sealed pack in [`docs/spec/`](docs/spec/START
 repository is its implementation, built module by module (M00–M12).
 
 **Status:** early implementation. See [`BUILD-STATUS.md`](BUILD-STATUS.md) for exactly what is
-implemented and verified. No product runtime (proxy, CLI, control API, console) exists yet, and no
+implemented and verified. The contracts (M00) and the durable journal (M01) exist as libraries with tests; no product
+runtime (proxy, CLI, control API, console) exists yet, and no
 `WORKING_*` gate from `docs/spec/REAL-PRODUCT-GATE.md` is claimed.
 
 ## Requirements
@@ -31,7 +32,10 @@ pnpm install --frozen-lockfile
 | `pnpm run secret-scan`  | Scans tracked/untracked files for secret patterns (values withheld) |
 | `pnpm run check`        | All of the above in sequence                                        |
 
-Run one package's tests with e.g. `pnpm exec vitest run packages/contracts`.
+Run one package's tests with e.g. `pnpm exec vitest run packages/contracts` or
+`pnpm exec vitest run packages/store`. The store crash tests (T-022/T-023) spawn real child
+Node.js processes and kill them; Node prints an `ExperimentalWarning` for `node:sqlite`, which is
+expected.
 
 ## Layout
 
@@ -39,7 +43,9 @@ Run one package's tests with e.g. `pnpm exec vitest run packages/contracts`.
 packages/contracts         M00  closed versioned schemas, enums, rs-canon/1 encoding + digests,
                                 oneclick-v0 protocol profile, lifecycle tables, typed errors
 packages/live-dry-adapter  M07  (NOT_STARTED) — pins the official 1Click SDK 0.1.26 only
-packages/store             M01  SQLite journal (see BUILD-STATUS.md for current state)
+packages/store             M01  single-writer node:sqlite WAL journal: checksummed migrations,
+                                fenced case tokens/leases/recovery, four-phase operation binding,
+                                evidence consumption, checkpoint/verified backup, storage faults
 packages/kernel            M04  (NOT_STARTED)
 packages/proxy             M02  (NOT_STARTED)
 packages/runner, cli       M06  (NOT_STARTED)

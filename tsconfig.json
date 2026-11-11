@@ -1,4 +1,8 @@
 {
   "files": [],
-  "references": [{ "path": "packages/contracts" }, { "path": "packages/live-dry-adapter" }]
+  "references": [
+    { "path": "packages/contracts" },
+    { "path": "packages/store" },
+    { "path": "packages/live-dry-adapter" }
+  ]
 }

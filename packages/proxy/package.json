@@ -15,5 +15,9 @@
     "@routespec/contracts": "workspace:*",
     "@routespec/scenario": "workspace:*",
     "@routespec/store": "workspace:*"
+  },
+  "devDependencies": {
+    "@defuse-protocol/one-click-sdk-typescript": "0.1.26",
+    "@routespec/client-adapter": "workspace:*"
   }
 }

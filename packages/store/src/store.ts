@@ -2575,6 +2575,35 @@ export class RouteSpecStore {
   }
 
   /**
+   * Close client input for a running case (teardown before evaluation): revoke every active case
+   * token so the subject client can no longer reach the case, and record the teardown time once.
+   * The lifecycle stays RUNNING; only the evaluator (`persistCaseEvaluation`) moves it on.
+   */
+  closeCaseInput(fence: ExecutionFence): { revokedTokens: number } {
+    return this.tx('case.close-input', (db) => {
+      const c = this.assertFence(db, fence);
+      if (str(c, 'execution_lifecycle') !== 'RUNNING') {
+        fail('RS_PHASE_INVALID', 'Only a RUNNING case can close client input.', {
+          lifecycle: str(c, 'execution_lifecycle'),
+        });
+      }
+      const revokedTokens = this.revokeActiveTokens(
+        db,
+        fence.caseRunId,
+        'CASE_INPUT_CLOSED',
+        fence.fencingEpoch,
+      );
+      run(
+        db,
+        'UPDATE case_runs SET teardown_recorded_at_ms = ? WHERE case_run_id = ? AND teardown_recorded_at_ms IS NULL',
+        this.now(),
+        fence.caseRunId,
+      );
+      return { revokedTokens };
+    });
+  }
+
+  /**
    * Cancel a case: revoke its tokens, record teardown, and close the lifecycle ABORTED without
    * a verdict. The gate aggregator (M06) treats an aborted required case as REVIEW.
    */
@@ -2637,7 +2666,12 @@ export class RouteSpecStore {
    * (unknown route, bad host/origin, malformed transport). Only safe codes are stored: method,
    * a sanitized path, the error code, and the explicit no-upstream facts.
    */
-  recordProxyDenial(input: { method: string; path: string; code: ErrorCode; sessionId?: string | null }): void {
+  recordProxyDenial(input: {
+    method: string;
+    path: string;
+    code: ErrorCode;
+    sessionId?: string | null;
+  }): void {
     const method = /^[A-Z]{1,16}$/.test(input.method) ? input.method : 'OTHER';
     const path = (input.path.split('?')[0] ?? '/').replace(/[^A-Za-z0-9/_.{}-]/g, '_').slice(0, 128);
     this.tx('proxy.denial', (db) => {
@@ -2742,10 +2776,13 @@ export class RouteSpecStore {
       channel.interceptorInstanceId,
     );
     if (!inst) fail('RS_CHANNEL_AUTH_FAILED', 'Interceptor channel is not recognized.');
-    if (inst['channel_key_digest'] !== digestValue('routespec.interceptor-channel-key/1', channel.channelKey)) {
+    if (
+      inst['channel_key_digest'] !== digestValue('routespec.interceptor-channel-key/1', channel.channelKey)
+    ) {
       fail('RS_CHANNEL_AUTH_FAILED', 'Interceptor channel authentication failed.');
     }
-    if (inst['teardown_at_ms'] !== null) fail('RS_INTERCEPTOR_TORN_DOWN', 'Interceptor instance was torn down.');
+    if (inst['teardown_at_ms'] !== null)
+      fail('RS_INTERCEPTOR_TORN_DOWN', 'Interceptor instance was torn down.');
     return inst;
   }
 
@@ -2801,10 +2838,16 @@ export class RouteSpecStore {
         fail('RS_STALE_FENCING_EPOCH', 'Interceptor instance is bound to a stale fencing epoch.');
       }
       if (!(JSON.parse(str(inst, 'supported_sinks_json')) as string[]).includes(obs.sinkClass)) {
-        fail('RS_SINK_UNSUPPORTED', 'Sink class is outside the interceptor profile.', { sinkClass: obs.sinkClass });
+        fail('RS_SINK_UNSUPPORTED', 'Sink class is outside the interceptor profile.', {
+          sinkClass: obs.sinkClass,
+        });
       }
       if (obs.runOperationId !== null) {
-        const op = one(db, 'SELECT case_run_id FROM run_operations WHERE run_operation_id = ?', obs.runOperationId);
+        const op = one(
+          db,
+          'SELECT case_run_id FROM run_operations WHERE run_operation_id = ?',
+          obs.runOperationId,
+        );
         if (!op || op['case_run_id'] !== obs.caseRunId) {
           fail('RS_CHANNEL_BINDING_MISMATCH', 'Run operation belongs to a different case.');
         }
@@ -2909,7 +2952,11 @@ export class RouteSpecStore {
 
   listAuditEvents(actionCode: string): Row[] {
     return this.journal.read((db) =>
-      all(db, 'SELECT * FROM audit_events WHERE action_code = ? ORDER BY created_at_ms, audit_id', actionCode),
+      all(
+        db,
+        'SELECT * FROM audit_events WHERE action_code = ? ORDER BY created_at_ms, audit_id',
+        actionCode,
+      ),
     );
   }
 

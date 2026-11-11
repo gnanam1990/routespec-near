@@ -26,7 +26,12 @@ import {
   type EvidenceScope,
   type TokenPurpose,
 } from '@routespec/contracts';
-import { ScenarioRuntime, type CompiledScenario, type GroundTruthFact, type RuntimeSummary } from '@routespec/scenario';
+import {
+  ScenarioRuntime,
+  type CompiledScenario,
+  type GroundTruthFact,
+  type RuntimeSummary,
+} from '@routespec/scenario';
 import type { ExecutionFence, RouteSpecStore } from '@routespec/store';
 import type { CaseRuntimeRegistry, UncertainOutcomeEvent } from './server.ts';
 
@@ -80,7 +85,10 @@ export class CaseSupervisor implements CaseRuntimeRegistry {
     this.store = store;
     this.leaseTtlMs = options.leaseTtlMs ?? 300_000;
     this.tokenTtlMs = options.tokenTtlMs ?? 600_000;
-    this.owner = digestValue('routespec.runner-owner/1', options.ownerLabel ?? `supervisor-${randomBytes(8).toString('hex')}`);
+    this.owner = digestValue(
+      'routespec.runner-owner/1',
+      options.ownerLabel ?? `supervisor-${randomBytes(8).toString('hex')}`,
+    );
     this.onCredentials = options.onCredentials ?? (() => undefined);
   }
 
@@ -94,7 +102,10 @@ export class CaseSupervisor implements CaseRuntimeRegistry {
     if (!caseRun) throw new RouteSpecError('RS_NOT_FOUND', 'Case run not found.');
     const stored = this.store.getScenarioRevision(String(caseRun['scenario_revision_id']));
     if (!stored || stored['revision_digest'] !== input.compiled.revisionDigest) {
-      throw new RouteSpecError('RS_IDENTITY_MISMATCH', 'Compiled scenario is not the case run scenario revision.');
+      throw new RouteSpecError(
+        'RS_IDENTITY_MISMATCH',
+        'Compiled scenario is not the case run scenario revision.',
+      );
     }
     const clientInstanceId = input.clientInstanceId ?? `client-${randomBytes(16).toString('hex')}`;
     const started = this.store.startCase({
@@ -233,6 +244,22 @@ export class CaseSupervisor implements CaseRuntimeRegistry {
       }).evidenceId,
     );
     return { summary, evidenceIds };
+  }
+
+  /**
+   * Case teardown before evaluation: finish scenario input (recording its evidence) if that has
+   * not happened yet, then revoke every active case token so the subject client is refused from
+   * here on. The lifecycle stays RUNNING for the evaluator (M04).
+   */
+  teardown(caseRunId: string): { summary: RuntimeSummary; evidenceIds: string[]; revokedTokens: number } {
+    const state = this.cases.get(caseRunId);
+    if (!state) throw new RouteSpecError('RS_NOT_FOUND', 'Case is not supervised here.');
+    const finished =
+      state.summary === null
+        ? this.finishInput(caseRunId)
+        : { summary: state.summary, evidenceIds: [] as string[] };
+    const { revokedTokens } = this.store.closeCaseInput(state.fence);
+    return { ...finished, revokedTokens };
   }
 
   summaryFor(caseRunId: string): RuntimeSummary | null {

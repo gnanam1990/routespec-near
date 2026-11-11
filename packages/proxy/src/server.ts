@@ -102,9 +102,13 @@ function short(id: string | null): string | null {
 }
 
 function headerError(name: string): never {
-  throw new RouteSpecError('RS_HEADER_INVALID', 'A required RouteSpec adapter header is missing or malformed.', {
-    details: { header: name },
-  });
+  throw new RouteSpecError(
+    'RS_HEADER_INVALID',
+    'A required RouteSpec adapter header is missing or malformed.',
+    {
+      details: { header: name },
+    },
+  );
 }
 
 export class ScenarioProxy {
@@ -140,9 +144,12 @@ export class ScenarioProxy {
     this.redactor = options.redactor ?? new Redactor();
     this.maxBodyBytes = options.maxBodyBytes ?? 16_384;
     this.log = options.log ?? (() => undefined);
-    this.server = createServer({ requestTimeout: 30_000, headersTimeout: 10_000, maxHeaderSize: 16_384 }, (req, res) => {
-      void this.handle(req, res);
-    });
+    this.server = createServer(
+      { requestTimeout: 30_000, headersTimeout: 10_000, maxHeaderSize: 16_384 },
+      (req, res) => {
+        void this.handle(req, res);
+      },
+    );
     this.server.maxConnections = 64;
     this.server.on('connection', (socket) => {
       this.sockets.add(socket);
@@ -198,7 +205,10 @@ export class ScenarioProxy {
         throw new RouteSpecError('RS_HOST_REJECTED', 'Host header is outside the local origin set.');
       }
       if (req.headers.origin !== undefined || req.headers['sec-fetch-site'] !== undefined) {
-        throw new RouteSpecError('RS_ORIGIN_REJECTED', 'Browser-originated requests are not accepted by the proxy.');
+        throw new RouteSpecError(
+          'RS_ORIGIN_REJECTED',
+          'Browser-originated requests are not accepted by the proxy.',
+        );
       }
       if (!target.startsWith('/') || target.startsWith('//')) {
         throw new RouteSpecError('RS_UNSUPPORTED_ROUTE', 'Only origin-form request targets are accepted.', {
@@ -221,8 +231,9 @@ export class ScenarioProxy {
       const sessionHeader = headers.local[ADAPTER_HEADERS.session];
       if (sessionHeader !== undefined && UUID.test(sessionHeader)) sessionHint = sessionHeader;
       const parsed = this.authenticate(headers.local);
+      // Looked up here, checked only after token/identity authorization inside `exchange`, so
+      // a torn-down or foreign case is refused for its credentials first.
       const runtime = this.cases.runtimeFor(parsed.auth.caseRunId);
-      if (!runtime) throw new RouteSpecError('RS_PHASE_INVALID', 'No scenario runtime is active for this case.');
 
       if (route.path === '/v0/quote') {
         const body = await readJsonBody(req, this.maxBodyBytes);
@@ -267,12 +278,16 @@ export class ScenarioProxy {
   private rejectSecrets(value: unknown): void {
     const findings = this.redactor.findIn(value);
     if (findings.length > 0) {
-      throw new RouteSpecError('RS_SECRET_FIELD_REJECTED', 'A secret-bearing value was rejected before persistence.', {
-        details: {
-          categories: [...new Set(findings.map((f) => f.category))].sort(),
-          paths: findings.map((f) => f.path).slice(0, 8),
+      throw new RouteSpecError(
+        'RS_SECRET_FIELD_REJECTED',
+        'A secret-bearing value was rejected before persistence.',
+        {
+          details: {
+            categories: [...new Set(findings.map((f) => f.category))].sort(),
+            paths: findings.map((f) => f.path).slice(0, 8),
+          },
         },
-      });
+      );
     }
   }
 
@@ -329,20 +344,28 @@ export class ScenarioProxy {
   private async exchange(args: {
     res: ServerResponse;
     parsed: Parsed;
-    runtime: ScenarioRuntime;
+    runtime: ScenarioRuntime | undefined;
     phase: OperationPhase;
     request: ScenarioRequest;
-    journal: (decision: Decision) => { exchangeId: string; attemptId: string; runOperationId: string; sequence: number };
-    build: (decision: Decision, runOperationId: string) => Planned;
+    journal: (decision: Decision) => {
+      exchangeId: string;
+      attemptId: string;
+      runOperationId: string;
+      sequence: number;
+    };
+    build: (decision: Decision, runOperationId: string, runtime: ScenarioRuntime) => Planned;
     commitPhase: boolean;
   }): Promise<void> {
-    const { res, parsed, runtime, request } = args;
+    const { res, parsed, request } = args;
     try {
       this.store.verifyCaseAuth(parsed.auth, args.phase);
     } catch (error) {
-      runtime.deny(request, toSafeError(error).code);
+      args.runtime?.deny(request, toSafeError(error).code);
       throw error;
     }
+    const runtime = args.runtime;
+    if (!runtime)
+      throw new RouteSpecError('RS_PHASE_INVALID', 'No scenario runtime is active for this case.');
     const plan = runtime.planRequest(request);
     const decision = plan.decision;
     if (decision.kind === 'REJECT_UNEXPECTED') {
@@ -378,7 +401,7 @@ export class ScenarioProxy {
       sequence: ack.sequence,
     });
     this.releaseBarriers(decision);
-    const planned = args.build(decision, ack.runOperationId);
+    const planned = args.build(decision, ack.runOperationId, runtime);
     let delivered = false;
     let lostReported = false;
     const lost = (cause: UncertainOutcomeEvent['cause']) => {
@@ -437,7 +460,12 @@ export class ScenarioProxy {
     }
   }
 
-  private async quote(res: ServerResponse, parsed: Parsed, runtime: ScenarioRuntime, body: unknown): Promise<void> {
+  private async quote(
+    res: ServerResponse,
+    parsed: Parsed,
+    runtime: ScenarioRuntime | undefined,
+    body: unknown,
+  ): Promise<void> {
     if (parsed.logicalJob === null) headerError(ADAPTER_HEADERS.logicalJob);
     const material = validateQuoteRequest(body).material;
     await this.exchange({
@@ -461,7 +489,12 @@ export class ScenarioProxy {
           virtualMs: decision.virtualMs,
           deliveryPending: true,
         });
-        return { exchangeId: fin.exchangeId, attemptId: fin.attemptId, runOperationId: ack.runOperationId, sequence: fin.sequence };
+        return {
+          exchangeId: fin.exchangeId,
+          attemptId: fin.attemptId,
+          runOperationId: ack.runOperationId,
+          sequence: fin.sequence,
+        };
       },
       build: (decision, runOperationId) => ({
         status: 200,
@@ -476,7 +509,12 @@ export class ScenarioProxy {
     return parsed.runOperationId as string;
   }
 
-  private async commit(res: ServerResponse, parsed: Parsed, runtime: ScenarioRuntime, body: unknown): Promise<void> {
+  private async commit(
+    res: ServerResponse,
+    parsed: Parsed,
+    runtime: ScenarioRuntime | undefined,
+    body: unknown,
+  ): Promise<void> {
     const runOperationId = this.requireOperation(parsed);
     await this.exchange({
       res,
@@ -492,14 +530,14 @@ export class ScenarioProxy {
           body,
           virtualMs: decision.virtualMs,
         }),
-      build: (decision) => this.executionBody(runtime, body, decision),
+      build: (decision, _op, rt) => this.executionBody(rt, body, decision),
     });
   }
 
   private async status(
     res: ServerResponse,
     parsed: Parsed,
-    runtime: ScenarioRuntime,
+    runtime: ScenarioRuntime | undefined,
     query: Record<string, string>,
   ): Promise<void> {
     const runOperationId = this.requireOperation(parsed);
@@ -519,7 +557,7 @@ export class ScenarioProxy {
           virtualMs: decision.virtualMs,
           deliveryPending: true,
         }),
-      build: (decision) => this.executionBody(runtime, query, decision),
+      build: (decision, _op, rt) => this.executionBody(rt, query, decision),
     });
   }
 

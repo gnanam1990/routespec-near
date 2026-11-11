@@ -10,3 +10,4 @@ export * from './http.ts';
 export * from './tripwire.ts';
 export * from './server.ts';
 export * from './supervisor.ts';
+export * from './interceptor-channel.ts';

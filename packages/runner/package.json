@@ -2,7 +2,21 @@
   "name": "@routespec/runner",
   "version": "0.0.0",
   "private": true,
-  "description": "Gate runner, reports, and release gates (M06). NOT_STARTED: placeholder workspace boundary only.",
+  "description": "Gate runner, bounded case scheduler, release-gate aggregation, reports, and redacted evidence bundles (M06).",
   "license": "UNLICENSED",
-  "type": "module"
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@routespec/contracts": "workspace:*",
+    "@routespec/kernel": "workspace:*",
+    "@routespec/proxy": "workspace:*",
+    "@routespec/regressions": "workspace:*",
+    "@routespec/scenario": "workspace:*",
+    "@routespec/store": "workspace:*"
+  }
 }

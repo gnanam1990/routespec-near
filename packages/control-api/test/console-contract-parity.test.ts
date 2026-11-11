@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ZodTypeAny } from 'zod';
 import {
   expectOk,
+  gateRunBody as gateRunBodyFor,
   quoteBody,
   setupProject,
   startHarness,
@@ -80,5 +81,163 @@ describe('console contract parity with the real control API', () => {
       'zImportRow',
       (expectOk(await h.api('GET', `/projects/${p.projectId}/imports`), 200)['items'] as J[])[0],
     );
+  });
+
+  it('run-operation detail, import detail, and every console mutation reply parse (M09 wiring)', async () => {
+    const created = expectOk(await h.api('POST', '/gate-runs', gateRunBodyFor(p)), 201);
+    parses('zGateRun', created);
+    const gateRunId = String(created['gateRunId']);
+    const v = expectOk(
+      await h.api('POST', `/gate-runs/${gateRunId}/validate`, {}, { ifMatch: Number(created['revision']) }),
+      200,
+    );
+    parses('zValidateResult', v);
+    const st = expectOk(
+      await h.api(
+        'POST',
+        `/gate-runs/${gateRunId}/start`,
+        {},
+        { ifMatch: Number((v['gateRun'] as J)['revision']) },
+      ),
+      200,
+    );
+    parses('zStartResult', st);
+    const caseRunId = String(
+      ((expectOk(await h.api('GET', `/gate-runs/${gateRunId}/cases`), 200)['items'] as J[])[0] as J)[
+        'caseRunId'
+      ],
+    );
+    const start = expectOk(await h.api('POST', `/case-runs/${caseRunId}/start`, {}), 201);
+    const s2 = await Subject.launch();
+    try {
+      await s2.attach(String(st['proxyBaseUrl']), start);
+      await s2.send({ type: 'logicalJob', key: 'order-detail' });
+      const q = await s2.call('getQuote', quoteBody());
+      const depositAddress = String(((q['value'] as J)['quote'] as J)['depositAddress']);
+      await s2.call('submitDepositTx', { txHash: 'sim-tx-detail', depositAddress });
+      await s2.call('getExecutionStatus', depositAddress);
+    } finally {
+      await s2.close();
+    }
+    const finished = expectOk(await h.api('POST', `/case-runs/${caseRunId}/finish-input`, {}), 200);
+    parses('zCaseRun', finished);
+    const evaluation = expectOk(
+      await h.api('POST', `/gates/${p.gateId}/evaluate`, { gateRunId }),
+      [200, 201],
+    );
+    parses('zGateEvaluation', evaluation);
+    const gate = expectOk(await h.api('GET', `/gate-runs/${gateRunId}`), 200);
+    parses('zGateRun', gate);
+    expect(gate['gateId']).toBe(p.gateId);
+    const plan = expectOk(
+      await h.api('POST', '/exports', { gateEvaluationId: String(evaluation['gateEvaluationId']) }),
+      [200, 201],
+    );
+    parses('zExportPlan', plan);
+    const cases = expectOk(await h.api('GET', `/gate-runs/${gateRunId}/cases`), 200);
+    const opId = String((((cases['items'] as J[])[0] as J)['runOperationIds'] as string[])[0]);
+    const op = expectOk(await h.api('GET', `/run-operations/${opId}`), 200);
+    parses('zRunOperation', op);
+    // The operation outcome is the kernel's persisted case verdict, not a recomputation.
+    expect((op['evaluatedOutcome'] as J)['verdict']).toBe(((cases['items'] as J[])[0] as J)['verdict']);
+    expect(JSON.stringify(op)).not.toContain('sim-tx-detail');
+
+    const cap = expectOk(await h.api('POST', `/case-runs/${caseRunId}/captures`, {}), 201);
+    parses('zCaptureResult', cap);
+    const importId = String(cap['importId']);
+    parses('zImportDetail', expectOk(await h.api('GET', `/imports/${importId}`), 200));
+    const proposed = expectOk(await h.api('GET', `/imports/${importId}/proposed-mapping`), 200);
+    parses('zProposedMapping', proposed);
+    const mapped = expectOk(
+      await h.api(
+        'POST',
+        `/imports/${importId}/mapping`,
+        { mapping: proposed['mapping'] },
+        { ifMatch: Number(proposed['revision']) },
+      ),
+      201,
+    );
+    parses('zImportAck', mapped);
+    const afterMap = expectOk(await h.api('GET', `/imports/${importId}`), 200);
+    parses('zImportDetail', afterMap);
+    const verified = expectOk(
+      await h.api(
+        'POST',
+        `/imports/${importId}/verify-replay`,
+        {},
+        { ifMatch: Number(afterMap['revision']) },
+      ),
+      200,
+    );
+    parses('zImportAck', verified);
+    const afterVerify = expectOk(await h.api('GET', `/imports/${importId}`), 200);
+    parses('zImportDetail', afterVerify);
+    const review = afterVerify['review'] as { decisions: string[]; confirmationPhrase: string };
+    const reviewed = expectOk(
+      await h.api(
+        'POST',
+        `/imports/${importId}/reviews`,
+        {
+          reviewer: 'local reviewer',
+          decisions: Object.fromEntries(review.decisions.map((k) => [k, true])),
+          confirmation: review.confirmationPhrase,
+        },
+        { ifMatch: Number(afterVerify['revision']) },
+      ),
+      201,
+    );
+    parses('zReviewResult', reviewed);
+    const afterReview = expectOk(await h.api('GET', `/imports/${importId}`), 200);
+    parses('zImportDetail', afterReview);
+    expect(afterReview['promotable']).toBe(true);
+    const promoted = expectOk(
+      await h.api(
+        'POST',
+        `/imports/${importId}/promote`,
+        {
+          reviewId: String((afterReview['review'] as J)['latestReviewId']),
+          baseCorpusRevisionId: null,
+          corpusLabel: 'parity-promoted',
+          severity: 'HIGH',
+          gatePolicy: 'REQUIRED',
+        },
+        { ifMatch: Number(afterReview['revision']) },
+      ),
+      201,
+    );
+    parses('zPromoteResult', promoted);
+    const final = expectOk(await h.api('GET', `/imports/${importId}`), 200);
+    parses('zImportDetail', final);
+    expect(final).toMatchObject({
+      regressionStatus: 'PROMOTED_AWAITING_CORRECTED_RUN',
+      replayOnlyPass: true,
+    });
+    // A gate run on the promotion corpus runs the promoted scenario as PROMOTED_REGRESSION.
+    const rerun = expectOk(
+      await h.api('POST', '/gate-runs', {
+        ...gateRunBodyFor(p),
+        gateId: null,
+        corpusRevisionId: String(promoted['corpusRevisionId']),
+      }),
+      201,
+    );
+    const rerunCases = expectOk(await h.api('GET', `/gate-runs/${String(rerun['gateRunId'])}/cases`), 200);
+    expect(((rerunCases['items'] as J[])[0] as J)['lineageRole']).toBe('PROMOTED_REGRESSION');
+  });
+
+  it('a user trace upload is quarantined, and a secret-bearing one is rejected without echoing it', async () => {
+    const secret = `sk_live_${'Z'.repeat(32)}`;
+    const blocked = expectOk(
+      await h.api('POST', '/imports', {
+        projectId: p.projectId,
+        fileName: 'trace.json',
+        content: JSON.stringify({ format: 'routespec.trace/1', apiKey: secret }),
+      }),
+      201,
+    );
+    parses('zImportRow', blocked);
+    expect(JSON.stringify(blocked)).not.toContain(secret);
+    expect((blocked['findings'] as J)['secret']).toBeGreaterThan(0);
+    parses('zImportDetail', expectOk(await h.api('GET', `/imports/${String(blocked['importId'])}`), 200));
   });
 });

@@ -66,6 +66,11 @@ export interface GateRunRequest {
   readonly callsiteInventoryDigest?: string | null;
   readonly interceptorProfileDigest?: string | null;
   readonly lineageRole?: CaseLineageRole;
+  /**
+   * Per-scenario lineage role (for example PROMOTED_REGRESSION for the promoted scenario of a
+   * promotion corpus); scenarios not listed use `lineageRole`.
+   */
+  readonly lineageRoleByScenario?: Readonly<Record<string, CaseLineageRole>>;
   /** Pinned revisions; default to this runtime's. A different pin is recorded, never upgraded. */
   readonly adapterRevision?: string;
   readonly evaluatorRevision?: string;
@@ -240,7 +245,10 @@ export class GateService {
       maxParallelCases: request.maxParallelCases,
       cases: res.corpusCases.map((c) => ({
         scenarioRevisionId: String(c['scenario_revision_id']),
-        lineageRole: request.lineageRole ?? 'BASELINE',
+        lineageRole:
+          request.lineageRoleByScenario?.[String(c['scenario_revision_id'])] ??
+          request.lineageRole ??
+          'BASELINE',
         requiredInvariants: JSON.parse(String(c['required_invariants_json'])) as string[],
       })),
       ...(request.gate !== null ? { gateDefinitionRevisionId: request.gate.gateDefinitionRevisionId } : {}),

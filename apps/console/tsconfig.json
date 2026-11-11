@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
@@ -19,7 +19,9 @@
     "src/**/*.tsx",
     "test/**/*.ts",
     "e2e/**/*.ts",
+    "e2e-real/**/*.ts",
     "vite.config.ts",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "playwright.real.config.ts"
   ]
 }

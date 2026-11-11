@@ -238,6 +238,10 @@ export const zGateRun = zStatusAxes.extend({
   counts: zCounts,
   findings: z.array(zFinding).max(200),
   revision: count,
+  /** Gate definition this run was created for; evaluation is offered only when present. */
+  gateId: id.nullable().optional(),
+  /** The latest persisted gate evaluation (export planning starts from it). */
+  gateEvaluationId: id.nullable().optional(),
 });
 
 export const zTokenRef = z.object({
@@ -313,6 +317,7 @@ export const zRecoveryResult = z.object({
   fencingEpoch: count,
   revokedTokenPurpose: zTokenPurpose,
   lifecycle: zLifecycle,
+  clientInstanceId: id.nullable().optional(),
   token: zOneTimeToken.refine(
     (t) => t.purpose === 'RECONCILIATION_ONLY',
     'recovery must issue a RECONCILIATION_ONLY token',
@@ -468,6 +473,8 @@ export const zImportRow = z.object({
   digest,
   sizeBytes: count,
   state: zImportState,
+  /** Optimistic revision for If-Match on import mutations. */
+  revision: count,
   findings: z.object({ secret: count, nondeterminism: count, unresolved: count }),
   expiresAt: time.nullable(),
   /** Server-authoritative: the console never decides on its own that promotion is allowed. */
@@ -495,6 +502,91 @@ export const zImportDetail = zImportRow.extend({
     .array(z.object({ sequence: count, phase: zPhase.nullable(), summary: safeText }))
     .max(500),
   replayOnlyPass: z.boolean(),
+  regressionStatus: z
+    .enum([
+      'IN_QUARANTINE',
+      'REJECTED',
+      'PROMOTED_AWAITING_CORRECTED_RUN',
+      'CORRECTED_RUN_NOT_PASSING',
+      'CORRECTED_RUN_PASSED',
+    ])
+    .optional(),
+  promotion: z
+    .object({ scenarioRevisionId: id, corpusRevisionId: id, baseCorpusRevisionId: id.nullable() })
+    .nullable()
+    .optional(),
+  correctedRuns: z
+    .array(
+      z.object({
+        gateRunId: id,
+        caseRunId: id,
+        buildRevisionId: id,
+        lineageRole: zLineageRole,
+        lifecycle: zLifecycle,
+        verdict: zVerdict.nullable(),
+      }),
+    )
+    .max(64)
+    .optional(),
+  mapping: z.object({ mappingRevisionId: id, mappingDigest: digest }).nullable().optional(),
+  replayReport: z
+    .object({ reportId: id, stable: z.boolean(), trials: count, reportDigest: digest })
+    .nullable()
+    .optional(),
+  /** Review requirements published by the service; the console renders them, never invents them. */
+  review: z
+    .object({
+      decisions: z.array(z.string().regex(/^[A-Z_]{3,64}$/)).max(16),
+      confirmationPhrase: safeText,
+      latestReviewId: id.nullable(),
+    })
+    .optional(),
+});
+
+// ---------------------------------------------------------------- mutation results
+// Mutation replies are acknowledgements; the console re-reads the authoritative record after
+// each one instead of treating the reply as the record.
+
+export const zValidateResult = z.object({
+  ready: z.boolean(),
+  findings: z.array(z.unknown()).max(200),
+  gateRun: zGateRun,
+});
+export const zStartResult = z.object({ proxyBaseUrl: z.string().url(), gateRun: zGateRun });
+export const zCaptureResult = z.object({ importId: id, state: zImportState, revision: count });
+export const zImportAck = z.object({ state: zImportState });
+export const zReviewResult = z.object({ reviewId: id, revision: count, state: zImportState });
+export const zPromoteResult = z.object({
+  scenarioRevisionId: id,
+  corpusRevisionId: id,
+  baseCorpusMutated: z.literal(false),
+});
+export const zProposedMapping = z.object({
+  importId: id,
+  revision: count,
+  mapping: z.record(z.string(), z.unknown()),
+  derivedFrom: z.enum(['SOURCE_SCENARIO', 'OBSERVED_TRACE']),
+  proposal: z.literal('UNREVIEWED_DRAFT'),
+});
+export const zGateEvaluation = z.object({
+  gateEvaluationId: id,
+  gateRunId: id,
+  decision: zVerdict,
+  enforcementMode: zEnforcement,
+  artifactReady: z.boolean().nullable(),
+  /** v2 never claims release blocking; anything else is an unsupported record. */
+  blocksRelease: z.literal(false),
+});
+export const zExportPlan = z.object({
+  exportId: id,
+  blocked: z.boolean(),
+  planDigest: digest,
+  bundleDigest: digest.nullable(),
+  bundleBytes: count.nullable(),
+  privacyScanResult: z.enum(['CLEAN', 'ADDRESSES_ACKNOWLEDGED', 'BLOCKED']),
+  exclusions: z.array(safeText).max(64),
+  entries: z.array(z.object({ path: safeText, digest, bytes: count, kind: safeText })).max(500),
+  written: z.literal(false),
 });
 
 export const zSettings = z.object({
@@ -577,5 +669,8 @@ export type InvariantResult = z.infer<typeof zInvariantResult>;
 export type ImportRow = z.infer<typeof zImportRow>;
 export type ImportDetail = z.infer<typeof zImportDetail>;
 export type Settings = z.infer<typeof zSettings>;
+export type ProposedMapping = z.infer<typeof zProposedMapping>;
+export type GateEvaluation = z.infer<typeof zGateEvaluation>;
+export type ExportPlan = z.infer<typeof zExportPlan>;
 export type ErrorEnvelope = z.infer<typeof zErrorEnvelope>;
 export type Page<T> = { items: T[]; nextCursor: string | null; total: number };

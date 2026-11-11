@@ -40,6 +40,7 @@ export function CaseRunPage() {
     client.recoverCase(id, { idempotencyKey: key }),
   );
   const abort = useMutation((client, id: string) => client.abortCase(id));
+  const finish = useMutation((client, id: string) => client.finishCaseInput(id));
   const capture = useMutation((client, id: string) => client.captureCase(id));
   const [recoverOpen, setRecoverOpen] = useState(false);
   const [abortOpen, setAbortOpen] = useState(false);
@@ -75,8 +76,9 @@ export function CaseRunPage() {
             );
           }
           const canStart = c.lifecycle === 'READY' && c.token.state === 'NOT_ISSUED';
-          const canAbort = c.lifecycle === 'RUNNING';
           const canRecover = c.recovery?.available === true;
+          const canAbort = c.lifecycle === 'RUNNING' && !canRecover;
+          const canFinish = c.lifecycle === 'RUNNING' && !canRecover && c.sessionId !== null;
           const canCapture = c.lifecycle === 'COMPLETED';
           return (
             <>
@@ -131,7 +133,7 @@ export function CaseRunPage() {
                 />
               </Section>
 
-              {c.lifecycle === 'RECOVERY_REQUIRED' ? (
+              {c.lifecycle === 'RECOVERY_REQUIRED' || canRecover ? (
                 <Notice tone="review" icon="alert" title="Crash recovery required">
                   <p>
                     The previous runner stopped with epoch {c.fencingEpoch}. The outcome of any in-flight
@@ -169,6 +171,25 @@ export function CaseRunPage() {
                       Reconcile existing operation
                     </button>
                   ) : null}
+                  {canFinish ? (
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={finish.state.status === 'pending'}
+                      onClick={() =>
+                        void finish.submit(c.caseRunId).then((o) => {
+                          if (o.kind === 'ok') {
+                            setHandoff(null);
+                            cases.reload();
+                          }
+                        })
+                      }
+                    >
+                      {finish.state.status === 'pending'
+                        ? 'Closing input…'
+                        : 'Finish case input and evaluate'}
+                    </button>
+                  ) : null}
                   {canAbort ? (
                     <button
                       ref={abortButton}
@@ -189,7 +210,7 @@ export function CaseRunPage() {
                       Capture installed trace
                     </button>
                   ) : null}
-                  {!canStart && !canRecover && !canAbort && !canCapture ? (
+                  {!canStart && !canRecover && !canAbort && !canCapture && !canFinish ? (
                     <p className="muted">
                       No action is available for this case in its current persisted state.
                     </p>
@@ -200,6 +221,9 @@ export function CaseRunPage() {
                 ) : null}
                 {recover.state.status === 'error' ? (
                   <ErrorNotice error={recover.state.error} onRetry={cases.reload} />
+                ) : null}
+                {finish.state.status === 'error' ? (
+                  <ErrorNotice error={finish.state.error} onRetry={cases.reload} />
                 ) : null}
                 {abort.state.status === 'error' ? (
                   <ErrorNotice error={abort.state.error} onRetry={cases.reload} />
@@ -391,6 +415,13 @@ function RecoveryHandoff({ result, onDone }: { result: RecoveryResult; onDone: (
           can no longer be used. The new token is RECONCILIATION_ONLY: status reads and evaluation only.
         </p>
       </Notice>
+      <KeyValues
+        items={[
+          ['Fencing epoch', <code className="mono">{result.fencingEpoch}</code>],
+          ['Client instance', <code className="mono">{result.clientInstanceId ?? 'not issued'}</code>],
+          ['Token expiry', <Timestamp value={result.token.expiresAt} />],
+        ]}
+      />
       <OneTimeToken value={result.token.value} label="Reconciliation-only case token" />
       <button type="button" className="btn" onClick={onDone}>
         I have configured the client — hide token

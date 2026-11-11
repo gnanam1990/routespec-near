@@ -21,6 +21,7 @@ import { EVALUATOR_REVISION } from '@routespec/kernel';
 import type { LaunchCredentials } from '@routespec/proxy';
 import {
   captureInstalledCase,
+  importUserFile,
   promoteImport,
   proposeMapping,
   regressionLineage,
@@ -36,6 +37,7 @@ import type { CaseAuth, ControlJournal, GateJournal, ImportJournal, RouteSpecSto
 import type { ZodTypeAny } from 'zod';
 import { AttesterChannel, verifyOidcCompletion } from './attestation.ts';
 import { CursorCodec, parseLimit, type CursorPosition } from './cursor.ts';
+import { importDetailView, runOperationView } from './detail-views.ts';
 import * as S from './schemas.ts';
 import {
   buildView,
@@ -113,6 +115,30 @@ function s(row: Row, key: string): string {
   return String(row[key]);
 }
 
+/**
+ * Lineage roles come from persisted promotions, never from the caller: a gate run on a corpus
+ * produced by an import promotion runs its promoted scenario as PROMOTED_REGRESSION and the
+ * inherited cases as CORRECTED; every other gate run is BASELINE.
+ */
+function promotionLineageRoles(
+  store: RouteSpecStore,
+  corpusRevisionId: string,
+): { lineageRole: CaseLineageRole; lineageRoleByScenario?: Record<string, CaseLineageRole> } {
+  const promotions = store.journal.read(
+    (db) =>
+      db
+        .prepare('SELECT scenario_revision_id FROM import_promotions WHERE corpus_revision_id = ?')
+        .all(corpusRevisionId) as Row[],
+  );
+  if (promotions.length === 0) return { lineageRole: 'BASELINE' };
+  return {
+    lineageRole: 'CORRECTED',
+    lineageRoleByScenario: Object.fromEntries(
+      promotions.map((p) => [String(p['scenario_revision_id']), 'PROMOTED_REGRESSION' as CaseLineageRole]),
+    ),
+  };
+}
+
 function strictQuery(query: URLSearchParams, allowed: readonly string[]): void {
   for (const k of new Set(query.keys())) {
     if (!allowed.includes(k)) {
@@ -157,6 +183,7 @@ function keyPage(
 
 export function buildRoutes(d: AppDeps): RouteDef[] {
   const { store, control, gates, service } = d;
+  const lineageRolesFor = (corpusRevisionId: string) => promotionLineageRoles(store, corpusRevisionId);
 
   const mustProject = (projectId: string): Row => {
     const p = control.getProject(projectId);
@@ -1229,7 +1256,7 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
           buildAttestation,
           mode: b.mode,
           maxParallelCases: b.maxParallelCases,
-          lineageRole: 'BASELINE' as CaseLineageRole,
+          ...lineageRolesFor(b.corpusRevisionId),
         });
         control.setGateRunMode(created.gateRunId, b.mode);
         return ok(gateRunView(d, store.getGateRun(created.gateRunId) as Row), 201);
@@ -1504,7 +1531,11 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
           // Always a resume cursor: an empty or short page is not the end of a live session.
           nextCursor: d.cursors.encode(list, filters, { kind: 'seq', seq: resumeAt }),
           hasMore: items.length === limit,
-          total: control.sessionEventStats(sessionId).count,
+          // A filtered listing reports the filtered total (bounded by the runtime's event cap).
+          total:
+            Object.keys(filters).length === 0
+              ? control.sessionEventStats(sessionId).count
+              : control.listSessionEvents(sessionId, -1, 100_000, filters).length,
         });
       },
     },
@@ -1517,48 +1548,7 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
         const op = store.getRunOperation(params['runOperationId'] as string);
         if (!op) notFound('Run operation');
         mustGateRun(s(op, 'gate_run_id'));
-        const id = s(op, 'run_operation_id');
-        const fin = store.getQuoteFinalization(id);
-        const commit = store.getCommitBinding(id);
-        const attempts = store.listAttempts(id);
-        return ok({
-          runOperationId: id,
-          identity: {
-            buildRevisionId: s(op, 'build_revision_id'),
-            artifactDigest: s(op, 'artifact_digest'),
-            gateRunId: s(op, 'gate_run_id'),
-            caseRunId: s(op, 'case_run_id'),
-            sessionId: s(op, 'session_id'),
-            adapterRevision: s(op, 'adapter_revision'),
-            effectPolicyDigest: s(op, 'effect_coverage_policy_digest'),
-            effectManifestDigest: s(op, 'effect_manifest_digest'),
-            callSiteInventoryDigest: (op['callsite_inventory_digest'] as string | null) ?? null,
-            fencingEpoch: Number(op['fencing_epoch']),
-          },
-          currentPhase: s(op, 'current_phase'),
-          phases: {
-            quoteRequest: { state: 'BOUND', digest: s(op, 'quote_request_digest') },
-            quoteFinalization: {
-              state: fin ? 'BOUND' : 'ABSENT',
-              digest: (op['quote_finalization_digest'] as string | null) ?? null,
-            },
-            commitBinding: {
-              state: commit ? 'BOUND' : 'ABSENT',
-              digest: (op['commit_binding_digest'] as string | null) ?? null,
-            },
-          },
-          providerReported: {
-            rawStatus: (op['accepted_terminal_status'] as string | null) ?? null,
-            normalizedFact: (op['normalized_outcome'] as string | null) ?? null,
-          },
-          attempts: {
-            count: attempts.length,
-            uncertainty: attempts.some((a) => a['outcome'] === 'SENT_OUTCOME_UNKNOWN')
-              ? 'OUTCOME_UNKNOWN'
-              : 'NONE',
-          },
-          sensitiveLocators: 'MASKED',
-        });
+        return ok(runOperationView(d, op));
       },
     },
     {
@@ -1607,6 +1597,24 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
     // -----------------------------------------------------------------------------------------
     // Imports (read), exports, compatibility probes.
     {
+      method: 'POST',
+      path: '/imports',
+      auth: 'control',
+      mutation: true,
+      schema: S.importCreate,
+      handle: async ({ body, idempotencyKey }) => {
+        const b = body as { projectId: string; fileName: string; content: string };
+        mustProject(b.projectId);
+        const r = await importUserFile(d.imports, {
+          projectId: b.projectId,
+          filename: b.fileName,
+          source: [Buffer.from(b.content, 'utf8')],
+          idempotencyKey: idempotencyKey as string,
+        });
+        return ok(importRow(d, r.importId), 201);
+      },
+    },
+    {
       method: 'GET',
       path: '/projects/:projectId/imports',
       auth: 'control',
@@ -1634,7 +1642,7 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
       handle: ({ params }) => {
         const view = d.imports.getImport(params['importId'] as string);
         mustProject(view.projectId);
-        return ok(importRow(d, view.importId));
+        return ok(importDetailView(d.imports, view.importId, importRow(d, view.importId)));
       },
     },
     {

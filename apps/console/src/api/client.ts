@@ -12,22 +12,31 @@
 import type { z } from 'zod';
 import { ApiError, classifyStatus, type ApiErrorKind, type FieldError } from './errors.ts';
 import {
+  zCaptureResult,
   zCaseRun,
   zCaseRunPage,
   zCaseStart,
   zErrorEnvelope,
   zEventPage,
+  zExportPlan,
+  zGateEvaluation,
   zGateRun,
+  zImportAck,
   zImportDetail,
   zImportPage,
   zImportRow,
   zMatrix,
   zPage,
+  zPromoteResult,
   zProject,
+  zProposedMapping,
   zRecoveryResult,
+  zReviewResult,
   zRunOperation,
   zSession,
   zSettings,
+  zStartResult,
+  zValidateResult,
 } from './schemas.ts';
 
 export const API_PREFIX = '/__routespec/v1';
@@ -53,20 +62,36 @@ export interface MutationResult<T> {
   readonly idempotencyKey: string;
 }
 
+/** Body of POST /gate-runs (API-SPEC; the service derives revision, adapter, and evaluator pins). */
 export interface GateRunCreateInput {
   readonly projectId: string;
-  readonly revisionId: string;
+  readonly gateId: string | null;
   readonly buildRevisionId: string;
   readonly artifactDigest: string;
-  readonly subjectAttestationId: string;
   readonly corpusRevisionId: string;
   readonly effectManifestDigest: string;
   readonly effectCoveragePolicyDigest: string;
-  readonly adapterRevision: string;
-  readonly evaluatorRevision: string;
-  readonly configurationDigest: string;
+  readonly callsiteInventoryDigest: string | null;
+  readonly interceptorProfileDigest: string | null;
+  readonly buildAttestation:
+    | { readonly class: 'USER_ASSERTED_LOCAL' }
+    | { readonly subjectAttestationId: string };
   readonly mode: 'SIMULATE' | 'REPLAY';
-  readonly parallelism: number;
+  readonly maxParallelCases: number;
+}
+
+export interface ReviewInput {
+  readonly reviewer: string;
+  readonly decisions: Readonly<Record<string, boolean>>;
+  readonly confirmation: string;
+}
+
+export interface PromoteInput {
+  readonly reviewId: string;
+  readonly baseCorpusRevisionId: string | null;
+  readonly corpusLabel: string;
+  readonly severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  readonly gatePolicy: 'REQUIRED' | 'ADVISORY';
 }
 
 export interface ImportCreateInput {
@@ -153,14 +178,14 @@ export class ControlClient {
 
   listEvents(
     sessionId: string,
-    params: { cursor?: string | null; limit?: number; runOperationId?: string | null; kind?: string | null },
+    params: { cursor?: string | null; limit?: number; runOperationId?: string | null; phase?: string | null },
     signal?: AbortSignal,
   ) {
     const search = new URLSearchParams();
     search.set('limit', String(Math.min(Math.max(params.limit ?? 100, 1), 200)));
     if (params.cursor) search.set('cursor', params.cursor);
     if (params.runOperationId) search.set('runOperationId', params.runOperationId);
-    if (params.kind) search.set('kind', params.kind);
+    if (params.phase) search.set('phase', params.phase);
     return this.#get(`/sessions/${enc(sessionId)}/events?${search.toString()}`, zEventPage, signal);
   }
 
@@ -176,6 +201,10 @@ export class ControlClient {
     return this.#get(`/imports/${enc(importId)}`, zImportDetail, signal);
   }
 
+  getProposedMapping(importId: string, signal?: AbortSignal) {
+    return this.#get(`/imports/${enc(importId)}/proposed-mapping`, zProposedMapping, signal);
+  }
+
   getSettings(signal?: AbortSignal) {
     return this.#get('/settings', zSettings, signal);
   }
@@ -187,19 +216,30 @@ export class ControlClient {
   }
 
   validateGateRun(gateRunId: string, options: MutationOptions = {}) {
-    return this.#mutate('POST', `/gate-runs/${enc(gateRunId)}/validate`, {}, zGateRun, options);
+    return this.#mutate('POST', `/gate-runs/${enc(gateRunId)}/validate`, {}, zValidateResult, options);
   }
 
   startGateRun(gateRunId: string, options: MutationOptions = {}) {
-    return this.#mutate('POST', `/gate-runs/${enc(gateRunId)}/start`, {}, zGateRun, options);
+    return this.#mutate('POST', `/gate-runs/${enc(gateRunId)}/start`, {}, zStartResult, options);
   }
 
   startCase(caseRunId: string, options: MutationOptions = {}) {
     return this.#mutate('POST', `/case-runs/${enc(caseRunId)}/start`, {}, zCaseStart, options);
   }
 
+  /** Close the case input: the client is done; the service tears down and the kernel evaluates. */
+  finishCaseInput(caseRunId: string, options: MutationOptions = {}) {
+    return this.#mutate('POST', `/case-runs/${enc(caseRunId)}/finish-input`, {}, zCaseRun, options);
+  }
+
   abortCase(caseRunId: string, options: MutationOptions = {}) {
-    return this.#mutate('POST', `/case-runs/${enc(caseRunId)}/abort`, {}, zCaseRun, options);
+    return this.#mutate(
+      'POST',
+      `/case-runs/${enc(caseRunId)}/abort`,
+      { reasonCode: 'OPERATOR_CANCELLED' },
+      zCaseRun,
+      options,
+    );
   }
 
   /** Fenced recovery: the only recovery action. The server returns a RECONCILIATION_ONLY token. */
@@ -208,19 +248,35 @@ export class ControlClient {
   }
 
   captureCase(caseRunId: string, options: MutationOptions = {}) {
-    return this.#mutate('POST', `/case-runs/${enc(caseRunId)}/captures`, {}, zImportRow, options);
+    return this.#mutate('POST', `/case-runs/${enc(caseRunId)}/captures`, {}, zCaptureResult, options);
+  }
+
+  evaluateGate(gateId: string, gateRunId: string, options: MutationOptions = {}) {
+    return this.#mutate('POST', `/gates/${enc(gateId)}/evaluate`, { gateRunId }, zGateEvaluation, options);
+  }
+
+  planExport(gateEvaluationId: string, options: MutationOptions = {}) {
+    return this.#mutate('POST', '/exports', { gateEvaluationId }, zExportPlan, options);
   }
 
   createImport(input: ImportCreateInput, options: MutationOptions = {}) {
     return this.#mutate('POST', '/imports', input, zImportRow, options);
   }
 
-  verifyReplay(importId: string, options: MutationOptions = {}) {
-    return this.#mutate('POST', `/imports/${enc(importId)}/verify-replay`, {}, zImportDetail, options);
+  saveMapping(importId: string, mapping: unknown, options: MutationOptions = {}) {
+    return this.#mutate('POST', `/imports/${enc(importId)}/mapping`, { mapping }, zImportAck, options);
   }
 
-  promoteImport(importId: string, review: { reviewNote: string }, options: MutationOptions = {}) {
-    return this.#mutate('POST', `/imports/${enc(importId)}/promote`, review, zImportDetail, options);
+  verifyReplay(importId: string, options: MutationOptions = {}) {
+    return this.#mutate('POST', `/imports/${enc(importId)}/verify-replay`, {}, zImportAck, options);
+  }
+
+  reviewImport(importId: string, review: ReviewInput, options: MutationOptions = {}) {
+    return this.#mutate('POST', `/imports/${enc(importId)}/reviews`, review, zReviewResult, options);
+  }
+
+  promoteImport(importId: string, input: PromoteInput, options: MutationOptions = {}) {
+    return this.#mutate('POST', `/imports/${enc(importId)}/promote`, input, zPromoteResult, options);
   }
 
   // ------------------------------------------------------------- transport

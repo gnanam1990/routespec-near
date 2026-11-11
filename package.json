@@ -10,7 +10,7 @@
     "node": ">=22.18.0"
   },
   "scripts": {
-    "typecheck": "tsc -b",
+    "typecheck": "tsc -b && tsc -p apps/console/tsconfig.json --noEmit",
     "build": "tsc -b",
     "clean": "tsc -b --clean",
     "test": "vitest run",
@@ -19,7 +19,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "secret-scan": "node scripts/secret-scan.mjs",
-    "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run test && pnpm run secret-scan"
+    "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run test && pnpm run secret-scan",
+    "test:e2e": "pnpm --filter @routespec/console e2e",
+    "build:console": "pnpm --filter @routespec/console build"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",

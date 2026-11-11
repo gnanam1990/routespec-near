@@ -1,13 +1,15 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation } from '../app/context.tsx';
 import { usePageTitle } from '../app/usePageTitle.ts';
 import type { FieldError } from '../api/errors.ts';
 import type { GateRunCreateInput } from '../api/client.ts';
 import {
   GATE_RUN_FIELD_LABELS,
+  GATE_RUN_PREFILL_FIELDS,
   MAX_PARALLELISM,
   emptyGateRunForm,
+  gateRunFieldOf,
   validateGateRunForm,
   type GateRunFormValues,
 } from '../forms/validation.ts';
@@ -21,8 +23,18 @@ const FIELD_IDS: Record<string, string> = Object.fromEntries(
 export function GateRunNewPage() {
   const { projectId = '' } = useParams();
   const navigate = useNavigate();
+  const [search] = useSearchParams();
   usePageTitle('Create gate run');
-  const [values, setValues] = useState<GateRunFormValues>(emptyGateRunForm);
+  // Links from persisted records (for example a promoted corpus) may prefill identity fields;
+  // the values are still shown, editable, and validated like typed input.
+  const [values, setValues] = useState<GateRunFormValues>(() => {
+    const initial = emptyGateRunForm();
+    for (const field of GATE_RUN_PREFILL_FIELDS) {
+      const v = search.get(field);
+      if (v !== null && v.length <= 200) (initial as unknown as Record<string, string>)[field] = v;
+    }
+    return initial;
+  });
   const [errors, setErrors] = useState<FieldError[]>([]);
   const summaryRef = useRef<HTMLDivElement>(null);
   const idempotencyKey = useRef<string>(globalThis.crypto.randomUUID());
@@ -57,23 +69,23 @@ export function GateRunNewPage() {
       return;
     }
     setErrors([]);
+    const optional = (v: string) => (v.trim().length > 0 ? v.trim() : null);
     const input: GateRunCreateInput = {
       projectId,
-      revisionId: values.revisionId.trim(),
+      gateId: optional(values.gateId),
       buildRevisionId: values.buildRevisionId.trim(),
       artifactDigest: values.artifactDigest.trim(),
-      subjectAttestationId:
-        values.attestationChoice === 'USER_ASSERTED_LOCAL'
-          ? 'USER_ASSERTED_LOCAL'
-          : values.subjectAttestationId.trim(),
       corpusRevisionId: values.corpusRevisionId.trim(),
       effectManifestDigest: values.effectManifestDigest.trim(),
       effectCoveragePolicyDigest: values.effectCoveragePolicyDigest.trim(),
-      adapterRevision: values.adapterRevision.trim(),
-      evaluatorRevision: values.evaluatorRevision.trim(),
-      configurationDigest: values.configurationDigest.trim(),
+      callsiteInventoryDigest: optional(values.callsiteInventoryDigest),
+      interceptorProfileDigest: optional(values.interceptorProfileDigest),
+      buildAttestation:
+        values.attestationChoice === 'USER_ASSERTED_LOCAL'
+          ? { class: 'USER_ASSERTED_LOCAL' }
+          : { subjectAttestationId: values.subjectAttestationId.trim() },
       mode: values.mode,
-      parallelism: Number(values.parallelism),
+      maxParallelCases: Number(values.parallelism),
     };
     const outcome = await create.submit(input, idempotencyKey.current);
     if (outcome.kind === 'ok') {
@@ -81,7 +93,15 @@ export function GateRunNewPage() {
         `/projects/${encodeURIComponent(projectId)}/gate-runs/${encodeURIComponent(outcome.result.data.gateRunId)}`,
       );
     } else if (outcome.kind === 'error' && outcome.error.fieldErrors.length > 0) {
-      showErrors([...outcome.error.fieldErrors]);
+      // Server field errors are shown as returned, attached to the matching form field.
+      showErrors(
+        outcome.error.fieldErrors.map((e) => {
+          const field = gateRunFieldOf(e.field);
+          return field === null
+            ? e
+            : { ...e, field, message: `${GATE_RUN_FIELD_LABELS[field]}: ${e.message} (${e.code})` };
+        }),
+      );
     }
   };
 
@@ -127,7 +147,7 @@ export function GateRunNewPage() {
       <form className="form" noValidate onSubmit={onSubmit} aria-label="Create gate run">
         <fieldset className="fieldset">
           <legend className="h3">Subject</legend>
-          {textField('revisionId')}
+          {textField('gateId', 'Evaluating the run against a gate definition requires its gate ID.')}
           {textField('buildRevisionId')}
           {textField('artifactDigest', 'sha256: followed by 64 lowercase hex characters.')}
           <fieldset className="fieldset nested" aria-describedby="att-hint">
@@ -165,12 +185,11 @@ export function GateRunNewPage() {
             'effectCoveragePolicyDigest',
             'Declared-hooks-only policies may run only as a labelled diagnostic; complete-effect predicates stay at REVIEW.',
           )}
+          {textField('callsiteInventoryDigest')}
+          {textField('interceptorProfileDigest')}
         </fieldset>
         <fieldset className="fieldset">
           <legend className="h3">Runtime</legend>
-          {textField('adapterRevision')}
-          {textField('evaluatorRevision')}
-          {textField('configurationDigest')}
           <Field id={FIELD_IDS['mode'] ?? 'mode'} label={GATE_RUN_FIELD_LABELS.mode} error={errorFor('mode')}>
             {(props) => (
               <select

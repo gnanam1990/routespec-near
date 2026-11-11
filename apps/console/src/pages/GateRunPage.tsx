@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useResource } from '../app/context.tsx';
 import { usePageTitle } from '../app/usePageTitle.ts';
-import type { CaseRun, GateRun, Page } from '../api/schemas.ts';
+import type { CaseRun, ExportPlan, GateRun, Page } from '../api/schemas.ts';
 import { Digest } from '../components/Digest.tsx';
 import { StatusAxisGroup, StatusBadge } from '../components/Status.tsx';
 import { ErrorNotice, KeyValues, Notice, PageHeader, ResourceView, Section } from '../components/ui.tsx';
@@ -26,6 +26,8 @@ export function GateRunPage() {
   const start = useMutation((client, id: string, rev: number) =>
     client.startGateRun(id, { expectedRevision: rev }),
   );
+  const evaluate = useMutation((client, gateId: string, id: string) => client.evaluateGate(gateId, id));
+  const plan = useMutation((client, gateEvaluationId: string) => client.planExport(gateEvaluationId));
   usePageTitle('Gate run');
   const base = `/projects/${encodeURIComponent(projectId)}`;
 
@@ -65,7 +67,32 @@ export function GateRunPage() {
             {start.state.status === 'pending' ? 'Starting…' : 'Start gate run'}
           </button>
         ) : null}
+        {gate.state.data?.gateId &&
+        ['RUNNING', 'EVALUATING', 'RECOVERY_REQUIRED', 'COMPLETED'].includes(gate.state.data.lifecycle) ? (
+          <button
+            type="button"
+            className="btn"
+            disabled={evaluate.state.status === 'pending'}
+            onClick={() => {
+              const g = gate.state.data;
+              if (g?.gateId) void evaluate.submit(g.gateId, g.gateRunId).then(after);
+            }}
+          >
+            {evaluate.state.status === 'pending' ? 'Evaluating…' : 'Evaluate gate'}
+          </button>
+        ) : null}
       </PageHeader>
+      {evaluate.state.status === 'error' ? (
+        <ErrorNotice error={evaluate.state.error} onRetry={gate.reload} />
+      ) : null}
+      {evaluate.state.status === 'success' ? (
+        <Notice tone="neutral" icon="info" title="Gate evaluation recorded" role="status">
+          <p>
+            A new immutable evaluation was recorded by the service. The status below is read back from it; it
+            is advisory and does not block a release.
+          </p>
+        </Notice>
+      ) : null}
       {validate.state.status === 'error' ? (
         <ErrorNotice error={validate.state.error} onRetry={gate.reload} />
       ) : null}
@@ -131,6 +158,31 @@ export function GateRunPage() {
                 </ul>
               </Section>
             ) : null}
+            <Section title="Export">
+              {g.gateEvaluationId ? (
+                <>
+                  <p>
+                    Plan a redacted evidence bundle for evaluation{' '}
+                    <span className="mono">{g.gateEvaluationId}</span>. Planning runs the privacy scan and
+                    writes nothing; writing the file needs a separate local confirmation.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={plan.state.status === 'pending'}
+                    onClick={() => void plan.submit(g.gateEvaluationId as string)}
+                  >
+                    {plan.state.status === 'pending' ? 'Planning export…' : 'Plan export'}
+                  </button>
+                  {plan.state.status === 'error' ? (
+                    <ErrorNotice error={plan.state.error} onRetry={gate.reload} />
+                  ) : null}
+                  {plan.state.status === 'success' ? <ExportPlanView plan={plan.state.result.data} /> : null}
+                </>
+              ) : (
+                <p className="muted">Export becomes available after the service records a gate evaluation.</p>
+              )}
+            </Section>
             <Section title="Identity">
               <KeyValues
                 items={[
@@ -258,5 +310,25 @@ export function GateRunPage() {
         </ResourceView>
       </Section>
     </>
+  );
+}
+
+function ExportPlanView({ plan }: { plan: ExportPlan }) {
+  return (
+    <div role="status" className="export-plan">
+      <h3 className="h3">Export plan {plan.blocked ? '(blocked by the privacy scan)' : ''}</h3>
+      <KeyValues
+        items={[
+          ['Plan', <span className="mono">{plan.exportId}</span>],
+          ['Privacy scan', <span className="mono">{plan.privacyScanResult}</span>],
+          ['Plan digest', <Digest value={plan.planDigest} label="export plan digest" />],
+          ['Bundle digest', <Digest value={plan.bundleDigest} label="bundle digest" />],
+          ['Bundle size', <span className="mono num">{plan.bundleBytes ?? 0} bytes</span>],
+          ['Entries', <span className="mono num">{plan.entries.length}</span>],
+          ['Declared exclusions', <span>{plan.exclusions.join('; ') || 'none'}</span>],
+          ['Written', 'No. Write it with the CLI or API after confirming the plan digest.'],
+        ]}
+      />
+    </div>
   );
 }

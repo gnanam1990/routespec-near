@@ -6,10 +6,14 @@ import type { FieldError } from '../api/errors.ts';
 
 export const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
 export const MAX_PARALLELISM = 16;
-export const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
+/** Mirrors the control API's upload bound (200,000 characters inside a 256 KiB request body). */
+export const MAX_IMPORT_BYTES = 192 * 1024;
 
+export const ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** Fields of POST /gate-runs. Pins the service derives (revision, adapter, evaluator) are not asked. */
 export interface GateRunFormValues {
-  revisionId: string;
+  gateId: string;
   buildRevisionId: string;
   artifactDigest: string;
   attestationChoice: 'USER_ASSERTED_LOCAL' | 'ATTESTATION_ID';
@@ -17,15 +21,14 @@ export interface GateRunFormValues {
   corpusRevisionId: string;
   effectManifestDigest: string;
   effectCoveragePolicyDigest: string;
-  adapterRevision: string;
-  evaluatorRevision: string;
-  configurationDigest: string;
+  callsiteInventoryDigest: string;
+  interceptorProfileDigest: string;
   mode: 'SIMULATE' | 'REPLAY';
   parallelism: string;
 }
 
 export const GATE_RUN_FIELD_LABELS: Readonly<Record<keyof GateRunFormValues, string>> = {
-  revisionId: 'Integration revision ID',
+  gateId: 'Gate ID (optional)',
   buildRevisionId: 'Subject build revision ID',
   artifactDigest: 'Built artifact digest',
   attestationChoice: 'Subject build attestation',
@@ -33,16 +36,24 @@ export const GATE_RUN_FIELD_LABELS: Readonly<Record<keyof GateRunFormValues, str
   corpusRevisionId: 'Corpus revision ID',
   effectManifestDigest: 'Effect manifest digest',
   effectCoveragePolicyDigest: 'Effect coverage policy digest',
-  adapterRevision: 'Actual-client adapter revision',
-  evaluatorRevision: 'Evaluator revision',
-  configurationDigest: 'Configuration digest',
+  callsiteInventoryDigest: 'Call-site inventory digest (optional)',
+  interceptorProfileDigest: 'Interceptor profile digest (optional)',
   mode: 'Mode',
   parallelism: 'Bounded parallelism',
 };
 
+export const GATE_RUN_PREFILL_FIELDS: readonly (keyof GateRunFormValues)[] = [
+  'gateId',
+  'buildRevisionId',
+  'artifactDigest',
+  'corpusRevisionId',
+  'effectManifestDigest',
+  'effectCoveragePolicyDigest',
+];
+
 export function emptyGateRunForm(): GateRunFormValues {
   return {
-    revisionId: '',
+    gateId: '',
     buildRevisionId: '',
     artifactDigest: '',
     attestationChoice: 'USER_ASSERTED_LOCAL',
@@ -50,31 +61,28 @@ export function emptyGateRunForm(): GateRunFormValues {
     corpusRevisionId: '',
     effectManifestDigest: '',
     effectCoveragePolicyDigest: '',
-    adapterRevision: '',
-    evaluatorRevision: '',
-    configurationDigest: '',
+    callsiteInventoryDigest: '',
+    interceptorProfileDigest: '',
     mode: 'SIMULATE',
     parallelism: '1',
   };
 }
 
 const required: readonly (keyof GateRunFormValues)[] = [
-  'revisionId',
   'buildRevisionId',
   'artifactDigest',
   'corpusRevisionId',
   'effectManifestDigest',
   'effectCoveragePolicyDigest',
-  'adapterRevision',
-  'evaluatorRevision',
-  'configurationDigest',
 ];
 const digestFields: readonly (keyof GateRunFormValues)[] = [
   'artifactDigest',
   'effectManifestDigest',
   'effectCoveragePolicyDigest',
-  'configurationDigest',
+  'callsiteInventoryDigest',
+  'interceptorProfileDigest',
 ];
+const idFields: readonly (keyof GateRunFormValues)[] = ['gateId', 'buildRevisionId', 'corpusRevisionId'];
 
 export function validateGateRunForm(values: GateRunFormValues): FieldError[] {
   const errors: FieldError[] = [];
@@ -87,22 +95,41 @@ export function validateGateRunForm(values: GateRunFormValues): FieldError[] {
       });
     }
   }
+  for (const field of idFields) {
+    const value = values[field].trim();
+    if (value.length > 0 && !ID_PATTERN.test(value)) {
+      errors.push({
+        field,
+        code: 'ID_FORMAT',
+        message: `${GATE_RUN_FIELD_LABELS[field].replace(' (optional)', '')} must be a lowercase UUID.`,
+      });
+    }
+  }
   for (const field of digestFields) {
     const value = values[field].trim();
     if (value.length > 0 && !DIGEST_PATTERN.test(value)) {
       errors.push({
         field,
         code: 'DIGEST_FORMAT',
-        message: `${GATE_RUN_FIELD_LABELS[field]} must be sha256: followed by 64 lowercase hex characters.`,
+        message: `${GATE_RUN_FIELD_LABELS[field].replace(' (optional)', '')} must be sha256: followed by 64 lowercase hex characters.`,
       });
     }
   }
-  if (values.attestationChoice === 'ATTESTATION_ID' && values.subjectAttestationId.trim().length === 0) {
-    errors.push({
-      field: 'subjectAttestationId',
-      code: 'REQUIRED',
-      message: 'Enter the build attestation ID, or choose the user-asserted local build.',
-    });
+  if (values.attestationChoice === 'ATTESTATION_ID') {
+    const v = values.subjectAttestationId.trim();
+    if (v.length === 0) {
+      errors.push({
+        field: 'subjectAttestationId',
+        code: 'REQUIRED',
+        message: 'Enter the build attestation ID, or choose the user-asserted local build.',
+      });
+    } else if (!ID_PATTERN.test(v)) {
+      errors.push({
+        field: 'subjectAttestationId',
+        code: 'ID_FORMAT',
+        message: 'Build attestation ID must be a lowercase UUID.',
+      });
+    }
   }
   if (values.mode !== 'SIMULATE' && values.mode !== 'REPLAY') {
     errors.push({
@@ -120,6 +147,13 @@ export function validateGateRunForm(values: GateRunFormValues): FieldError[] {
     });
   }
   return errors;
+}
+
+/** Server field paths (zod issue paths) mapped onto this form's fields. */
+export function gateRunFieldOf(serverField: string): keyof GateRunFormValues | null {
+  if (serverField === 'maxParallelCases') return 'parallelism';
+  if (serverField.startsWith('buildAttestation')) return 'subjectAttestationId';
+  return serverField in GATE_RUN_FIELD_LABELS ? (serverField as keyof GateRunFormValues) : null;
 }
 
 export interface ImportFormValues {
@@ -144,7 +178,7 @@ export function validateImportForm(values: ImportFormValues): FieldError[] {
       errors.push({
         field: 'traceFile',
         code: 'TOO_LARGE',
-        message: `The trace file is larger than the ${MAX_IMPORT_BYTES / 1024 / 1024} MiB import limit.`,
+        message: `The trace file is larger than the ${MAX_IMPORT_BYTES / 1024} KiB import limit.`,
       });
     }
     if (values.sizeBytes === 0) {

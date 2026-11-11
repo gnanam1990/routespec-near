@@ -750,6 +750,12 @@ input[type='radio'] {
   overflow-wrap: anywhere;
 }
 
+.missing-list li {
+  /* Server codes such as INDEPENDENT_INTERCEPTOR_NOT_SELECTED must wrap at 375 px. */
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--text-dense);
+}
 .plain-list {
   list-style: none;
   padding: 0;
@@ -807,13 +813,12 @@ input[type='radio'] {
     animation: event-in var(--motion-enter) var(--motion-ease);
   }
 }
+/* Position only: text keeps full contrast during the entrance (no opacity fade). */
 @keyframes event-in {
   from {
-    opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(4px);
   }
   to {
-    opacity: 1;
     transform: none;
   }
 }

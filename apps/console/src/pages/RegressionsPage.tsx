@@ -131,8 +131,25 @@ function ImportForm({ projectId, onImported }: { projectId: string; onImported: 
     // The file is read into memory and sent once; nothing is cached in browser storage.
     const content = await file.text();
     const outcome = await create.submit({ projectId, fileName: file.name, content });
-    if (outcome.kind === 'ok') onImported();
-    else if (outcome.kind === 'error' && outcome.error.fieldErrors.length > 0) {
+    if (outcome.kind === 'ok') {
+      onImported();
+      const row = outcome.result.data;
+      if (row.state === 'REJECTED' || row.blockers.length > 0) {
+        // The service quarantined the trace and reported blocking findings: announce them as
+        // errors on the file field. Finding paths and classes only; content is never echoed.
+        setErrors(
+          (row.blockers.length > 0
+            ? row.blockers
+            : [{ field: 'trace', code: 'RS_IMPORT_REJECTED', message: 'Rejected.' }]
+          ).map((b) => ({
+            field: 'traceFile',
+            code: b.code,
+            message: `The quarantine scan blocked this trace (${b.code} at ${b.field}). Its content is not shown or stored.`,
+          })),
+        );
+        focusSummary();
+      }
+    } else if (outcome.kind === 'error' && outcome.error.fieldErrors.length > 0) {
       setErrors([...outcome.error.fieldErrors]);
       focusSummary();
     }
@@ -148,7 +165,7 @@ function ImportForm({ projectId, onImported }: { projectId: string; onImported: 
     <Section title="Import a user trace">
       <ErrorSummary ref={summary} errors={errors} fieldIds={IMPORT_FIELD_IDS} />
       {serverError ? <ErrorNotice error={serverError} /> : null}
-      {create.state.status === 'success' ? (
+      {create.state.status === 'success' && errors.length === 0 ? (
         <Notice tone="neutral" icon="archive" title="Imported into quarantine" role="status">
           <p>
             {create.state.result.data.sanitizedName} is{' '}
@@ -160,7 +177,7 @@ function ImportForm({ projectId, onImported }: { projectId: string; onImported: 
         <Field
           id={IMPORT_FIELD_IDS.traceFile}
           label="Trace file"
-          hint={`JSON, JSONL, or YAML, at most ${MAX_IMPORT_BYTES / 1024 / 1024} MiB. Content is never rendered as HTML.`}
+          hint={`JSON, JSONL, or YAML, at most ${MAX_IMPORT_BYTES / 1024} KiB. Content is never rendered as HTML.`}
           error={errorFor('traceFile')}
         >
           {(props) => (

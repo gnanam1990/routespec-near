@@ -83,6 +83,9 @@ export const ERROR_CODES = Object.freeze([
   'RS_CHANNEL_BINDING_MISMATCH',
   'RS_INTERCEPTOR_TORN_DOWN',
   'RS_SINK_UNSUPPORTED',
+  // protected-effect observation and kernel input (M04)
+  'RS_EFFECT_HOOK_UNDECLARED',
+  'RS_KERNEL_INPUT_INVALID',
   'RS_INTERNAL',
 ] as const);
 export type ErrorCode = (typeof ERROR_CODES)[number];

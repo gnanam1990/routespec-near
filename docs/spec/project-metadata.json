@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "project": "RouteSpec",
+  "packVersion": "2.0.0",
+  "generatedAt": "2026-11-11",
+  "status": "SPECIFICATION_ONLY",
+  "implementation": "NOT_RUN",
+  "productTests": "NOT_RUN",
+  "runtimeTests": "NOT_RUN",
+  "integrationTests": "NOT_RUN",
+  "deployment": "NOT_RUN",
+  "marketValidation": "UNPROVEN",
+  "marketplaceIntegration": "NOT_RUN",
+  "eventSubmission": "NOT_RUN",
+  "publication": "NOT_RUN",
+  "submission": "NOT_RUN",
+  "proposedRepository": "gnanam1990/routespec-near",
+  "repositoryVisibilityDuringBuild": "private",
+  "event": "NEAR HACKATHON",
+  "eventDeadlineUtc": "2026-11-14T23:59:00Z",
+  "evidenceBoundary": "Document structure and semantic review do not establish implementation, runtime behavior, deployment, provider behavior, demand, or event submission.",
+  "counts": {
+    "functional": 18,
+    "nonfunctional": 12,
+    "invariants": 12,
+    "modules": 13,
+    "testCases": 59
+  },
+  "gates": {
+    "realProductRuntimeEvidence": "NOT_RUN",
+    "officialApiCompatibility": "NOT_RUN",
+    "productionCaptureAuthorization": "NOT_RUN",
+    "redactionReview": "NOT_RUN",
+    "liveDryProbe": "NOT_RUN",
+    "publicRepositoryAuthorization": "NOT_RUN",
+    "eventSubmissionAuthorization": "NOT_RUN"
+  }
+}

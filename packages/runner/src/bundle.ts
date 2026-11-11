@@ -534,16 +534,22 @@ function rebuild(
  * Replace `to` with `from`. On Windows a just-written file can be held briefly by another
  * process (for example a malware scanner), which makes the replacing rename fail with EPERM,
  * EACCES, or EBUSY; that is retried for a bounded time, then reported as a write failure.
+ * Under heavy parallel load (a full test run, a CI agent) a scanner can hold the file for more
+ * than a second, so the window is about 8 s with a growing back-off (M12 delivery runs).
  */
+export const RENAME_RETRY_WINDOW_MS = 8_000;
+
 function renameReplacing(from: string, to: string): void {
+  const started = Date.now();
   for (let attempt = 0; ; attempt++) {
     try {
       renameSync(from, to);
       return;
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
-      if (attempt >= 20 || !(code === 'EPERM' || code === 'EACCES' || code === 'EBUSY')) throw error;
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+      const transient = code === 'EPERM' || code === 'EACCES' || code === 'EBUSY';
+      if (!transient || Date.now() - started >= RENAME_RETRY_WINDOW_MS) throw error;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Math.min(50 * (attempt + 1), 400));
     }
   }
 }

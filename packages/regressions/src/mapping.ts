@@ -362,6 +362,18 @@ function limitationsFor(
 }
 
 /**
+ * Provenance of a trace mapped onto its source scenario. A trace is observed data, so it is never
+ * `SYNTHETIC` or spec-derived even when its source schedule is: an installed capture of such a
+ * schedule is the installed artifact reproducing the behaviour under RouteSpec
+ * (`INDEPENDENTLY_REPRODUCED`, which only an installed capture may claim); anything else is a
+ * customer-provided trace. Issue-derived and other observed classes pass through unchanged.
+ */
+function traceProvenance(source: ProvenanceClass, origin: TraceDocument['origin']): ProvenanceClass {
+  if (source !== 'SYNTHETIC' && source !== 'OFFICIAL_SPEC_DERIVED') return source;
+  return origin === 'INSTALLED_ARTIFACT_CAPTURE' ? 'INDEPENDENTLY_REPRODUCED' : 'CUSTOMER_PROVIDED_REDACTED';
+}
+
+/**
  * Non-authoritative mapping proposal. For an installed capture the timeline comes from the exact
  * scenario revision the capture is bound to; for a user file it is reconstructed from the trace.
  */
@@ -434,7 +446,7 @@ export function proposeMapping(input: {
       scopes: [...r.scopes],
     }));
     provenance = {
-      class: disputed ? 'DISPUTED_AMBIGUITY_CASE' : p.sourceProvenance.class,
+      class: disputed ? 'DISPUTED_AMBIGUITY_CASE' : traceProvenance(p.sourceProvenance.class, trace.origin),
       locator: p.sourceProvenance.locator,
       notes: null,
     };

@@ -21,9 +21,9 @@ export interface BaselineRun {
  */
 export async function runBaselineIncident(
   p: Product,
-  options: { cases?: number; label?: string } = {},
+  options: { cases?: number; label?: string; compiled?: CompiledScenario } = {},
 ): Promise<BaselineRun> {
-  const compiled = compileIncident('issue-383-lost-commit-refund');
+  const compiled = options.compiled ?? compileIncident('issue-383-lost-commit-refund');
   const { scenarioRevisionId } = p.store.createScenarioRevision({
     ...compiled.revisionInput,
     reviewStatus: 'REVIEWED',

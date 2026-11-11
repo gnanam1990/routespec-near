@@ -18,11 +18,12 @@ Deployment: **NOT_RUN**
 
 Allowed states: NOT_STARTED, IN_PROGRESS, IMPLEMENTED_UNVERIFIED, VERIFIED_BOUNDED, BLOCKED.
 
-| Module  | State            | Owned tests (status on win32/x64)                                     | Remaining gap                                                                                                                                                                                                               |
-| ------- | ---------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M00     | VERIFIED_BOUNDED | T-027 PASSING (win32 only)                                            | T-027 cross-OS run on Linux/macOS NOT_RUN (M10 CI matrix or user run).                                                                                                                                                      |
-| M01     | VERIFIED_BOUNDED | T-001, T-002, T-006, T-007, T-022, T-023, T-024, T-026, T-028 PASSING | Repository methods for later-module tables (attestations, effect inventories/interceptors/observations, imports, gate evaluations, artifact manifests, audit) are schema + constraints only. Power-loss durability NOT_RUN. |
-| M02–M12 | NOT_STARTED      | —                                                                     | —                                                                                                                                                                                                                           |
+| Module       | State            | Owned tests (status on win32/x64)                                     | Remaining gap                                                                                                                                                                                                               |
+| ------------ | ---------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M00          | VERIFIED_BOUNDED | T-027 PASSING (win32 only)                                            | T-027 cross-OS run on Linux/macOS NOT_RUN (M10 CI matrix or user run).                                                                                                                                                      |
+| M01          | VERIFIED_BOUNDED | T-001, T-002, T-006, T-007, T-022, T-023, T-024, T-026, T-028 PASSING | Repository methods for later-module tables (attestations, effect inventories/interceptors/observations, imports, gate evaluations, artifact manifests, audit) are schema + constraints only. Power-loss durability NOT_RUN. |
+| M03          | VERIFIED_BOUNDED | T-009, T-013, T-014, T-015 PASSING (win32 only)                       | T-009 cross-OS run on Linux/macOS NOT_RUN. T-042 (service-level abuse) is not owned here.                                                                                                                                   |
+| M02, M04–M12 | NOT_STARTED      | —                                                                     | —                                                                                                                                                                                                                           |
 
 "VERIFIED_BOUNDED" here means: every owned test ran and passed on this machine at its module boundary. It is not a product, runtime, or cross-platform claim.
 
@@ -70,19 +71,42 @@ For every other owned test, the test was proven to exercise its guard by mutatio
 | T-028 | migration 002 drops a trigger and rewrites historical results | exit 1, 2 failed / 3 passed                                                                     |
 | T-027 | canonical digest skips strict normalization                   | exit 1, 6 failed / 3 passed                                                                     |
 
+### M03 — Scenario DSL, virtual clock, deterministic faults (`packages/scenario`)
+
+Real behavior (ADR-0006): bounded data-only YAML/JSON parsing (core schema, tags/merge keys/duplicate keys/aliases rejected, linear JSON depth scan); strict closed schema v1.0 with 14 step types; executable-looking fields reported as unsafe; budgets with hard caps; explicit defaults; canonical compiled JSON; scenario revision digest equal to the journal's; static route plan; sfc32 seeded PRNG; integer virtual clock; two-phase plan/commit/deny runtime with response drop, connection barrier, transport error, delays, provider status queue, ground truth, assertions, duplicate, reorder, late success, incomplete deposit, refund, and end; noncanonical-timer labelling; canonical replay digest; six reviewed synthetic core scenarios. Nothing is simulated beyond the scenario itself, which is the product domain logic.
+
+Red evidence (honest account): the M03 source was written before its tests in this stage. The only first-run failures were wrong expectations in the tests themselves (T-014 depth input exceeded the byte cap first; T-015 expected `wait@11600` instead of the correct `wait@10600`), so the tests were corrected and the product did not change. Instead, each owned test was shown to exercise its guard by mutation (`npx vitest run <owning test>` with one guard disabled; file restored afterwards):
+
+| Test  | Mutation (guard disabled)                      | Result with mutation        |
+| ----- | ---------------------------------------------- | --------------------------- |
+| T-014 | explicit YAML tags accepted                    | exit 1, 1 failed / 9 passed |
+| T-014 | executable-field scan disabled                 | exit 1, 1 failed / 9 passed |
+| T-014 | declared budget may exceed the hard cap        | exit 1, 1 failed / 9 passed |
+| T-013 | default poll interval changed                  | exit 1, 2 failed / 5 passed |
+| T-013 | forbidden behaviors not sorted/deduplicated    | exit 1, 2 failed / 5 passed |
+| T-015 | PRNG warm-up perturbed by `Math.random`        | exit 1, 2 failed / 3 passed |
+| T-015 | respond delay not applied to the virtual clock | exit 1, 1 failed / 4 passed |
+| T-015 | journal-denied request consumes a step         | exit 1, 1 failed / 4 passed |
+| T-009 | fencing epoch excluded from the replay digest  | exit 1, 3 failed / 2 passed |
+| T-009 | seed mismatch accepted                         | exit 1, 1 failed / 4 passed |
+
+Golden vectors: `packages/scenario/test/vectors/t013-golden.json` (revision digest `sha256:9fe565e2…ab16c`) and `t009-golden.json` (replay digest `sha256:2b0a8888…472cd`). T-009 also recomputes the digest in two separately spawned Node.js processes.
+
 ## Command evidence
 
-| Date (UTC) | HEAD               | Command                          | Exit | Observed                                                                        |
-| ---------- | ------------------ | -------------------------------- | ---- | ------------------------------------------------------------------------------- |
-| 2026-11-11 | 27a39e1 + M00 tree | `pnpm install`                   | 0    | 213 packages; esbuild postinstall skipped by pnpm policy (prebuilt binary used) |
-| 2026-11-11 | 27a39e1 + M00 tree | `pnpm test`                      | 0    | 4 files, 47 tests passed                                                        |
-| 2026-11-11 | 42d7e1c + M01 tree | `pnpm install --frozen-lockfile` | 0    | lockfile up to date                                                             |
-| 2026-11-11 | 42d7e1c + M01 tree | `pnpm run typecheck` (`tsc -b`)  | 0    | clean                                                                           |
-| 2026-11-11 | 42d7e1c + M01 tree | `pnpm run lint`                  | 0    | clean                                                                           |
-| 2026-11-11 | 42d7e1c + M01 tree | `pnpm run format:check`          | 0    | clean (after fixing one file)                                                   |
-| 2026-11-11 | 42d7e1c + M01 tree | `pnpm test`                      | 0    | 13 files, **93 tests passed** (contracts 43, live-dry SDK pin 4, store 46)      |
-| 2026-11-11 | 42d7e1c + M01 tree | `pnpm run secret-scan`           | 0    | clean (123 files, 8 rules) after replacing one literal PEM header in a test     |
-| 2026-11-11 | 42d7e1c + M01 tree | `git diff --check`               | 0    | clean                                                                           |
+| Date (UTC) | HEAD               | Command                          | Exit | Observed                                                                                           |
+| ---------- | ------------------ | -------------------------------- | ---- | -------------------------------------------------------------------------------------------------- |
+| 2026-11-11 | 27a39e1 + M00 tree | `pnpm install`                   | 0    | 213 packages; esbuild postinstall skipped by pnpm policy (prebuilt binary used)                    |
+| 2026-11-11 | 27a39e1 + M00 tree | `pnpm test`                      | 0    | 4 files, 47 tests passed                                                                           |
+| 2026-11-11 | 42d7e1c + M01 tree | `pnpm install --frozen-lockfile` | 0    | lockfile up to date                                                                                |
+| 2026-11-11 | 42d7e1c + M01 tree | `pnpm run typecheck` (`tsc -b`)  | 0    | clean                                                                                              |
+| 2026-11-11 | 42d7e1c + M01 tree | `pnpm run lint`                  | 0    | clean                                                                                              |
+| 2026-11-11 | 42d7e1c + M01 tree | `pnpm run format:check`          | 0    | clean (after fixing one file)                                                                      |
+| 2026-11-11 | 42d7e1c + M01 tree | `pnpm test`                      | 0    | 13 files, **93 tests passed** (contracts 43, live-dry SDK pin 4, store 46)                         |
+| 2026-11-11 | 42d7e1c + M01 tree | `pnpm run secret-scan`           | 0    | clean (123 files, 8 rules) after replacing one literal PEM header in a test                        |
+| 2026-11-11 | 42d7e1c + M01 tree | `git diff --check`               | 0    | clean                                                                                              |
+| 2026-11-11 | 7854464 + M03 tree | `npx vitest run`                 | 0    | 18 files, **122 tests passed** (scenario 29 new: T-009 5, T-013 7, T-014 10, T-015 5, isolation 2) |
+| 2026-11-11 | 7854464 + M03 tree | `pnpm run secret-scan`           | 0    | clean (144 files, 8 rules)                                                                         |
 
 Per-file test counts: contracts `canonical-encoding` 21, `contracts` 13, `t027-canonical-result` 9; live-dry-adapter `sdk-pin` 4; store `t001` 4, `t002` 6, `t006` 4, `t007` 5, `t022-t023-crash` 3, `t024` 9, `t026` 5, `t028` 5, `store-guards` 5.
 

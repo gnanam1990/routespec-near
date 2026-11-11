@@ -1,0 +1,21 @@
+{
+  "name": "@routespec/scenario",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Declarative scenario DSL compiler, virtual clock, seeded PRNG, and deterministic fault scheduler (M03).",
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@routespec/contracts": "workspace:*",
+    "yaml": "2.8.1"
+  },
+  "devDependencies": {
+    "@routespec/store": "workspace:*"
+  }
+}

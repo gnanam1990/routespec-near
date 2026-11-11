@@ -201,6 +201,11 @@ describe('T-054 — Clean install works offline for simulation and replay', () =
     const replay = (journey['regression'] as J)['replay'] as J;
     expect(replay['fidelity']).toBe('MATCH');
     expect(replay['networkAccessed']).toBe(false);
+    expect(replay['verified']).toBe(true);
+    // Repeated trials (in this process and in a separately launched one) share one digest.
+    const trials = replay['trialDigests'] as string[];
+    expect(trials.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(trials).size).toBe(1);
     for (const g of ['baselineRun', 'baselineOnPromoted', 'correctedRun'] as const) {
       for (const c of (journey[g] as Gate).cases)
         expect(c.lifecycle, `${g} ${c.caseRunId}`).toBe('COMPLETED');

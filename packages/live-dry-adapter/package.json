@@ -2,7 +2,7 @@
   "name": "@routespec/live-dry-adapter",
   "version": "0.0.0",
   "private": true,
-  "description": "Separately launched LIVE_DRY_PROBE adapter (M07). M00 only pins the official 1Click SDK here; no adapter behavior exists yet.",
+  "description": "Separately launched LIVE_DRY_PROBE adapter (M07): dry-only policy, pinned HTTPS egress, memory-only provider credential, separate compatibility ledger.",
   "license": "UNLICENSED",
   "type": "module",
   "exports": {
@@ -11,8 +11,16 @@
       "default": "./src/index.ts"
     }
   },
+  "scripts": {
+    "probe:official": "node --no-warnings src/probe-cli.ts"
+  },
   "dependencies": {
     "@defuse-protocol/one-click-sdk-typescript": "0.1.26",
     "@routespec/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@routespec/proxy": "workspace:*",
+    "@types/node-forge": "1.3.14",
+    "node-forge": "1.4.0"
   }
 }

@@ -1,0 +1,6 @@
+{
+  "description": "T-013 golden vector: all-steps scenario compiled by routespec-scenario-compiler@1.0.0 (win32/x64 first observation 2026-11-11). A change to compile semantics requires a new compiler revision.",
+  "compilerRevision": "routespec-scenario-compiler@1.0.0",
+  "revisionDigest": "sha256:9fe565e2d7f2c11225d70e0fb330b1760a59b0c9349e1ae54e97fde0a17ab16c",
+  "canonicalJsonDigest": "sha256:608aaeaaa7579f944812b19b14f1620123c4cb64287a977294348c01933f8e7e"
+}

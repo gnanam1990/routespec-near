@@ -1,0 +1,5 @@
+{
+  "description": "T-009 golden vector: canonical replay digest of the duplicate-retry core scenario with the fixed identity and exchange sequence in test/support/replay-fixture.ts. First observed on win32/x64 (Node 22.23.1) 2026-11-11; Linux/macOS NOT_RUN.",
+  "replayDigest": "sha256:2b0a88885031c7c86a428ac6202e1ec54e2bf5f9e686c2b3f77be7451db472cd",
+  "eventLogDigest": "sha256:a6422588c7be5734d139239beb597786991b5ae8fffe7aeb8cb567f0b81bfe03"
+}

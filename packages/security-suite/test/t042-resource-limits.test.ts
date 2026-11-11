@@ -184,6 +184,19 @@ describe('T-042 — Parser and service resource limits hold under abuse', () => 
       body: dup,
     });
     expect(r2.status).toBe(400);
+    // A wide collection just under the byte cap (zod advisory: oversized constrained
+    // collections): the byte cap bounds the element count before schema validation runs.
+    const before = rss();
+    const wide = `{"projectId":"00000000-0000-4000-8000-000000000001","label":"w","cases":[${Array.from({ length: 120_000 }, () => '0').join(',')}]}`;
+    expect(Buffer.byteLength(wide)).toBeLessThan(262_144);
+    const r3 = await raw(h.port, {
+      method: 'POST',
+      path: '/__routespec/v1/corpora',
+      headers: { ...auth(), 'idempotency-key': 'k-wide-collection-1' },
+      body: wide,
+    });
+    expect(r3.status).toBe(400);
+    expect(rss() - before).toBeLessThan(96 * 1024 * 1024);
     expect(Date.now() - started).toBeLessThan(5_000);
     await healthy();
   });
@@ -291,6 +304,22 @@ describe('T-042 — Parser and service resource limits hold under abuse', () => 
     expect(r['valid']).toBe(false);
     expect(JSON.stringify(r['errors'])).toMatch(/RS_SCENARIO_(LIMIT_EXCEEDED|INVALID)/);
     expect(r['persisted']).toBe(false);
+    await healthy();
+  });
+
+  it('deeply nested YAML is refused with a typed error, not a parser stack overflow', async () => {
+    // GHSA-48c2-rrv3-qjmp: yaml < 2.8.3 recurses without a bound on nested flow collections.
+    for (const levels of [2_000, 8_000, 20_000]) {
+      const source = `schemaVersion: "1.0"
+steps: ${'['.repeat(levels)}${']'.repeat(levels)}
+`;
+      const r = await h.api('POST', '/scenarios/validate', { source });
+      expect(r.status, `${levels} levels: ${r.text.slice(0, 160)}`).toBe(200);
+      expect(r.json?.['valid']).toBe(false);
+      expect(JSON.stringify(r.json?.['errors'])).toMatch(
+        /RS_SCENARIO_(LIMIT_EXCEEDED|INVALID|UNSAFE_CONSTRUCT)/,
+      );
+    }
     await healthy();
   });
 

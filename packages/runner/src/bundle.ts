@@ -531,6 +531,24 @@ function rebuild(
 }
 
 /**
+ * Replace `to` with `from`. On Windows a just-written file can be held briefly by another
+ * process (for example a malware scanner), which makes the replacing rename fail with EPERM,
+ * EACCES, or EBUSY; that is retried for a bounded time, then reported as a write failure.
+ */
+function renameReplacing(from: string, to: string): void {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      renameSync(from, to);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (attempt >= 20 || !(code === 'EPERM' || code === 'EACCES' || code === 'EBUSY')) throw error;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+    }
+  }
+}
+
+/**
  * Resolve an explicit local output file (M11 path policy, T-040): plain local path syntax only
  * (no UNC or device namespace, drive-relative path, alternate data stream, reserved device
  * name, or trailing dot/space), an existing parent directory, and a final component that is
@@ -604,7 +622,7 @@ export function writeExport(
     if (exists) {
       // Confirmed overwrite of the regular file checked above. A link planted since the check
       // is itself replaced: rename never follows its destination.
-      renameSync(tmp, full);
+      renameReplacing(tmp, full);
     } else {
       // No overwrite confirmation: publish with an exclusive hard link, which fails if any entry
       // (file, link, or junction) appeared at the target after the check.

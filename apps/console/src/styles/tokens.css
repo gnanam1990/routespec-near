@@ -1,0 +1,170 @@
+/*
+ * RouteSpec console design tokens (UI-SPEC 5). Components consume only these semantic tokens.
+ * Blue = available action; green is reserved for a proven PASS outcome.
+ */
+:root {
+  /* Typography: bundled IBM Plex Sans / JetBrains Mono, then reviewed system fallbacks. */
+  --font-sans: 'IBM Plex Sans', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono:
+    'JetBrains Mono', ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  --text-body: 1rem; /* 16px */
+  --text-dense: 0.875rem; /* 14px */
+  --text-label: 0.8125rem; /* 13px */
+  --leading-body: 1.5;
+  --h1-size: 1.75rem;
+  --h1-leading: 2.125rem; /* 28/34 */
+  --h2-size: 1.375rem;
+  --h2-leading: 1.75rem; /* 22/28 */
+  --h3-size: 1.125rem;
+  --h3-leading: 1.5rem; /* 18/24 */
+  --h4-size: 1rem;
+  --h4-leading: 1.375rem; /* 16/22 */
+
+  /* 4px grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  --radius-tag: 4px;
+  --radius-control: 6px;
+  --radius-card: 8px;
+  --control-height: 36px;
+  --touch-target: 44px;
+  --focus-width: 2px;
+
+  /* Fixed layer tokens; no arbitrary z-index values. */
+  --layer-base: 0;
+  --layer-sticky: 100;
+  --layer-popover: 200;
+  --layer-dialog: 300;
+  --layer-toast: 400;
+
+  --motion-exit: 120ms;
+  --motion-enter: 180ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  --header-height: 56px;
+  --bottom-nav-height: 64px;
+  --prose-width: 72ch;
+}
+
+/* Light theme (default) */
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --surface-subtle: #f1f5f9;
+  --surface-raised: #ffffff;
+  --border: #cbd5e1;
+  --border-strong: #64748b;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --action: #1d4ed8;
+  --action-hover: #1e40af;
+  --action-on: #ffffff;
+  --focus: #1d4ed8;
+  --focus-halo: #ffffff;
+  --danger-action: #991b1b;
+  --danger-action-on: #ffffff;
+  --selected: #e0e7ff;
+
+  --pass-text: #166534;
+  --pass-surface: #dcfce7;
+  --fail-text: #991b1b;
+  --fail-surface: #fee2e2;
+  --review-text: #92400e;
+  --review-surface: #fef3c7;
+  --private-text: #6d28d9;
+  --private-surface: #ede9fe;
+  --neutral-text: #475569;
+  --neutral-surface: #f1f5f9;
+
+  --shadow-popover: 0 4px 12px rgb(15 23 42 / 0.12);
+  --shadow-modal: 0 16px 40px rgb(15 23 42 / 0.24);
+  --skeleton: #e2e8f0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --background: #0b1220;
+    --surface: #111827;
+    --surface-subtle: #0f172a;
+    --surface-raised: #182235;
+    --border: #475569;
+    --border-strong: #94a3b8;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --action: #60a5fa;
+    --action-hover: #93c5fd;
+    --action-on: #07111f;
+    --focus: #93c5fd;
+    --focus-halo: #0b1220;
+    --danger-action: #fca5a5;
+    --danger-action-on: #1f0707;
+    --selected: #1e293b;
+
+    --pass-text: #bbf7d0;
+    --pass-surface: #14532d;
+    --fail-text: #fecaca;
+    --fail-surface: #7f1d1d;
+    --review-text: #fde68a;
+    --review-surface: #713f12;
+    --private-text: #ddd6fe;
+    --private-surface: #4c1d95;
+    --neutral-text: #cbd5e1;
+    --neutral-surface: #1e293b;
+
+    --shadow-popover: 0 4px 12px rgb(0 0 0 / 0.5);
+    --shadow-modal: 0 16px 40px rgb(0 0 0 / 0.6);
+    --skeleton: #1e293b;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --background: #0b1220;
+  --surface: #111827;
+  --surface-subtle: #0f172a;
+  --surface-raised: #182235;
+  --border: #475569;
+  --border-strong: #94a3b8;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --action: #60a5fa;
+  --action-hover: #93c5fd;
+  --action-on: #07111f;
+  --focus: #93c5fd;
+  --focus-halo: #0b1220;
+  --danger-action: #fca5a5;
+  --danger-action-on: #1f0707;
+  --selected: #1e293b;
+
+  --pass-text: #bbf7d0;
+  --pass-surface: #14532d;
+  --fail-text: #fecaca;
+  --fail-surface: #7f1d1d;
+  --review-text: #fde68a;
+  --review-surface: #713f12;
+  --private-text: #ddd6fe;
+  --private-surface: #4c1d95;
+  --neutral-text: #cbd5e1;
+  --neutral-surface: #1e293b;
+
+  --shadow-popover: 0 4px 12px rgb(0 0 0 / 0.5);
+  --shadow-modal: 0 16px 40px rgb(0 0 0 / 0.6);
+  --skeleton: #1e293b;
+}
+
+/* Forced-colors / high-contrast: rely on system colors; borders keep structure visible. */
+@media (forced-colors: active) {
+  :root {
+    --focus: Highlight;
+    --border: CanvasText;
+  }
+}

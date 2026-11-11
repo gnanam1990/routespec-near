@@ -9,6 +9,10 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./enums": {
+      "types": "./src/enums.ts",
+      "default": "./src/enums.ts"
     }
   },
   "dependencies": {

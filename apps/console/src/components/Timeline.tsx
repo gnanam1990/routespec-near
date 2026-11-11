@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useConsole, useResource } from '../app/context.tsx';
-import { EVENT_KINDS, type EventPage, type TimelineEvent } from '../api/schemas.ts';
+import type { EventPage, TimelineEvent } from '../api/schemas.ts';
+import { OPERATION_PHASES } from '@routespec/contracts/enums';
 import {
   EVIDENCE_CLASS_CONTENT,
   EVIDENCE_REASON_TEXT,
@@ -31,6 +32,13 @@ const KIND_TEXT: Readonly<Record<TimelineEvent['kind'], string>> = {
   SAFETY_DENIAL: 'Safety denial',
 };
 
+const PHASE_TEXT: Readonly<Record<(typeof OPERATION_PHASES)[number], string>> = {
+  QUOTE_REQUEST: 'Quote request',
+  QUOTE_FINALIZATION: 'Quote finalization',
+  COMMIT_MUTATION: 'Commit',
+  READ_ONLY_RECONCILIATION: 'Read-only reconciliation',
+};
+
 function evidenceText(event: TimelineEvent): string {
   const parts: string[] = [];
   if (event.evidenceClass) parts.push(EVIDENCE_CLASS_CONTENT[event.evidenceClass].label);
@@ -55,7 +63,7 @@ export function Timeline({
   const { announce } = useConsole();
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(100);
-  const [kind, setKind] = useState<string>('');
+  const [phase, setPhase] = useState<string>('');
   const [view, setView] = useState<'timeline' | 'table'>('timeline');
   const [live, setLive] = useState(false);
   const cursor = cursors[cursors.length - 1] ?? null;
@@ -63,10 +71,10 @@ export function Timeline({
     (client, signal) =>
       client.listEvents(
         sessionId,
-        { cursor, limit: pageSize, runOperationId: runOperationId ?? null, kind: kind || null },
+        { cursor, limit: pageSize, runOperationId: runOperationId ?? null, phase: phase || null },
         signal,
       ),
-    [sessionId, runOperationId ?? null, cursor, pageSize, kind],
+    [sessionId, runOperationId ?? null, cursor, pageSize, phase],
   );
   const tabsId = useId();
   const pageIndex = cursors.length - 1;
@@ -77,13 +85,13 @@ export function Timeline({
   const lastAnnounced = useRef<string>('');
   useEffect(() => {
     if (state.status !== 'success') return;
-    const message = `${state.data.total} events${kind ? ` of kind ${KIND_TEXT[kind as TimelineEvent['kind']]}` : ''}`;
+    const message = `${state.data.total} events${phase ? ` in phase ${PHASE_TEXT[phase as (typeof OPERATION_PHASES)[number]]}` : ''}`;
     // Announce filter results, not every streaming refresh (UI-SPEC 8: no streaming noise).
     if (message !== lastAnnounced.current && !live) {
       lastAnnounced.current = message;
       announce(message);
     }
-  }, [state, kind, live, announce]);
+  }, [state, phase, live, announce]);
 
   useEffect(() => {
     if (!live) return;
@@ -124,18 +132,18 @@ export function Timeline({
           ))}
         </div>
         <label className="inline-field">
-          <span>Event kind</span>
+          <span>Phase</span>
           <select
-            value={kind}
+            value={phase}
             onChange={(event) => {
-              setKind(event.target.value);
+              setPhase(event.target.value);
               setCursors([null]);
             }}
           >
-            <option value="">All kinds</option>
-            {EVENT_KINDS.map((k) => (
-              <option key={k} value={k}>
-                {KIND_TEXT[k]}
+            <option value="">All phases</option>
+            {OPERATION_PHASES.map((p) => (
+              <option key={p} value={p}>
+                {PHASE_TEXT[p]}
               </option>
             ))}
           </select>

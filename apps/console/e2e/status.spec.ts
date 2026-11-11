@@ -176,18 +176,17 @@ test('a concurrent client start is rejected with the authoritative conflict', as
     headers: { ...headers, 'Idempotency-Key': key() },
     data: {
       projectId: 'proj-alpha',
-      revisionId: 'rev-150',
+      gateId: null,
       buildRevisionId: 'b',
       artifactDigest: `sha256:${'a'.repeat(64)}`,
-      subjectAttestationId: 'USER_ASSERTED_LOCAL',
       corpusRevisionId: 'c',
       effectManifestDigest: `sha256:${'b'.repeat(64)}`,
       effectCoveragePolicyDigest: `sha256:${'c'.repeat(64)}`,
-      adapterRevision: 'a',
-      evaluatorRevision: 'e',
-      configurationDigest: `sha256:${'d'.repeat(64)}`,
+      callsiteInventoryDigest: null,
+      interceptorProfileDigest: null,
+      buildAttestation: { class: 'USER_ASSERTED_LOCAL' },
       mode: 'SIMULATE',
-      parallelism: 1,
+      maxParallelCases: 1,
     },
   });
   const g = (await created.json()) as { gateRunId: string };

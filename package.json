@@ -21,7 +21,8 @@
     "secret-scan": "node scripts/secret-scan.mjs",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run test && pnpm run secret-scan",
     "test:e2e": "pnpm --filter @routespec/console e2e",
-    "build:console": "pnpm --filter @routespec/console build"
+    "build:console": "pnpm --filter @routespec/console build",
+    "test:e2e:real": "pnpm --filter @routespec/console e2e:real"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",

@@ -64,16 +64,6 @@ test('timeline list and table views present the same ordered events, operable by
   await expect(page.locator('.timeline .event details').first()).toHaveAttribute('open', '');
 });
 
-test('filtering announces the resulting count without moving focus', async ({ page }) => {
-  await open(page, CASE_WITH_DENSE_SESSION);
-  const select = page.getByLabel('Event kind');
-  await select.focus();
-  await select.selectOption('EVIDENCE');
-  await expect(page.getByTestId('announcer')).toHaveText('1250 events of kind Evidence');
-  await expect(select).toBeFocused();
-  await expect(page.getByTestId('timeline-range')).toContainText('of 1250 events');
-});
-
 test('live updates can be paused, and a disconnect freezes data as stale until reconnect', async ({
   page,
   request,

@@ -2,7 +2,29 @@
   "name": "@routespec/cli",
   "version": "0.0.0",
   "private": true,
-  "description": "RouteSpec CLI with stable JSON/JUnit output and exit codes (M06). NOT_STARTED: placeholder workspace boundary only.",
+  "description": "RouteSpec CLI: gate run/evaluate, reports, exports, stable JSON output and exit codes, and the reviewed launcher adapter (M06).",
   "license": "UNLICENSED",
-  "type": "module"
+  "type": "module",
+  "bin": {
+    "routespec": "./bin/routespec.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@routespec/contracts": "workspace:*",
+    "@routespec/proxy": "workspace:*",
+    "@routespec/runner": "workspace:*",
+    "@routespec/scenario": "workspace:*",
+    "@routespec/store": "workspace:*"
+  },
+  "devDependencies": {
+    "@defuse-protocol/one-click-sdk-typescript": "0.1.26",
+    "@routespec/client-adapter": "workspace:*",
+    "@routespec/kernel": "workspace:*",
+    "@routespec/regressions": "workspace:*"
+  }
 }

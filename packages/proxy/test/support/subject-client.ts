@@ -11,7 +11,9 @@
  *
  * IPC protocol: parent -> {type:'attach', origin, credentials} | {type:'credentials', credentials}
  * | {type:'reset', credentials} | {type:'logicalJob', key} | {type:'call', op, args} |
- * {type:'liveBoundaryProbe'} | {type:'log'} | {type:'detach'}; child -> {type:'<same>-done', ...}.
+ * {type:'liveBoundaryProbe'} | {type:'log'} | {type:'providerToken', value} | {type:'detach'};
+ * child -> {type:'<same>-done', ...}. `providerToken` sets the SDK's own provider bearer token, as
+ * an integrator's configuration would (used by the M11 canary test; never a real credential).
  */
 import { readFileSync } from 'node:fs';
 import { createServer, type IncomingHttpHeaders } from 'node:http';
@@ -100,6 +102,7 @@ type Msg =
   | { type: 'call'; op: 'getQuote' | 'submitDepositTx' | 'getExecutionStatus'; args: unknown[] }
   | { type: 'liveBoundaryProbe' }
   | { type: 'log' }
+  | { type: 'providerToken'; value: string }
   | { type: 'detach' };
 
 process.on('message', (raw: unknown) => {
@@ -142,6 +145,9 @@ process.on('message', (raw: unknown) => {
         }
       } else if (msg.type === 'liveBoundaryProbe') {
         reply(await liveBoundaryProbe());
+      } else if (msg.type === 'providerToken') {
+        (sdk.OpenAPI as { TOKEN?: string }).TOKEN = msg.value;
+        reply({});
       } else if (msg.type === 'log') {
         reply({ log: adapter?.log ?? [] });
       } else if (msg.type === 'detach') {

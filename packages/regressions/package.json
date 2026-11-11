@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@routespec/contracts": "workspace:*",
+    "@routespec/hardening": "workspace:*",
     "@routespec/kernel": "workspace:*",
     "@routespec/scenario": "workspace:*",
     "@routespec/store": "workspace:*"

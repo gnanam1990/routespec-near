@@ -79,6 +79,12 @@ export interface RouteDef {
   readonly ifMatch?: boolean;
   readonly schema?: ZodTypeAny;
   readonly maxBody?: number;
+  /**
+   * `pipeline`: the body is untrusted content that the import pipeline itself scans and
+   * quarantines (a secret becomes a recorded finding, not a refused request). Default: the
+   * service refuses any body carrying a configured secret or a RouteSpec credential.
+   */
+  readonly secretScan?: 'boundary' | 'pipeline';
   readonly handle: (ctx: RouteCtx) => RouteResult | Promise<RouteResult>;
 }
 
@@ -102,6 +108,10 @@ export interface AppDeps extends ViewDeps {
   readonly onLocalConfirmation: (notice: LocalConfirmationNotice) => void;
   readonly confirmationTtlMs: number;
   readonly challengeTtlMs: number;
+  /** Local service metrics (M11): coded counters and process resource gauges only. */
+  readonly metrics: () => Record<string, unknown>;
+  /** Configured secret values (memory only) for import scans and export plans. */
+  readonly configuredSecrets: readonly string[];
 }
 
 const ok = (body: unknown, status = 200, record?: unknown): RouteResult =>
@@ -285,6 +295,13 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
   const routes: RouteDef[] = [
     // -----------------------------------------------------------------------------------------
     // Settings and profile discovery.
+    {
+      method: 'GET',
+      path: '/metrics',
+      auth: 'control',
+      mutation: false,
+      handle: () => ok(d.metrics()),
+    },
     {
       method: 'GET',
       path: '/settings',
@@ -1444,6 +1461,7 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
         const { c } = mustCase(params['caseRunId'] as string);
         const r = await captureInstalledCase(d.imports, {
           caseRunId: s(c, 'case_run_id'),
+          configuredSecrets: d.configuredSecrets,
           idempotencyKey: idempotencyKey as string,
         });
         return ok(
@@ -1601,6 +1619,7 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
       path: '/imports',
       auth: 'control',
       mutation: true,
+      secretScan: 'pipeline',
       schema: S.importCreate,
       handle: async ({ body, idempotencyKey }) => {
         const b = body as { projectId: string; fileName: string; content: string };
@@ -1609,6 +1628,7 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
           projectId: b.projectId,
           filename: b.fileName,
           source: [Buffer.from(b.content, 'utf8')],
+          configuredSecrets: d.configuredSecrets,
           idempotencyKey: idempotencyKey as string,
         });
         return ok(importRow(d, r.importId), 201);
@@ -1805,6 +1825,7 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
         mustGateRun(view.gateRunId);
         const plan = planExport(store, b.gateEvaluationId, {
           idempotencyKey: idempotencyKey as string,
+          configuredSecrets: d.configuredSecrets,
           ...(b.includeAddresses !== undefined ? { includeAddresses: b.includeAddresses } : {}),
           ...(b.acknowledgeAddresses !== undefined ? { acknowledgeAddresses: b.acknowledgeAddresses } : {}),
         });

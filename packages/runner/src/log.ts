@@ -11,6 +11,7 @@ const SECRET_SHAPES: readonly RegExp[] = [
   /\bBearer\s+\S{8,}/i,
   /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
   /\brsct_[A-Za-z0-9_-]{20,}/,
+  /\brsctl_[A-Za-z0-9_-]{20,}/,
 ];
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';

@@ -35,6 +35,7 @@ import {
 } from '@routespec/runner';
 import { compileScenario } from '@routespec/scenario';
 import { GateJournal, RouteSpecStore } from '@routespec/store';
+import { checkLocalPathSyntax } from '@routespec/hardening';
 import { intFlag, usage, type CommandSpec, type ParsedArgs } from './args.ts';
 import { EXIT, exitCodeForError, type ExitCode } from './exit.ts';
 
@@ -96,6 +97,10 @@ async function withStore<T>(
 }
 
 function readSource(file: string, maxBytes: number): string {
+  // Plain local paths only: a UNC or device path is refused before any file-system call
+  // (opening a UNC path can send the operator's credentials to a remote host).
+  const syntax = checkLocalPathSyntax(file);
+  if (!syntax.ok) usage('Input path is not an accepted local path.', { rule: syntax.rule as string });
   const full = resolve(file);
   if (!existsSync(full) || !statSync(full).isFile())
     usage('Input file not found.', { file: file.slice(-128) });

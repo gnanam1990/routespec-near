@@ -71,6 +71,19 @@ export interface ScenarioProxyOptions {
   readonly redactor?: Redactor;
   readonly maxBodyBytes?: number;
   readonly log?: (entry: ProxyLogEntry) => void;
+  /**
+   * Denial journaling budget (M11, NFR-06). Every denial is counted and answered, but at most
+   * `maxPerWindow` denials per window are written as audit events; past that the journal gets
+   * one `RS_RATE_LIMITED` marker per window, so a junk-request flood cannot grow the journal
+   * without bound.
+   */
+  readonly denialJournal?: { readonly windowMs: number; readonly maxPerWindow: number };
+  /** Connection limits; defaults are the reviewed production values. */
+  readonly limits?: {
+    readonly headersTimeoutMs?: number;
+    readonly requestTimeoutMs?: number;
+    readonly maxConnections?: number;
+  };
 }
 
 export interface ProxyStats {
@@ -78,6 +91,8 @@ export interface ProxyStats {
   accepted: number;
   denied: number;
   credentialHeadersStripped: number;
+  /** Denials answered and counted but not written to the journal (budget exhausted). */
+  denialsNotJournaled: number;
   upstreamAttempts: 0;
 }
 
@@ -119,8 +134,12 @@ export class ScenarioProxy {
     accepted: 0,
     denied: 0,
     credentialHeadersStripped: 0,
+    denialsNotJournaled: 0,
     upstreamAttempts: 0,
   };
+  readonly #denialBudget: { readonly windowMs: number; readonly maxPerWindow: number };
+  #denialWindowStart = 0;
+  #denialsInWindow = 0;
   private readonly cases: CaseRuntimeRegistry;
   private readonly redactor: Redactor;
   private readonly maxBodyBytes: number;
@@ -144,13 +163,20 @@ export class ScenarioProxy {
     this.redactor = options.redactor ?? new Redactor();
     this.maxBodyBytes = options.maxBodyBytes ?? 16_384;
     this.log = options.log ?? (() => undefined);
+    this.#denialBudget = options.denialJournal ?? { windowMs: 60_000, maxPerWindow: 600 };
+    const headersTimeout = options.limits?.headersTimeoutMs ?? 10_000;
     this.server = createServer(
-      { requestTimeout: 30_000, headersTimeout: 10_000, maxHeaderSize: 16_384 },
+      {
+        requestTimeout: options.limits?.requestTimeoutMs ?? 30_000,
+        headersTimeout,
+        maxHeaderSize: 16_384,
+        connectionsCheckingInterval: Math.max(100, Math.min(1_000, Math.floor(headersTimeout / 2))),
+      },
       (req, res) => {
         void this.handle(req, res);
       },
     );
-    this.server.maxConnections = 64;
+    this.server.maxConnections = options.limits?.maxConnections ?? 64;
     this.server.on('connection', (socket) => {
       this.sockets.add(socket);
       socket.on('close', () => this.sockets.delete(socket));
@@ -198,7 +224,9 @@ export class ScenarioProxy {
     const method = req.method ?? 'OTHER';
     const target = req.url ?? '';
     let sessionHint: string | null = null;
-    let path = '/';
+    // What logs and the journal may keep about the target: the matched profile route, never the
+    // raw path (a pasted secret in an unknown path must not be persisted; M11, T-011).
+    let routeLabel = 'UNROUTED';
     try {
       const host = String(req.headers.host ?? '').toLowerCase();
       if (!this.allowedHosts.has(host)) {
@@ -216,7 +244,6 @@ export class ScenarioProxy {
         });
       }
       const url = new URL(target, 'http://127.0.0.1');
-      path = url.pathname;
       if (url.pathname !== (target.split('?')[0] ?? '')) {
         // Dot segments, encoded separators, or other normalization never select a route.
         throw new RouteSpecError('RS_UNSUPPORTED_ROUTE', 'Request target is not in normal form.', {
@@ -224,7 +251,12 @@ export class ScenarioProxy {
         });
       }
       const route = resolveProfileRoute(method, url.pathname);
+      routeLabel = route.path;
       const headers = this.redactor.partitionHeaders(req.headers);
+      // RouteSpec-local headers are persisted (logical job, request ids): refuse a secret in any
+      // of them except the case token itself, before authentication can consume anything.
+      const { [ADAPTER_HEADERS.caseToken]: _caseToken, ...persistedLocal } = headers.local;
+      this.rejectSecrets(persistedLocal);
       this.stats.credentialHeadersStripped += headers.stripped.filter(
         (f) => f.category === 'provider-authorization' || f.category === 'cookie',
       ).length;
@@ -260,19 +292,37 @@ export class ScenarioProxy {
         level: 'warn',
         code: safe.code,
         method,
-        route: path.slice(0, 64),
+        route: routeLabel,
         phase: null,
         session: short(sessionHint),
         caseRun: null,
         sequence: null,
       });
       try {
-        this.store.recordProxyDenial({ method, path, code: safe.code, sessionId: sessionHint });
+        const journal = this.#denialJournalSlot();
+        if (journal === 'RECORD') {
+          this.store.recordProxyDenial({ method, path: routeLabel, code: safe.code, sessionId: sessionHint });
+        } else if (journal === 'MARK') {
+          this.store.recordProxyDenial({ method, path: '/', code: 'RS_RATE_LIMITED', sessionId: null });
+        }
       } catch {
         // A storage fault must not turn a denial into an acceptance; the response still fails closed.
       }
       writeError(res, safe, requestId);
     }
+  }
+
+  /** Whether this denial is journaled, replaced by the one per-window marker, or only counted. */
+  #denialJournalSlot(): 'RECORD' | 'MARK' | 'COUNT_ONLY' {
+    const now = Date.now();
+    if (now - this.#denialWindowStart >= this.#denialBudget.windowMs) {
+      this.#denialWindowStart = now;
+      this.#denialsInWindow = 0;
+    }
+    this.#denialsInWindow++;
+    if (this.#denialsInWindow <= this.#denialBudget.maxPerWindow) return 'RECORD';
+    this.stats.denialsNotJournaled++;
+    return this.#denialsInWindow === this.#denialBudget.maxPerWindow + 1 ? 'MARK' : 'COUNT_ONLY';
   }
 
   private rejectSecrets(value: unknown): void {

@@ -29,7 +29,7 @@
  *   node packages/delivery/src/journey.ts --work <dir> --out <json> [--commit <sha>] [--no-ui]
  */
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -756,6 +756,7 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
   const dataScan = scanTree(data, canaries);
   const outScan = scanTree(out, canaries);
   const extractedScan = scanTree(extractTo, canaries);
+  rmSync(clean, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   const dataFiles = listFiles(data).map((f) => ({
     file: relative(data, f).split('\\').join('/'),
     bytes: statSync(f).size,

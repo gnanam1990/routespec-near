@@ -1026,4 +1026,109 @@ export class ImportJournal {
       ),
     );
   }
+
+  // -------------------------------------------------------------------------------------------
+  // Retention purge of quarantine content (M11 safe deletion; SECURITY.md section 9).
+
+  /**
+   * Which imports of a project are due for purge now, under the project's retention policy:
+   * - REJECTED: after `rejectedImportHours`;
+   * - CAPTURED_UNTRUSTED, QUARANTINED, SANITIZED (content not yet mapped): after
+   *   `sessionPayloadDays`;
+   * - every purgeable import of a logically deleted project: immediately.
+   * MAPPED, REPLAY_VERIFIED, and REVIEWED imports are retained: their mapping, replay, and review
+   * records are immutable reviewed evidence. PROMOTED imports are retained as regression sources.
+   * The plan digest covers the due imports and their revisions, so a plan confirmed after any of
+   * them changed no longer matches.
+   */
+  planRetentionPurge(projectId: string): RetentionPurgePlan {
+    return this.store.journal.read((db) => this.planRetentionIn(db, projectId));
+  }
+
+  private planRetentionIn(db: DatabaseSync, projectId: string): RetentionPurgePlan {
+    const project = one(
+      db,
+      'SELECT retention_policy_json, deleted_at_ms FROM projects WHERE project_id = ?',
+      projectId,
+    );
+    if (!project) fail('RS_NOT_FOUND', 'Project not found.');
+    const policy = JSON.parse(s(project, 'retention_policy_json')) as {
+      rejectedImportHours?: number;
+      sessionPayloadDays?: number;
+    };
+    const rejectedMs = Math.max(0, Number(policy.rejectedImportHours ?? 24)) * 3_600_000;
+    const quarantineMs = Math.max(0, Number(policy.sessionPayloadDays ?? 30)) * 86_400_000;
+    const deleted = project['deleted_at_ms'] !== null && project['deleted_at_ms'] !== undefined;
+    const now = this.now();
+    const rows = all(
+      db,
+      'SELECT import_id, state, revision, created_at_ms FROM imports WHERE project_id = ? ORDER BY rowid',
+      projectId,
+    );
+    const due: RetentionPurgeItem[] = [];
+    const retained: Array<{ importId: string; state: string; reason: string }> = [];
+    for (const r of rows) {
+      const state = s(r, 'state');
+      const age = now - n(r, 'created_at_ms');
+      const item = { importId: s(r, 'import_id'), state, revision: n(r, 'revision') };
+      if (state === 'PURGED') continue;
+      if (state === 'PROMOTED') retained.push({ ...item, reason: 'PROMOTED_REGRESSION_SOURCE' });
+      else if (['MAPPED', 'REPLAY_VERIFIED', 'REVIEWED'].includes(state))
+        retained.push({ ...item, reason: 'REVIEWED_RECORDS_IMMUTABLE' });
+      else if (deleted) due.push(item);
+      else if (state === 'REJECTED' ? age >= rejectedMs : age >= quarantineMs) due.push(item);
+    }
+    const planDigest = digestValue('routespec.retention-purge-plan/1', { projectId, due });
+    return { projectId, projectDeleted: deleted, due, retained, planDigest };
+  }
+
+  /** Purge exactly the confirmed plan (state PURGED, sanitized content cleared) with secure deletion. */
+  executeRetentionPurge(projectId: string, confirmDigest: string): RetentionPurgeResult {
+    const { result, walTruncated } = this.store.journal.transactSecureDelete(
+      'import.retention-purge',
+      (db) => {
+        const plan = this.planRetentionIn(db, projectId);
+        if (plan.planDigest !== confirmDigest) {
+          fail('RS_DELETION_PLAN_MISMATCH', 'The confirmation does not match the current purge plan.');
+        }
+        for (const item of plan.due) {
+          this.transition(db, item.importId, item.revision, 'PURGED', { sanitizedJson: null });
+        }
+        run(
+          db,
+          `INSERT INTO audit_events(audit_id, action_code, subject_kind, subject_id, details_json, created_at_ms)
+         VALUES (?, 'IMPORTS_RETENTION_PURGED', 'PROJECT', ?, ?, ?)`,
+          randomUUID(),
+          projectId,
+          json({ planDigest: plan.planDigest, purged: plan.due.length, retained: plan.retained.length }),
+          this.now(),
+        );
+        return plan;
+      },
+    );
+    return { ...result, purged: result.due.length, walTruncated };
+  }
+}
+
+export interface RetentionPurgeItem {
+  readonly importId: string;
+  readonly state: string;
+  readonly revision: number;
+}
+
+export interface RetentionPurgePlan {
+  readonly projectId: string;
+  readonly projectDeleted: boolean;
+  readonly due: readonly RetentionPurgeItem[];
+  readonly retained: ReadonlyArray<{
+    readonly importId: string;
+    readonly state: string;
+    readonly reason: string;
+  }>;
+  readonly planDigest: Digest;
+}
+
+export interface RetentionPurgeResult extends RetentionPurgePlan {
+  readonly purged: number;
+  readonly walTruncated: boolean;
 }

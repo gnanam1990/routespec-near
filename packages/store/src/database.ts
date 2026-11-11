@@ -487,6 +487,29 @@ export class JournalDb {
     }
   }
 
+  /**
+   * A write transaction for deletion (M11 safe deletion): SQLite `secure_delete` is on for its
+   * duration, so freed record space and freed pages are overwritten with zeros, and afterwards
+   * the WAL is checkpointed and truncated so earlier page images of the deleted content are not
+   * left in the WAL file. Reports whether the truncating checkpoint completed (it cannot while
+   * another connection is reading). This does not claim physical media erasure: the file system,
+   * SSD wear levelling, snapshots, and backups are outside SQLite's control.
+   */
+  transactSecureDelete<T>(label: string, fn: (db: DatabaseSync) => T): { result: T; walTruncated: boolean } {
+    this.assertOpen();
+    this.db.exec('PRAGMA secure_delete = ON');
+    let result: T;
+    try {
+      result = this.transact(label, fn);
+    } finally {
+      this.db.exec('PRAGMA secure_delete = OFF');
+    }
+    const cp = this.db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get() as
+      | { busy: number; log: number }
+      | undefined;
+    return { result, walTruncated: cp !== undefined && cp.busy === 0 && cp.log <= 0 };
+  }
+
   /** Serialize async callers through the single writer queue. */
   enqueue<T>(label: string, fn: (db: DatabaseSync) => T): Promise<T> {
     const next = this.queue.then(() => this.transact(label, fn));

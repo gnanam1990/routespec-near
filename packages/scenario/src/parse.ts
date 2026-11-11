@@ -87,6 +87,37 @@ export function assertPlainData(value: unknown, limits: ParseLimits, path = '$',
   unsafe('non-json-value', { path, type: typeof value });
 }
 
+/**
+ * Maximum nesting of YAML flow collections (`[` / `{`) outside quoted scalars and comments.
+ * Checked before the YAML parser runs: the parser composes flow collections recursively, so a
+ * few kilobytes of brackets could otherwise exhaust the call stack (M11, T-042).
+ */
+const BACKSLASH = String.fromCharCode(92);
+const NEWLINE = String.fromCharCode(10);
+const WHITESPACE = /[ \t\r\n]/;
+
+function yamlFlowDepth(source: string): number {
+  let depth = 0;
+  let max = 0;
+  let quote: '"' | "'" | null = null;
+  for (let i = 0; i < source.length; i++) {
+    const ch = source[i] as string;
+    if (quote !== null) {
+      if (quote === '"' && ch === BACKSLASH) i++;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '#' && (i === 0 || WHITESPACE.test(source[i - 1] as string))) {
+      while (i < source.length && source[i] !== NEWLINE) i++;
+      continue;
+    }
+    if (ch === '"' || ch === "'") quote = ch;
+    else if (ch === '[' || ch === '{') max = Math.max(max, ++depth);
+    else if ((ch === ']' || ch === '}') && depth > 0) depth--;
+  }
+  return max;
+}
+
 export function parseScenarioSource(source: string, format: SourceFormat, limits: ParseLimits): unknown {
   if (typeof source !== 'string') invalid('source-not-text');
   const caps: ParseLimits = {
@@ -107,6 +138,8 @@ export function parseScenarioSource(source: string, format: SourceFormat, limits
       invalid('json-syntax');
     }
   } else if (format === 'yaml') {
+    const flow = yamlFlowDepth(source);
+    if (flow > caps.maxDepth) limitExceeded('maxDepth', flow, caps.maxDepth);
     const doc = parseDocument(source, {
       version: '1.2',
       schema: 'core',

@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@routespec/contracts": "workspace:*",
-    "yaml": "2.8.1"
+    "yaml": "2.8.4"
   },
   "devDependencies": {
     "@routespec/store": "workspace:*"

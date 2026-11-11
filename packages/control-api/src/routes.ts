@@ -416,6 +416,31 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
       },
     },
     {
+      // M11 safe deletion: retention purge of quarantine content. Without `confirmDigest` this
+      // is a dry run that changes nothing; with it, exactly the confirmed plan is purged.
+      method: 'POST',
+      path: '/projects/:projectId/retention-purge',
+      auth: 'control',
+      mutation: true,
+      schema: S.retentionPurge,
+      handle: ({ params, body }) => {
+        const projectId = params['projectId'] as string;
+        const row = store.journal.read((db) =>
+          db.prepare('SELECT project_id FROM projects WHERE project_id = ?').get(projectId),
+        );
+        if (!row) notFound('Project');
+        const confirmDigest = (body as { confirmDigest?: string }).confirmDigest;
+        const physicalErasure =
+          'Content is cleared with SQLite secure deletion and the WAL is checkpointed; physical media erasure is not guaranteed (file system, SSD, snapshots, and backups are outside RouteSpec).';
+        if (confirmDigest === undefined) {
+          const plan = d.imports.planRetentionPurge(projectId);
+          return ok({ dryRun: true, purged: 0, ...plan, physicalErasure });
+        }
+        const done = d.imports.executeRetentionPurge(projectId, confirmDigest);
+        return ok({ dryRun: false, ...done, physicalErasure });
+      },
+    },
+    {
       method: 'DELETE',
       path: '/projects/:projectId',
       auth: 'control',

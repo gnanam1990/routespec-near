@@ -59,6 +59,7 @@ const KNOWN_CODES = new Set<string>([
   'RS_REVISION_CONFLICT',
   'RS_EVIDENCE_ALREADY_CONSUMED',
   'RS_ALLOCATION_INVALID',
+  'RS_IMPORT_STATE_INVALID',
 ]);
 
 interface SqliteError extends Error {

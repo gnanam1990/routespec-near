@@ -76,6 +76,34 @@ importers:
         specifier: 7.3.7
         version: 7.3.7(@types/node@22.18.12)(yaml@2.8.1)
 
+  packages/ci:
+    dependencies:
+      '@routespec/cli':
+        specifier: workspace:*
+        version: link:../cli
+      '@routespec/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@routespec/regressions':
+        specifier: workspace:*
+        version: link:../regressions
+      '@routespec/runner':
+        specifier: workspace:*
+        version: link:../runner
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@routespec/proxy':
+        specifier: workspace:*
+        version: link:../proxy
+      '@routespec/scenario':
+        specifier: workspace:*
+        version: link:../scenario
+      '@routespec/store':
+        specifier: workspace:*
+        version: link:../store
+
   packages/cli:
     dependencies:
       '@routespec/contracts':

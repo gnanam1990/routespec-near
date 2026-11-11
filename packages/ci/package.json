@@ -1,0 +1,29 @@
+{
+  "name": "@routespec/ci",
+  "version": "0.0.0",
+  "private": true,
+  "description": "RouteSpec CI integration: GitHub Action entrypoint, CI trust classification, enforcement cap, fork isolation, redacted upload staging, and SBOM (M10).",
+  "license": "UNLICENSED",
+  "type": "module",
+  "bin": {
+    "routespec-ci": "./bin/routespec-ci.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@routespec/cli": "workspace:*",
+    "@routespec/contracts": "workspace:*",
+    "@routespec/regressions": "workspace:*",
+    "@routespec/runner": "workspace:*",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@routespec/proxy": "workspace:*",
+    "@routespec/scenario": "workspace:*",
+    "@routespec/store": "workspace:*"
+  }
+}

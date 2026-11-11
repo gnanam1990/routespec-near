@@ -1,0 +1,23 @@
+{
+  "schema": "routespec.ci-config/1",
+  "project": "routespec sample subject",
+  "revisionLabel": "self-gate",
+  "subject": {
+    "artifactFiles": [
+      "packages/cli/test/support/subject/reconciling-client.ts",
+      "packages/cli/test/support/subject/runtime.ts"
+    ],
+    "lockFile": "pnpm-lock.yaml",
+    "manifestFile": ".github/routespec/hooks.json",
+    "clientModule": "packages/ci/test/support/sample-client.ts"
+  },
+  "scenarios": [{ "file": ".github/routespec/happy-path.yaml", "policy": "REQUIRED" }],
+  "requiredInvariants": ["INV-01", "INV-02", "INV-03", "INV-05", "INV-06", "INV-07", "INV-08"],
+  "effect": { "sinks": ["fulfilment-webhook"] },
+  "gate": { "name": "sample subject release gate", "enforcement": "CI_CHECK" },
+  "uploads": {
+    "include": ["gate-report-json", "junit", "sarif", "evidence-bundle"],
+    "retentionDays": 7
+  },
+  "trustedRefs": ["refs/heads/main"]
+}

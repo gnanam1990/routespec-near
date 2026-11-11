@@ -128,21 +128,31 @@ function s(row: Row, key: string): string {
 /**
  * Lineage roles come from persisted promotions, never from the caller: a gate run on a corpus
  * produced by an import promotion runs its promoted scenario as PROMOTED_REGRESSION and the
- * inherited cases as CORRECTED; every other gate run is BASELINE.
+ * inherited cases as CORRECTED; every other gate run is BASELINE. A gate run of the very build
+ * whose capture was promoted is the original revision re-run, so its inherited cases stay
+ * BASELINE (the promoted scenario is still PROMOTED_REGRESSION; regression status ignores runs
+ * of the captured build either way).
  */
 function promotionLineageRoles(
   store: RouteSpecStore,
   corpusRevisionId: string,
+  buildRevisionId: string,
 ): { lineageRole: CaseLineageRole; lineageRoleByScenario?: Record<string, CaseLineageRole> } {
   const promotions = store.journal.read(
     (db) =>
       db
-        .prepare('SELECT scenario_revision_id FROM import_promotions WHERE corpus_revision_id = ?')
+        .prepare(
+          `SELECT p.scenario_revision_id, b.build_revision_id AS captured_build
+             FROM import_promotions p
+             LEFT JOIN import_capture_bindings b ON b.import_id = p.import_id
+            WHERE p.corpus_revision_id = ?`,
+        )
         .all(corpusRevisionId) as Row[],
   );
   if (promotions.length === 0) return { lineageRole: 'BASELINE' };
+  const rerunOfCapturedBuild = promotions.some((p) => p['captured_build'] === buildRevisionId);
   return {
-    lineageRole: 'CORRECTED',
+    lineageRole: rerunOfCapturedBuild ? 'BASELINE' : 'CORRECTED',
     lineageRoleByScenario: Object.fromEntries(
       promotions.map((p) => [String(p['scenario_revision_id']), 'PROMOTED_REGRESSION' as CaseLineageRole]),
     ),
@@ -193,7 +203,8 @@ function keyPage(
 
 export function buildRoutes(d: AppDeps): RouteDef[] {
   const { store, control, gates, service } = d;
-  const lineageRolesFor = (corpusRevisionId: string) => promotionLineageRoles(store, corpusRevisionId);
+  const lineageRolesFor = (corpusRevisionId: string, buildRevisionId: string) =>
+    promotionLineageRoles(store, corpusRevisionId, buildRevisionId);
 
   const mustProject = (projectId: string): Row => {
     const p = control.getProject(projectId);
@@ -1298,7 +1309,7 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
           buildAttestation,
           mode: b.mode,
           maxParallelCases: b.maxParallelCases,
-          ...lineageRolesFor(b.corpusRevisionId),
+          ...lineageRolesFor(b.corpusRevisionId, b.buildRevisionId),
         });
         control.setGateRunMode(created.gateRunId, b.mode);
         return ok(gateRunView(d, store.getGateRun(created.gateRunId) as Row), 201);

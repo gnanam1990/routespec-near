@@ -56,7 +56,17 @@ importers:
         specifier: workspace:*
         version: link:../contracts
 
-  packages/proxy: {}
+  packages/proxy:
+    dependencies:
+      '@routespec/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@routespec/scenario':
+        specifier: workspace:*
+        version: link:../scenario
+      '@routespec/store':
+        specifier: workspace:*
+        version: link:../store
 
   packages/runner: {}
 

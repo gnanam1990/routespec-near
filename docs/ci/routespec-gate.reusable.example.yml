@@ -1,0 +1,50 @@
+# Example reusable workflow for an integrator repository. Copy it into
+# `.github/workflows/routespec-gate.yml` of the subject repository and pin the RouteSpec action
+# to a reviewed commit SHA of the RouteSpec repository. RouteSpec pushes this file nowhere; it is
+# documentation.
+#
+# Caller:
+#   jobs:
+#     routespec:
+#       uses: ./.github/workflows/routespec-gate.yml
+#       with:
+#         config: routespec.ci.json
+name: routespec-gate-reusable
+on:
+  workflow_call:
+    inputs:
+      config:
+        description: Path of the routespec.ci-config/1 file in the caller repository.
+        type: string
+        required: true
+    outputs:
+      conclusion:
+        description: RouteSpec CI conclusion (only success means a PASS decision).
+        value: ${{ jobs.gate.outputs.conclusion }}
+permissions:
+  contents: read
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      conclusion: ${{ steps.gate.outputs.conclusion }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: RouteSpec gate
+        id: gate
+        # Replace OWNER/REPO and the SHA with the reviewed RouteSpec revision you depend on.
+        uses: OWNER/REPO/.github/actions/routespec-gate@0000000000000000000000000000000000000000
+        with:
+          config: ${{ inputs.config }}
+      - name: Upload redacted RouteSpec reports
+        if: ${{ always() && steps.gate.outputs.upload-directory != '' }}
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: routespec-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.gate.outputs.upload-directory }}
+          retention-days: ${{ steps.gate.outputs.retention-days }}
+          if-no-files-found: error

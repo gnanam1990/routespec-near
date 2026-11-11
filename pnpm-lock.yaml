@@ -92,7 +92,21 @@ importers:
 
   packages/control-api: {}
 
-  packages/kernel: {}
+  packages/kernel:
+    dependencies:
+      '@routespec/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      '@routespec/proxy':
+        specifier: workspace:*
+        version: link:../proxy
+      '@routespec/scenario':
+        specifier: workspace:*
+        version: link:../scenario
+      '@routespec/store':
+        specifier: workspace:*
+        version: link:../store
 
   packages/live-dry-adapter:
     dependencies:

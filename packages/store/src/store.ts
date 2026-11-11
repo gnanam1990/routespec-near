@@ -91,6 +91,12 @@ export interface ExchangeAck {
   readonly sequence: number;
 }
 
+/** Private-channel credential of one registered interceptor instance (never a case token). */
+export interface InterceptorChannelAuth {
+  readonly interceptorInstanceId: string;
+  readonly channelKey: string;
+}
+
 export interface CaseSpec {
   readonly scenarioRevisionId: string;
   readonly lineageRole: CaseLineageRole;
@@ -1028,6 +1034,7 @@ export class RouteSpecStore {
     db: DatabaseSync,
     auth: CaseAuth,
     phase: OperationPhase | null,
+    touch = true,
   ): { session: Row; caseRun: Row; token: Row } {
     const now = this.now();
     const digest = tokenDigest(auth.token);
@@ -1080,7 +1087,7 @@ export class RouteSpecStore {
       fail('RS_LEASE_EXPIRED', 'Case run lease has expired.');
     const session = one(db, 'SELECT * FROM sessions WHERE session_id = ?', auth.sessionId) as Row;
     if (session['execution_lifecycle'] !== 'RUNNING') fail('RS_PHASE_INVALID', 'Session is not RUNNING.');
-    run(db, 'UPDATE case_tokens SET last_used_at_ms = ? WHERE token_digest = ?', now, digest);
+    if (touch) run(db, 'UPDATE case_tokens SET last_used_at_ms = ? WHERE token_digest = ?', now, digest);
     return { session, caseRun, token };
   }
 
@@ -1648,7 +1655,17 @@ export class RouteSpecStore {
    */
   finalizeQuote(
     auth: CaseAuth,
-    input: { transportRequestId: string; runOperationId: string; response: unknown; virtualMs?: number },
+    input: {
+      transportRequestId: string;
+      runOperationId: string;
+      response: unknown;
+      virtualMs?: number;
+      /**
+       * When true the attempt stays SENT_OUTCOME_UNKNOWN until the proxy confirms delivery via
+       * `markResponseDelivered`, so a deterministically dropped quote response stays uncertain.
+       */
+      deliveryPending?: boolean;
+    },
   ): ExchangeAck & { finalizationDigest: Digest; depositAddress: string | null } {
     return this.tx('proxy.quote-finalization', (db) => {
       const { session } = this.authorize(db, auth, 'QUOTE_FINALIZATION');
@@ -1686,11 +1703,13 @@ export class RouteSpecStore {
             fin.responseDigest,
             str(ex, 'exchange_id'),
           );
-          run(
-            db,
-            `UPDATE attempts SET outcome = 'SENT_RESPONSE_RECEIVED' WHERE attempt_id = ? AND outcome = 'SENT_OUTCOME_UNKNOWN'`,
-            str(ex, 'attempt_id'),
-          );
+          if (input.deliveryPending !== true) {
+            run(
+              db,
+              `UPDATE attempts SET outcome = 'SENT_RESPONSE_RECEIVED' WHERE attempt_id = ? AND outcome = 'SENT_OUTCOME_UNKNOWN'`,
+              str(ex, 'attempt_id'),
+            );
+          }
         }
         return {
           ...this.ackFrom(ex, true, true),
@@ -1733,11 +1752,13 @@ export class RouteSpecStore {
         fin.responseDigest,
         str(ex, 'exchange_id'),
       );
-      run(
-        db,
-        `UPDATE attempts SET outcome = 'SENT_RESPONSE_RECEIVED' WHERE attempt_id = ?`,
-        str(ex, 'attempt_id'),
-      );
+      if (input.deliveryPending !== true) {
+        run(
+          db,
+          `UPDATE attempts SET outcome = 'SENT_RESPONSE_RECEIVED' WHERE attempt_id = ?`,
+          str(ex, 'attempt_id'),
+        );
+      }
       this.insertEvent(db, {
         session,
         runOperationId: input.runOperationId,
@@ -1937,6 +1958,8 @@ export class RouteSpecStore {
       query: unknown;
       rawStatus: string;
       virtualMs?: number;
+      /** When true the attempt stays SENT_OUTCOME_UNKNOWN until `markResponseDelivered`. */
+      deliveryPending?: boolean;
     },
   ): ExchangeAck & {
     outcome: NormalizedFact | null;
@@ -2006,7 +2029,9 @@ export class RouteSpecStore {
         },
         virtualMs,
       });
-      run(db, `UPDATE attempts SET outcome = 'SENT_RESPONSE_RECEIVED' WHERE attempt_id = ?`, attemptId);
+      if (input.deliveryPending !== true) {
+        run(db, `UPDATE attempts SET outcome = 'SENT_RESPONSE_RECEIVED' WHERE attempt_id = ?`, attemptId);
+      }
       this.insertEvent(db, {
         session,
         runOperationId: input.runOperationId,
@@ -2059,6 +2084,8 @@ export class RouteSpecStore {
       amount: string | null;
       singleUse: boolean;
       payload: unknown;
+      /** Optional recipient binding; only its digest is stored. */
+      recipient?: string | null;
     },
   ): { evidenceId: string; sequence: number } {
     return this.tx('evidence.record', (db) => {
@@ -2102,6 +2129,10 @@ export class RouteSpecStore {
         payloadDigest,
       });
       const sequence = this.nextSequence(db, sessionId);
+      const recipient = input.recipient ?? null;
+      if (recipient !== null && this.journal.schemaVersion < 3) {
+        fail('RS_SCHEMA_VERSION_UNSUPPORTED', 'Recipient-bound evidence requires schema version 3.');
+      }
       run(
         db,
         `INSERT INTO evidence_items(evidence_id, integration_revision_id, build_revision_id, artifact_digest, build_attestation_class,
@@ -2137,6 +2168,14 @@ export class RouteSpecStore {
         sequence,
         this.now(),
       );
+      if (recipient !== null) {
+        run(
+          db,
+          'INSERT INTO evidence_recipients(evidence_id, recipient_digest) VALUES (?,?)',
+          evidenceId,
+          digestValue('routespec.evidence-recipient/1', recipient),
+        );
+      }
       return { evidenceId, sequence };
     });
   }
@@ -2497,6 +2536,429 @@ export class RouteSpecStore {
 
   // -------------------------------------------------------------------------------------------
   // Reads (bounded, project-scoped by caller).
+
+  // -------------------------------------------------------------------------------------------
+  // M02: proxy support, case fencing on uncertainty, cancellation, interceptor channel.
+
+  /**
+   * Read-only verification of a client-presented case token and identity (no write). The proxy
+   * uses it before applying a fault that needs no journal write (transport error before
+   * acceptance), so an unauthenticated request can never consume a scenario step.
+   */
+  verifyCaseAuth(auth: CaseAuth, phase: OperationPhase | null): { sessionId: string; mode: Mode } {
+    return this.journal.read((db) => {
+      const { session } = this.authorize(db, auth, phase, false);
+      return { sessionId: str(session, 'session_id'), mode: str(session, 'mode') as Mode };
+    });
+  }
+
+  /**
+   * Fence a running case immediately (INV-03): an accepted commit whose response was lost leaves
+   * the outcome unknown, so the runner revokes every active token, increments the fencing epoch,
+   * and moves the case to RECOVERY_REQUIRED in one transaction. Only `recoverCase` (one
+   * RECONCILIATION_ONLY token) can resume it. Returns the new fencing epoch.
+   */
+  requireRecovery(
+    fence: ExecutionFence,
+    reason: 'OUTCOME_UNKNOWN' | 'RUNNER_CANCELLED',
+  ): { fencingEpoch: number; revokedTokens: number } {
+    return this.tx('case.require-recovery', (db) => {
+      const c = this.assertFence(db, fence);
+      if (str(c, 'execution_lifecycle') !== 'RUNNING') {
+        fail('RS_PHASE_INVALID', 'Only a RUNNING case can be fenced for recovery.', {
+          lifecycle: str(c, 'execution_lifecycle'),
+        });
+      }
+      const revokedTokens = this.markRecoveryRequired(db, c, reason);
+      return { fencingEpoch: fence.fencingEpoch + 1, revokedTokens };
+    });
+  }
+
+  /**
+   * Close client input for a running case (teardown before evaluation): revoke every active case
+   * token so the subject client can no longer reach the case, and record the teardown time once.
+   * The lifecycle stays RUNNING; only the evaluator (`persistCaseEvaluation`) moves it on.
+   */
+  closeCaseInput(fence: ExecutionFence): { revokedTokens: number } {
+    return this.tx('case.close-input', (db) => {
+      const c = this.assertFence(db, fence);
+      if (str(c, 'execution_lifecycle') !== 'RUNNING') {
+        fail('RS_PHASE_INVALID', 'Only a RUNNING case can close client input.', {
+          lifecycle: str(c, 'execution_lifecycle'),
+        });
+      }
+      const revokedTokens = this.revokeActiveTokens(
+        db,
+        fence.caseRunId,
+        'CASE_INPUT_CLOSED',
+        fence.fencingEpoch,
+      );
+      run(
+        db,
+        'UPDATE case_runs SET teardown_recorded_at_ms = ? WHERE case_run_id = ? AND teardown_recorded_at_ms IS NULL',
+        this.now(),
+        fence.caseRunId,
+      );
+      return { revokedTokens };
+    });
+  }
+
+  /**
+   * Cancel a case: revoke its tokens, record teardown, and close the lifecycle ABORTED without
+   * a verdict. The gate aggregator (M06) treats an aborted required case as REVIEW.
+   */
+  abortCase(fence: ExecutionFence, reason: string): void {
+    if (!/^[A-Z][A-Z0-9_]{2,63}$/.test(reason)) fail('RS_SCHEMA_INVALID', 'Abort reason must be a code.');
+    this.tx('case.abort', (db) => {
+      const c = this.assertFence(db, fence);
+      const lifecycle = str(c, 'execution_lifecycle');
+      if (!['RUNNING', 'RECOVERY_REQUIRED', 'EVALUATING'].includes(lifecycle)) {
+        fail('RS_PHASE_INVALID', 'Only an executing case can be aborted.', { lifecycle });
+      }
+      this.revokeActiveTokens(db, fence.caseRunId, reason, fence.fencingEpoch);
+      run(
+        db,
+        `UPDATE case_runs SET execution_lifecycle = 'ABORTED', teardown_recorded_at_ms = ?, lease_owner_digest = NULL,
+           lease_expires_at_ms = NULL WHERE case_run_id = ?`,
+        this.now(),
+        fence.caseRunId,
+      );
+      const sessionId = strOrNull(c, 'session_id');
+      if (sessionId) {
+        run(
+          db,
+          `UPDATE sessions SET execution_lifecycle = 'ABORTED', closed_at_ms = ?, lease_owner_digest = NULL,
+             lease_expires_at_ms = NULL WHERE session_id = ?`,
+          this.now(),
+          sessionId,
+        );
+      }
+      this.closeOpenInterceptors(db, fence.caseRunId, 'CASE_TERMINAL');
+    });
+  }
+
+  private closeOpenInterceptors(db: DatabaseSync, caseRunId: string, reason: string): void {
+    if (this.journal.schemaVersion < 3) return;
+    for (const inst of all(
+      db,
+      'SELECT interceptor_instance_id FROM effect_interceptor_instances WHERE case_run_id = ? AND teardown_at_ms IS NULL',
+      caseRunId,
+    )) {
+      const id = str(inst, 'interceptor_instance_id');
+      run(
+        db,
+        'INSERT INTO interceptor_teardowns(interceptor_instance_id, reason, created_at_ms) VALUES (?,?,?)',
+        id,
+        reason,
+        this.now(),
+      );
+      run(
+        db,
+        'UPDATE effect_interceptor_instances SET teardown_at_ms = ? WHERE interceptor_instance_id = ?',
+        this.now(),
+        id,
+      );
+    }
+  }
+
+  /**
+   * Record a locally denied proxy request that could not be attributed to an authenticated case
+   * (unknown route, bad host/origin, malformed transport). Only safe codes are stored: method,
+   * a sanitized path, the error code, and the explicit no-upstream facts.
+   */
+  recordProxyDenial(input: {
+    method: string;
+    path: string;
+    code: ErrorCode;
+    sessionId?: string | null;
+  }): void {
+    const method = /^[A-Z]{1,16}$/.test(input.method) ? input.method : 'OTHER';
+    const path = (input.path.split('?')[0] ?? '/').replace(/[^A-Za-z0-9/_.{}-]/g, '_').slice(0, 128);
+    this.tx('proxy.denial', (db) => {
+      run(
+        db,
+        `INSERT INTO audit_events(audit_id, action_code, subject_kind, subject_id, details_json, created_at_ms)
+         VALUES (?, 'PROXY_REQUEST_DENIED', 'PROXY', ?, ?, ?)`,
+        randomUUID(),
+        input.sessionId ?? null,
+        json({
+          method,
+          path,
+          code: input.code,
+          upstreamAttempted: false,
+          credentialAttached: false,
+          dnsAttempted: false,
+        }),
+        this.now(),
+      );
+    });
+  }
+
+  getScenarioRevision(scenarioRevisionId: string): Row | undefined {
+    return this.journal.read((db) =>
+      one(db, 'SELECT * FROM scenario_revisions WHERE scenario_revision_id = ?', scenarioRevisionId),
+    );
+  }
+
+  /**
+   * Register a separately launched boundary interceptor for one case (M02 deliverable 9). The
+   * runner holds the execution fence; only the digest of the private channel key is stored. The
+   * containment class is the honest platform result: without an OS/container sandbox that can
+   * confine the subject process tree it is `DECLARED_HOOKS_ONLY`.
+   */
+  registerInterceptorInstance(
+    fence: ExecutionFence,
+    input: {
+      interceptorProfileDigest: string;
+      interceptorArtifactDigest: string;
+      sandboxScopeDigest: string;
+      supportedSinks: readonly string[];
+      containment: 'PROCESS_TREE_ENFORCED' | 'DECLARED_HOOKS_ONLY';
+      channelKeyDigest: string;
+      peerPid: number;
+      attestationId: string | null;
+    },
+  ): { interceptorInstanceId: string } {
+    return this.tx('interceptor.register', (db) => {
+      const c = this.assertFence(db, fence);
+      if (str(c, 'execution_lifecycle') !== 'RUNNING') fail('RS_PHASE_INVALID', 'Case is not RUNNING.');
+      const s = one(db, 'SELECT * FROM sessions WHERE session_id = ?', str(c, 'session_id')) as Row;
+      const interceptorInstanceId = randomUUID();
+      run(
+        db,
+        `INSERT INTO effect_interceptor_instances(interceptor_instance_id, interceptor_profile_digest, artifact_digest,
+           sandbox_scope_digest, supported_sinks_json, build_revision_id, case_run_id, session_id, fencing_epoch, attestation_id,
+           started_at_ms, teardown_at_ms)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,NULL)`,
+        interceptorInstanceId,
+        input.interceptorProfileDigest,
+        input.interceptorArtifactDigest,
+        input.sandboxScopeDigest,
+        json([...new Set(input.supportedSinks)].sort()),
+        str(s, 'build_revision_id'),
+        fence.caseRunId,
+        str(s, 'session_id'),
+        fence.fencingEpoch,
+        input.attestationId,
+        this.now(),
+      );
+      run(
+        db,
+        `INSERT INTO interceptor_channels(interceptor_instance_id, channel_key_digest, gate_run_id, policy_digest, manifest_digest,
+           containment, peer_pid, created_at_ms) VALUES (?,?,?,?,?,?,?,?)`,
+        interceptorInstanceId,
+        input.channelKeyDigest,
+        str(s, 'gate_run_id'),
+        str(s, 'effect_coverage_policy_digest'),
+        str(s, 'effect_manifest_digest'),
+        input.containment,
+        input.peerPid,
+        this.now(),
+      );
+      if (s['interceptor_instance_id'] === null) {
+        run(
+          db,
+          'UPDATE sessions SET interceptor_instance_id = ? WHERE session_id = ?',
+          interceptorInstanceId,
+          str(s, 'session_id'),
+        );
+      }
+      return { interceptorInstanceId };
+    });
+  }
+
+  private assertChannel(db: DatabaseSync, channel: InterceptorChannelAuth): Row {
+    const inst = one(
+      db,
+      `SELECT i.*, c.channel_key_digest, c.gate_run_id, c.policy_digest, c.manifest_digest, c.containment, c.peer_pid
+         FROM effect_interceptor_instances i JOIN interceptor_channels c USING (interceptor_instance_id)
+        WHERE i.interceptor_instance_id = ?`,
+      channel.interceptorInstanceId,
+    );
+    if (!inst) fail('RS_CHANNEL_AUTH_FAILED', 'Interceptor channel is not recognized.');
+    if (
+      inst['channel_key_digest'] !== digestValue('routespec.interceptor-channel-key/1', channel.channelKey)
+    ) {
+      fail('RS_CHANNEL_AUTH_FAILED', 'Interceptor channel authentication failed.');
+    }
+    if (inst['teardown_at_ms'] !== null)
+      fail('RS_INTERCEPTOR_TORN_DOWN', 'Interceptor instance was torn down.');
+    return inst;
+  }
+
+  /**
+   * Journal one independent boundary observation. Callable only with the private channel key of
+   * a registered interceptor instance: no case token, control token, or subject path reaches it.
+   * Every binding must equal the instance's registered binding at the case's current fencing
+   * epoch. An exact duplicate frame is idempotent; a different frame at the same sequence fails.
+   */
+  recordBoundaryObservation(
+    channel: InterceptorChannelAuth,
+    obs: {
+      sequence: number;
+      frameDigest: string;
+      buildRevisionId: string;
+      gateRunId: string;
+      caseRunId: string;
+      sessionId: string;
+      fencingEpoch: number;
+      policyDigest: string;
+      manifestDigest: string;
+      interceptorProfileDigest: string;
+      runOperationId: string | null;
+      sinkClass: string;
+      effectId: string;
+      effectType: string;
+      action: 'ATTEMPTED' | 'BLOCKED' | 'RELEASED';
+      virtualMs: number | null;
+    },
+  ): { observationId: string; duplicate: boolean } {
+    return this.tx('interceptor.observe', (db) => {
+      const inst = this.assertChannel(db, channel);
+      const binding: Array<[string, string | number]> = [
+        ['build_revision_id', obs.buildRevisionId],
+        ['gate_run_id', obs.gateRunId],
+        ['case_run_id', obs.caseRunId],
+        ['session_id', obs.sessionId],
+        ['fencing_epoch', obs.fencingEpoch],
+        ['policy_digest', obs.policyDigest],
+        ['manifest_digest', obs.manifestDigest],
+        ['interceptor_profile_digest', obs.interceptorProfileDigest],
+      ];
+      // (`interceptor_profile_digest` is the instance column; the others come from the channel.)
+      for (const [column, claimed] of binding) {
+        if (inst[column] !== claimed) {
+          fail('RS_CHANNEL_BINDING_MISMATCH', 'Boundary observation binding differs from the instance.', {
+            field: column,
+          });
+        }
+      }
+      const c = one(db, 'SELECT * FROM case_runs WHERE case_run_id = ?', obs.caseRunId) as Row;
+      if (num(c, 'fencing_epoch') !== obs.fencingEpoch) {
+        fail('RS_STALE_FENCING_EPOCH', 'Interceptor instance is bound to a stale fencing epoch.');
+      }
+      if (!(JSON.parse(str(inst, 'supported_sinks_json')) as string[]).includes(obs.sinkClass)) {
+        fail('RS_SINK_UNSUPPORTED', 'Sink class is outside the interceptor profile.', {
+          sinkClass: obs.sinkClass,
+        });
+      }
+      if (obs.runOperationId !== null) {
+        const op = one(
+          db,
+          'SELECT case_run_id FROM run_operations WHERE run_operation_id = ?',
+          obs.runOperationId,
+        );
+        if (!op || op['case_run_id'] !== obs.caseRunId) {
+          fail('RS_CHANNEL_BINDING_MISMATCH', 'Run operation belongs to a different case.');
+        }
+      }
+      const prior = one(
+        db,
+        `SELECT o.observation_id, f.frame_digest FROM effect_boundary_observations o
+           JOIN boundary_observation_frames f USING (observation_id) WHERE o.interceptor_instance_id = ? AND o.sequence = ?`,
+        channel.interceptorInstanceId,
+        obs.sequence,
+      );
+      if (prior) {
+        if (prior['frame_digest'] === obs.frameDigest) {
+          return { observationId: str(prior, 'observation_id'), duplicate: true };
+        }
+        fail('RS_DUPLICATE', 'A different boundary observation already holds this sequence.');
+      }
+      const s = one(db, 'SELECT * FROM sessions WHERE session_id = ?', obs.sessionId) as Row;
+      const observationId = randomUUID();
+      run(
+        db,
+        `INSERT INTO effect_boundary_observations(observation_id, interceptor_instance_id, build_revision_id, artifact_digest,
+           policy_digest, manifest_digest, gate_run_id, case_run_id, session_id, run_operation_id, scenario_revision_id, sink_class,
+           effect_id, action, fencing_epoch, sequence, virtual_ms, created_at_ms)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        observationId,
+        channel.interceptorInstanceId,
+        obs.buildRevisionId,
+        str(s, 'artifact_digest'),
+        obs.policyDigest,
+        obs.manifestDigest,
+        obs.gateRunId,
+        obs.caseRunId,
+        obs.sessionId,
+        obs.runOperationId,
+        str(c, 'scenario_revision_id'),
+        obs.sinkClass,
+        obs.effectId,
+        obs.action,
+        obs.fencingEpoch,
+        obs.sequence,
+        obs.virtualMs,
+        this.now(),
+      );
+      run(
+        db,
+        `INSERT INTO boundary_observation_frames(observation_id, effect_type, interceptor_profile_digest, callsite_inventory_digest,
+           frame_digest) VALUES (?,?,?,?,?)`,
+        observationId,
+        obs.effectType,
+        obs.interceptorProfileDigest,
+        strOrNull(s, 'callsite_inventory_digest'),
+        obs.frameDigest,
+      );
+      return { observationId, duplicate: false };
+    });
+  }
+
+  /** Close an interceptor instance: orderly `TEARDOWN` from the interceptor or `CHANNEL_LOST`. */
+  teardownInterceptor(channel: InterceptorChannelAuth, reason: 'TEARDOWN' | 'CHANNEL_LOST'): void {
+    this.tx('interceptor.teardown', (db) => {
+      const inst = this.assertChannel(db, channel);
+      run(
+        db,
+        'INSERT INTO interceptor_teardowns(interceptor_instance_id, reason, created_at_ms) VALUES (?,?,?)',
+        channel.interceptorInstanceId,
+        reason,
+        this.now(),
+      );
+      run(
+        db,
+        'UPDATE effect_interceptor_instances SET teardown_at_ms = ? WHERE interceptor_instance_id = ?',
+        this.now(),
+        str(inst, 'interceptor_instance_id'),
+      );
+    });
+  }
+
+  getInterceptorInstance(interceptorInstanceId: string): Row | undefined {
+    return this.journal.read((db) =>
+      one(
+        db,
+        `SELECT i.*, c.gate_run_id, c.policy_digest, c.manifest_digest, c.containment, c.peer_pid, t.reason AS teardown_reason
+           FROM effect_interceptor_instances i JOIN interceptor_channels c USING (interceptor_instance_id)
+           LEFT JOIN interceptor_teardowns t USING (interceptor_instance_id) WHERE i.interceptor_instance_id = ?`,
+        interceptorInstanceId,
+      ),
+    );
+  }
+
+  listBoundaryObservations(caseRunId: string): Row[] {
+    return this.journal.read((db) =>
+      all(
+        db,
+        `SELECT o.*, f.effect_type, f.interceptor_profile_digest, f.callsite_inventory_digest, f.frame_digest
+           FROM effect_boundary_observations o JOIN boundary_observation_frames f USING (observation_id)
+          WHERE o.case_run_id = ? ORDER BY o.interceptor_instance_id, o.sequence`,
+        caseRunId,
+      ),
+    );
+  }
+
+  listAuditEvents(actionCode: string): Row[] {
+    return this.journal.read((db) =>
+      all(
+        db,
+        'SELECT * FROM audit_events WHERE action_code = ? ORDER BY created_at_ms, audit_id',
+        actionCode,
+      ),
+    );
+  }
 
   getCaseRun(caseRunId: string): Row | undefined {
     return this.journal.read((db) => one(db, 'SELECT * FROM case_runs WHERE case_run_id = ?', caseRunId));

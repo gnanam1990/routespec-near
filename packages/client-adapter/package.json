@@ -1,0 +1,17 @@
+{
+  "name": "@routespec/client-adapter",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Versioned subject-side adapter that attaches the pinned official 1Click SDK to the RouteSpec loopback proxy (M02).",
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@routespec/contracts": "workspace:*"
+  }
+}

@@ -66,6 +66,12 @@ export const ERROR_CODES = Object.freeze([
   'RS_MIGRATION_FAILED',
   'RS_BACKUP_FAILED',
   'RS_CHECKPOINT_INCOMPLETE',
+  // scenario compiler / runtime (M03)
+  'RS_SCENARIO_INVALID',
+  'RS_SCENARIO_UNSAFE_CONSTRUCT',
+  'RS_SCENARIO_LIMIT_EXCEEDED',
+  'RS_SCENARIO_UNEXPECTED_REQUEST',
+  'RS_SCENARIO_ENDED',
   'RS_INTERNAL',
 ] as const);
 export type ErrorCode = (typeof ERROR_CODES)[number];

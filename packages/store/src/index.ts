@@ -11,3 +11,5 @@ export {
   migrationChecksum,
   type Migration,
 } from './migrations/index.ts';
+export * from './imports.ts';
+export { IMPORT_STATE_EDGES } from './migrations/005-import-regressions.ts';

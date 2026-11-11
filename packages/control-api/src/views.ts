@@ -17,20 +17,24 @@ export function iso(ms: unknown): string | null {
   return typeof ms === 'number' ? new Date(ms).toISOString() : null;
 }
 
-function str(row: Row, key: string): string {
+export function str(row: Row, key: string): string {
   return String(row[key]);
 }
 
-function strOrNull(row: Row, key: string): string | null {
+export function strOrNull(row: Row, key: string): string | null {
   const v = row[key];
   return typeof v === 'string' ? v : null;
 }
 
-function rows(store: RouteSpecStore, sql: string, ...params: Array<string | number | null>): Row[] {
+export function rows(store: RouteSpecStore, sql: string, ...params: Array<string | number | null>): Row[] {
   return store.journal.read((db: DatabaseSync) => db.prepare(sql).all(...params) as Row[]);
 }
 
-function row(store: RouteSpecStore, sql: string, ...params: Array<string | number | null>): Row | undefined {
+export function row(
+  store: RouteSpecStore,
+  sql: string,
+  ...params: Array<string | number | null>
+): Row | undefined {
   return store.journal.read((db: DatabaseSync) => db.prepare(sql).get(...params) as Row | undefined);
 }
 
@@ -139,7 +143,7 @@ export function attestationRef(
   };
 }
 
-function coverageFor(
+export function coverageFor(
   store: RouteSpecStore,
   policyDigest: string,
   interceptorProfileDigest: string | null,
@@ -165,7 +169,7 @@ function coverageFor(
   };
 }
 
-function rsCode(code: string): string {
+export function rsCode(code: string): string {
   const up = code
     .toUpperCase()
     .replace(/[^A-Z0-9_]/g, '_')
@@ -305,6 +309,7 @@ export function gateRunView(d: ViewDeps, gate: Row): Record<string, unknown> {
     parallelism: { declared: Number(gate['max_parallel_cases']), running, queued },
     counts,
     findings,
+    gateId: definition ? str(definition, 'gate_id') : null,
     gateEvaluationId: evaluation ? str(evaluation, 'gate_evaluation_id') : null,
     identityDigest: str(gate, 'identity_digest'),
     revision: gateRunRevision(gate),
@@ -342,6 +347,12 @@ export function caseRunView(d: ViewDeps, c: Row, gate: Row): Record<string, unkn
   const token = d.control.tokenStateFor(caseRunId, d.nowMs());
   const ops = d.store.listRunOperations(caseRunId).slice(0, 64);
   const verdict = strOrNull(c, 'verdict');
+  const leaseExpiry = c['lease_expires_at_ms'];
+  const leaseExpired =
+    (lifecycle === 'RUNNING' || lifecycle === 'EVALUATING') &&
+    started &&
+    typeof leaseExpiry === 'number' &&
+    leaseExpiry <= d.nowMs();
   return {
     caseRunId,
     gateRunId: str(c, 'gate_run_id'),
@@ -372,13 +383,15 @@ export function caseRunView(d: ViewDeps, c: Row, gate: Row): Record<string, unkn
     severity: corpusCase ? str(corpusCase, 'severity') : null,
     requiredInvariants: JSON.parse(str(c, 'required_invariants_json')) as string[],
     queuePosition: lifecycle === 'READY' || lifecycle === 'PENDING' ? Number(c['case_ordinal']) : null,
+    // Recovery is offered from persisted state only: a case already fenced into
+    // RECOVERY_REQUIRED, or an executing case whose lease has expired (its runner stopped).
     recovery:
-      lifecycle === 'RECOVERY_REQUIRED'
+      lifecycle === 'RECOVERY_REQUIRED' || leaseExpired
         ? {
             available: true,
             action: 'RECONCILE_EXISTING_OPERATION',
             readOnly: true,
-            reasonCode: 'RS_RECOVERY_REQUIRED',
+            reasonCode: lifecycle === 'RECOVERY_REQUIRED' ? 'RS_RECOVERY_REQUIRED' : 'RS_LEASE_EXPIRED',
           }
         : null,
     sessionId: strOrNull(c, 'session_id'),

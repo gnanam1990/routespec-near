@@ -3,7 +3,17 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['docs/spec/**', '**/dist/**', '**/node_modules/**', 'coverage/**', '**/*.tsbuildinfo'] },
+  {
+    ignores: [
+      'docs/spec/**',
+      '**/dist/**',
+      '**/playwright-report/**',
+      '**/test-results/**',
+      '**/node_modules/**',
+      'coverage/**',
+      '**/*.tsbuildinfo',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

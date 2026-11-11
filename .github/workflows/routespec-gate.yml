@@ -1,0 +1,32 @@
+# Self-gate: runs the RouteSpec gate action against the repository's sample subject. Pull
+# requests (including forks) run with read-only permissions and no secrets; the action itself
+# withholds any credential it finds and stages only reports for untrusted jobs.
+name: routespec-gate
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: RouteSpec gate
+        id: gate
+        uses: ./.github/actions/routespec-gate
+        with:
+          config: .github/routespec/routespec.ci.json
+      - name: Upload redacted RouteSpec reports
+        if: ${{ always() && steps.gate.outputs.upload-directory != '' }}
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: routespec-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.gate.outputs.upload-directory }}
+          retention-days: ${{ steps.gate.outputs.retention-days }}
+          if-no-files-found: error

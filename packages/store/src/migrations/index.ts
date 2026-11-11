@@ -13,6 +13,7 @@ import { MIGRATION_002_SQL } from './002-results-maintenance.ts';
 import { MIGRATION_003_SQL } from './003-proxy-interceptor.ts';
 import { MIGRATION_004_SQL } from './004-effect-evaluation.ts';
 import { MIGRATION_005_SQL } from './005-import-regressions.ts';
+import { MIGRATION_006_SQL } from './006-gate-evaluation-export.ts';
 
 export interface Migration {
   readonly version: number;
@@ -26,6 +27,7 @@ export const MIGRATIONS: readonly Migration[] = Object.freeze([
   { version: 3, name: 'proxy-interceptor', sql: MIGRATION_003_SQL },
   { version: 4, name: 'effect-evaluation', sql: MIGRATION_004_SQL },
   { version: 5, name: 'import-regressions', sql: MIGRATION_005_SQL },
+  { version: 6, name: 'gate-evaluation-export', sql: MIGRATION_006_SQL },
 ]);
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.length;

@@ -710,14 +710,29 @@ export class RouteSpecStore {
     interceptorProfileDigest: string | null;
     maxParallelCases: number;
     cases: readonly CaseSpec[];
+    /** Optional gate definition revision (M06); part of the identity digest when present. */
+    gateDefinitionRevisionId?: string;
   }): { gateRunId: string; caseRunIds: string[]; identityDigest: Digest } {
     return this.tx('gate-run.create', (db) => {
       const gateRunId = randomUUID();
       const identityDigest = digestValue('routespec.gate-run/1', { gateRunId, ...input });
+      const gateDefinitionRevisionId = input.gateDefinitionRevisionId ?? null;
+      if (
+        gateDefinitionRevisionId !== null &&
+        !one(
+          db,
+          'SELECT 1 AS x FROM gate_definitions WHERE gate_definition_revision_id = ? AND project_id = ? AND corpus_revision_id = ?',
+          gateDefinitionRevisionId,
+          input.projectId,
+          input.corpusRevisionId,
+        )
+      ) {
+        fail('RS_IDENTITY_MISMATCH', 'Gate definition does not pin this project and corpus revision.');
+      }
       parseContract('gate-run', {
         schemaVersion: '1.0',
         gateRunId,
-        gateDefinitionRevisionId: null,
+        gateDefinitionRevisionId,
         projectId: input.projectId,
         integrationRevisionId: input.integrationRevisionId,
         buildRevisionId: input.buildRevisionId,
@@ -743,8 +758,9 @@ export class RouteSpecStore {
            artifact_digest, build_attestation_class, build_attestation_id, corpus_revision_id, protocol_profile_id, adapter_revision,
            evaluator_revision, proxy_revision, configuration_digest, effect_manifest_digest, effect_coverage_policy_digest,
            callsite_inventory_digest, interceptor_profile_digest, max_parallel_cases, execution_lifecycle, verdict, identity_digest, created_at_ms)
-         VALUES (?,NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'DRAFT',NULL,?,?)`,
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'DRAFT',NULL,?,?)`,
         gateRunId,
+        gateDefinitionRevisionId,
         input.projectId,
         input.integrationRevisionId,
         input.buildRevisionId,

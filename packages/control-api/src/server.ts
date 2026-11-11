@@ -16,12 +16,19 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
-import type { AddressInfo } from 'node:net';
+import type { AddressInfo, Socket } from 'node:net';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { RouteSpecError, canonicalJson } from '@routespec/contracts';
 import type { LaunchCredentials } from '@routespec/proxy';
-import { GateService } from '@routespec/runner';
-import { ControlJournal, GateJournal, ImportJournal, type RouteSpecStore } from '@routespec/store';
+import { GateService, Logger } from '@routespec/runner';
+import {
+  ControlJournal,
+  GateJournal,
+  ImportJournal,
+  persistedSecretRule,
+  registerConfiguredSecrets,
+  type RouteSpecStore,
+} from '@routespec/store';
 import { AttesterChannel } from './attestation.ts';
 import { CursorCodec } from './cursor.ts';
 import { BASE_HEADERS, readJsonBody, safeError, writeError, writeJson, assertNoBody } from './http.ts';
@@ -63,7 +70,38 @@ export interface ControlServerOptions {
   readonly rateLimits?: Partial<RateLimits>;
   readonly dataDirectory?: string;
   readonly maxBodyBytes?: number;
+  /** Connection limits (M11, NFR-06): slow-client and flood bounds. */
+  readonly limits?: Partial<ConnectionLimits>;
+  /**
+   * Local structured log sink (one JSON line per call; NFR-09). Lines carry codes and shortened
+   * identifiers only; nothing leaves the machine. Default: no log.
+   */
+  readonly logSink?: (line: string) => void;
+  /**
+   * Configured secret values (memory only; M11, INV-11). The service refuses any request value
+   * that contains one, the journal refuses to persist one, the proxy rejects one, imports record
+   * it as a finding, exports block on it, and logs redact it. Each needs >= 8 characters.
+   */
+  readonly configuredSecrets?: readonly string[];
 }
+
+export interface ConnectionLimits {
+  /** Time allowed to receive the complete request head. */
+  readonly headersTimeoutMs: number;
+  /** Time allowed to receive the complete request, body included. */
+  readonly requestTimeoutMs: number;
+  /** Idle time before a kept-alive connection is closed. */
+  readonly keepAliveTimeoutMs: number;
+  /** Concurrent TCP connections; further connections are closed on accept. */
+  readonly maxConnections: number;
+}
+
+export const DEFAULT_CONNECTION_LIMITS: ConnectionLimits = Object.freeze({
+  headersTimeoutMs: 10_000,
+  requestTimeoutMs: 30_000,
+  keepAliveTimeoutMs: 5_000,
+  maxConnections: 128,
+});
 
 export interface ControlMetrics {
   readonly refused: Record<string, number>;
@@ -128,6 +166,36 @@ class Windows {
   }
 }
 
+function methodLabel(method: string | undefined): string {
+  return method !== undefined && /^[A-Z]{1,10}$/.test(method) ? method : 'OTHER';
+}
+
+/**
+ * Effect-coverage gaps currently recorded in the journal (tracked, never hidden): interceptor
+ * findings by kind, interceptor instances without process-tree containment, and coverage
+ * policies that rely on declared hooks only. Each of these keeps complete-effect coverage REVIEW.
+ */
+export function effectCoverageGaps(store: RouteSpecStore): Record<string, number> {
+  return store.journal.read((db) => {
+    const out: Record<string, number> = {};
+    for (const r of db
+      .prepare('SELECT kind, count(*) AS n FROM effect_coverage_findings GROUP BY kind ORDER BY kind')
+      .all() as Array<{ kind: string; n: number }>)
+      out[`finding_${r.kind.toLowerCase()}`] = r.n;
+    out['interceptors_declared_hooks_only'] = (
+      db
+        .prepare("SELECT count(*) AS n FROM interceptor_channels WHERE containment = 'DECLARED_HOOKS_ONLY'")
+        .get() as { n: number }
+    ).n;
+    out['policies_declared_hooks_only'] = (
+      db
+        .prepare("SELECT count(*) AS n FROM effect_coverage_policies WHERE basis = 'DECLARED_HOOKS_ONLY'")
+        .get() as { n: number }
+    ).n;
+    return out;
+  });
+}
+
 function parseIfMatch(value: string | undefined): number | null {
   if (value === undefined) return null;
   const m = /^(?:W\/)?"(\d{1,9})"$|^(\d{1,9})$/.exec(value.trim());
@@ -142,7 +210,12 @@ export class ControlServer {
   readonly service: GateService;
   readonly token: ControlToken;
   readonly host: LoopbackBindAddress;
-  readonly metrics = { refused: {} as Record<string, number>, handled: 0, replays: 0 };
+  readonly metrics = { refused: {} as Record<string, number>, handled: 0, replays: 0, connectionsDropped: 0 };
+  readonly connectionLimits: ConnectionLimits;
+  readonly logger: Logger;
+  readonly #secrets: readonly string[];
+  readonly #unregisterSecrets: () => void;
+  #open = 0;
   readonly #server: Server;
   readonly #routes: CompiledRoute[];
   readonly #launchers = new Map<string, AttesterChannel>();
@@ -159,7 +232,16 @@ export class ControlServer {
     this.token = options.controlToken ?? new ControlToken();
     this.#consoleDir = options.consoleDir ? resolve(options.consoleDir) : null;
     this.#maxBody = options.maxBodyBytes ?? 262_144;
+    const secrets = Object.freeze([...(options.configuredSecrets ?? [])]);
+    this.#secrets = secrets;
+    this.#unregisterSecrets = registerConfiguredSecrets(secrets);
+    this.logger = new Logger({
+      configuredSecrets: secrets,
+      ...(options.logSink ? { sink: options.logSink } : {}),
+    });
     this.service = new GateService(this.store, {
+      logger: this.logger,
+      configuredSecrets: secrets,
       ...(options.leaseTtlMs !== undefined ? { leaseTtlMs: options.leaseTtlMs } : {}),
       ...(options.tokenTtlMs !== undefined ? { tokenTtlMs: options.tokenTtlMs } : {}),
       ...(options.dataDirectory !== undefined ? { dataDirectory: options.dataDirectory } : {}),
@@ -198,12 +280,57 @@ export class ControlServer {
       onLocalConfirmation: notify,
       confirmationTtlMs: options.confirmationTtlMs ?? 120_000,
       challengeTtlMs: options.challengeTtlMs ?? 300_000,
+      metrics: () => this.metricsSnapshot(),
+      configuredSecrets: secrets,
     }).map(compile);
-    this.#server = createServer({ maxHeaderSize: 16_384 }, (req, res) => {
-      void this.#handle(req, res);
+    const limits = { ...DEFAULT_CONNECTION_LIMITS, ...(options.limits ?? {}) };
+    this.connectionLimits = Object.freeze(limits);
+    this.#server = createServer(
+      {
+        maxHeaderSize: 16_384,
+        headersTimeout: limits.headersTimeoutMs,
+        requestTimeout: limits.requestTimeoutMs,
+        keepAliveTimeout: limits.keepAliveTimeoutMs,
+        // Node checks the two timeouts on this interval (default 30 s), so a slow client would
+        // otherwise outlive its timeout by up to 30 s.
+        connectionsCheckingInterval: Math.max(100, Math.min(1_000, Math.floor(limits.headersTimeoutMs / 2))),
+      },
+      (req, res) => {
+        void this.#handle(req, res);
+      },
+    );
+    this.#server.maxConnections = limits.maxConnections;
+    this.#server.maxRequestsPerSocket = 1_000;
+    this.#server.on('drop', () => {
+      this.metrics.connectionsDropped++;
     });
-    this.#server.headersTimeout = 10_000;
-    this.#server.requestTimeout = 60_000;
+    this.#server.on('timeout', (socket: Socket) => socket.destroy());
+    this.#server.on('connection', (socket: Socket) => {
+      this.#open++;
+      socket.once('close', () => this.#open--);
+    });
+  }
+
+  /** Bounded, coded, local-only metrics (NFR-09). Never contains a request value or credential. */
+  metricsSnapshot(): Record<string, unknown> {
+    const mem = process.memoryUsage();
+    return {
+      telemetry: 'OFF',
+      revision: CONTROL_API_REVISION,
+      refused: { ...this.metrics.refused },
+      handled: this.metrics.handled,
+      replays: this.metrics.replays,
+      connections: { open: this.#open, dropped: this.metrics.connectionsDropped },
+      limits: { ...this.connectionLimits, maxBodyBytes: this.#maxBody },
+      process: {
+        rssBytes: mem.rss,
+        heapUsedBytes: mem.heapUsed,
+        uptimeSeconds: Math.round(process.uptime()),
+      },
+      runner: this.service.logger.metrics.snapshot(),
+      proxy: this.service.proxyStats(),
+      effectCoverageGaps: effectCoverageGaps(this.store),
+    };
   }
 
   static async start(options: ControlServerOptions): Promise<ControlServer> {
@@ -248,6 +375,7 @@ export class ControlServer {
   }
 
   async close(): Promise<void> {
+    this.#unregisterSecrets();
     for (const l of this.#launchers.values()) await l.close().catch(() => undefined);
     this.#launchers.clear();
     await this.service.close();
@@ -257,9 +385,21 @@ export class ControlServer {
     });
   }
 
-  #refuse(res: ServerResponse, error: RouteSpecError, requestId: string): void {
+  #refuse(req: IncomingMessage, res: ServerResponse, error: RouteSpecError, requestId: string): void {
     this.metrics.refused[error.code] = (this.metrics.refused[error.code] ?? 0) + 1;
+    const socket = req.socket;
+    if (!req.complete && socket) {
+      // Never drain an unread or over-limit body (an endless chunked upload would otherwise be
+      // read until the request timeout). Answer, half-close so the client can read the answer,
+      // and destroy the connection shortly after (bounded lingering close).
+      res.shouldKeepAlive = false;
+      res.once('finish', () => {
+        socket.end();
+        setTimeout(() => socket.destroy(), 1_000).unref();
+      });
+    }
     writeError(res, error, requestId);
+    this.logger.warn('control.refused', { details: { code: error.code, method: methodLabel(req.method) } });
   }
 
   async #handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -314,6 +454,7 @@ export class ControlServer {
       if (def.schema !== undefined) rawBody = await readJsonBody(req, def.maxBody ?? this.#maxBody);
       else assertNoBody(req);
       const idempotencyKey = def.mutation ? this.#idempotencyKey(req) : null;
+      this.#refuseSecrets(def, url, rawBody, idempotencyKey);
       const ifMatch = def.ifMatch === true ? parseIfMatch(this.#single(req, 'if-match')) : null;
       if (def.ifMatch === true && ifMatch === null) {
         throw new RouteSpecError(
@@ -363,8 +504,38 @@ export class ControlServer {
       });
     } catch (error) {
       const safe = safeError(error);
-      if (!res.headersSent && req.readableEnded === false) req.resume();
-      this.#refuse(res, safe, requestId);
+      this.#refuse(req, res, safe, requestId);
+    }
+  }
+
+  /**
+   * Request-boundary secret check (M11, T-011): a configured secret value, the control token, or
+   * a RouteSpec credential shape anywhere in the body (keys and values), the query string, or
+   * the idempotency key is refused before any handler, idempotency record, or log line sees it.
+   * The error names only where it was found.
+   */
+  #refuseSecrets(def: RouteDef, url: URL, rawBody: unknown, idempotencyKey: string | null): void {
+    const control = this.token.reveal();
+    const hit = (v: string) =>
+      v.includes(control) || persistedSecretRule(v) !== null || this.#secrets.some((x) => v.includes(x));
+    const walk = (v: unknown, depth: number): boolean => {
+      if (typeof v === 'string') return hit(v);
+      if (depth > 64 || v === null || typeof v !== 'object') return false;
+      if (Array.isArray(v)) return v.some((x) => walk(x, depth + 1));
+      return Object.entries(v as Record<string, unknown>).some(([k, x]) => hit(k) || walk(x, depth + 1));
+    };
+    const where: string[] = [];
+    if (idempotencyKey !== null && hit(idempotencyKey)) where.push('idempotency-key');
+    for (const [k, v] of url.searchParams) if (hit(k) || hit(v)) where.push('query');
+    if (def.secretScan !== 'pipeline' && rawBody !== undefined && walk(rawBody, 0)) where.push('body');
+    if (where.length > 0) {
+      throw new RouteSpecError(
+        'RS_SECRET_FIELD_REJECTED',
+        'A secret value was refused before it was stored.',
+        {
+          details: { locations: [...new Set(where)].join(',') },
+        },
+      );
     }
   }
 

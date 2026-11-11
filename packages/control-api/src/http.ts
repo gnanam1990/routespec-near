@@ -158,6 +158,50 @@ function scanJson(text: string, maxDepth: number): void {
   }
 }
 
+/**
+ * Read at most `maxBytes` of the body. Past the cap the request is paused, not destroyed, so
+ * the caller can still answer 413 before the connection is closed (M11, T-042).
+ */
+function readCapped(req: IncomingMessage, maxBytes: number): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    const cleanup = () => {
+      req.off('data', onData);
+      req.off('end', onEnd);
+      req.off('error', onError);
+      req.off('aborted', onAborted);
+    };
+    const onData = (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        cleanup();
+        req.pause();
+        reject(
+          new RouteSpecError('RS_BODY_TOO_LARGE', 'Request body exceeds the limit.', {
+            details: { maxBytes },
+          }),
+        );
+        return;
+      }
+      chunks.push(chunk);
+    };
+    const onEnd = () => {
+      cleanup();
+      resolve(Buffer.concat(chunks));
+    };
+    const onError = () => {
+      cleanup();
+      reject(new RouteSpecError('RS_SCHEMA_INVALID', 'The request body could not be read.'));
+    };
+    const onAborted = onError;
+    req.on('data', onData);
+    req.once('end', onEnd);
+    req.once('error', onError);
+    req.once('aborted', onAborted);
+  });
+}
+
 export async function readJsonBody(req: IncomingMessage, maxBytes: number, maxDepth = 24): Promise<unknown> {
   const type = String(req.headers['content-type'] ?? '')
     .toLowerCase()
@@ -178,18 +222,7 @@ export async function readJsonBody(req: IncomingMessage, maxBytes: number, maxDe
       details: { maxBytes },
     });
   }
-  const chunks: Buffer[] = [];
-  let size = 0;
-  for await (const chunk of req) {
-    size += (chunk as Buffer).length;
-    if (size > maxBytes) {
-      throw new RouteSpecError('RS_BODY_TOO_LARGE', 'Request body exceeds the limit.', {
-        details: { maxBytes },
-      });
-    }
-    chunks.push(chunk as Buffer);
-  }
-  const buf = Buffer.concat(chunks);
+  const buf = await readCapped(req, maxBytes);
   if (buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) {
     throw new RouteSpecError('RS_SCHEMA_INVALID', 'Request body must not start with a byte-order mark.');
   }

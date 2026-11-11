@@ -17,6 +17,7 @@ import { closeSync, existsSync, openSync, readFileSync, unlinkSync, writeFileSyn
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { RouteSpecError, isRouteSpecError, type ErrorCode } from '@routespec/contracts';
+import { assertWriteParams } from './guards.ts';
 import {
   APPLICATION_ID,
   LATEST_SCHEMA_VERSION,
@@ -183,6 +184,41 @@ class WriterLock {
   }
 }
 
+/**
+ * The connection as seen inside a write transaction: identical, except that every
+ * `statement.run(...)` first passes its bound parameters through the persistence-boundary
+ * guard (configured secrets and RouteSpec credential shapes; M11, INV-11).
+ */
+function guardWrites(db: DatabaseSync): DatabaseSync {
+  const statements = new WeakMap<object, object>();
+  return new Proxy(db, {
+    get(target, prop) {
+      if (prop === 'prepare') {
+        return (sql: string) => {
+          const st = target.prepare(sql);
+          const cached = statements.get(st);
+          if (cached) return cached;
+          const wrapped = new Proxy(st, {
+            get(t, p) {
+              if (p === 'run')
+                return (...params: unknown[]) => {
+                  assertWriteParams(params);
+                  return (t.run as (...a: unknown[]) => unknown)(...params);
+                };
+              const v = Reflect.get(t, p, t) as unknown;
+              return typeof v === 'function' ? (v as (...a: unknown[]) => unknown).bind(t) : v;
+            },
+          });
+          statements.set(st, wrapped);
+          return wrapped;
+        };
+      }
+      const v = Reflect.get(target, prop, target) as unknown;
+      return typeof v === 'function' ? (v as (...a: unknown[]) => unknown).bind(target) : v;
+    },
+  });
+}
+
 export class JournalDb {
   readonly path: string;
   readonly mode: JournalMode;
@@ -194,6 +230,7 @@ export class JournalDb {
   private storageFault: ErrorCode | null = null;
   private queue: Promise<unknown> = Promise.resolve();
   private closed = false;
+  readonly #guarded: DatabaseSync;
 
   private constructor(args: {
     path: string;
@@ -209,6 +246,7 @@ export class JournalDb {
     this.db = args.db;
     this.lock = args.lock;
     this.faultInjector = args.faultInjector;
+    this.#guarded = guardWrites(args.db);
   }
 
   static open(options: OpenOptions): JournalDb {
@@ -421,7 +459,7 @@ export class JournalDb {
     try {
       this.db.exec('BEGIN IMMEDIATE');
       began = true;
-      const result = fn(this.db);
+      const result = fn(this.#guarded);
       this.faultInjector?.('beforeCommit', label);
       this.db.exec('COMMIT');
       began = false;

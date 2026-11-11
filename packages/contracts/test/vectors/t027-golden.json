@@ -1,0 +1,6 @@
+{
+  "description": "T-027 golden canonical result digest for test/fixtures.ts canonicalResultFixture(); generated on win32 x64 Node v22.23.1 on 2026-11-11. Must be byte-identical on every supported OS.",
+  "encoding": "rs-canon/1",
+  "domain": "routespec.case-result/1",
+  "resultDigest": "sha256:128c4e601a599ab074864c19faf11ea6a06f3501c7213d24784b3177fe7f6d36"
+}

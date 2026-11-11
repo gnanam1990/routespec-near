@@ -24,6 +24,12 @@
     },
     {
       "path": "packages/regressions"
+    },
+    {
+      "path": "packages/runner"
+    },
+    {
+      "path": "packages/cli"
     }
   ]
 }

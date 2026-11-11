@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "references": [
+    { "path": "../contracts" },
+    { "path": "../store" },
+    { "path": "../scenario" },
+    { "path": "../kernel" },
+    { "path": "../proxy" },
+    { "path": "../regressions" },
+    { "path": "../client-adapter" },
+    { "path": "../runner" }
+  ]
+}

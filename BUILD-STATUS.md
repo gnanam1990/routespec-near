@@ -87,12 +87,12 @@ of INV-03 and INV-06 as well. The decision was identical before and after export
 
 ## Test totals (win32/x64, final HEAD of the M12 branch)
 
-| Suite                                                       | Command                  | Result                                        |
-| ----------------------------------------------------------- | ------------------------ | --------------------------------------------- |
-| Typecheck, lint, format, unit/integration, secret scan      | `pnpm run check`         | see `docs/status/M12.md` "Final verification" |
-| Console against the real control service (Playwright + axe) | `pnpm run test:e2e:real` | 59 passed (T-047..T-052 and shell checks)     |
-| Clean-clone delivery (T-054, T-055)                         | `pnpm run test:delivery` | 14 passed                                     |
-| Console fixture suite (simulated, development only)         | `pnpm run test:e2e`      | 25 passed (M09; not rerun in M12)             |
+| Suite                                                       | Command                  | Result                                                          |
+| ----------------------------------------------------------- | ------------------------ | --------------------------------------------------------------- |
+| Typecheck, lint, format, unit/integration, secret scan      | `pnpm run check`         | 68 files / 554 tests (553 passed, 1 skipped), secret scan clean |
+| Console against the real control service (Playwright + axe) | `pnpm run test:e2e:real` | 59 passed (T-047..T-052 and shell checks)                       |
+| Clean-clone delivery (T-054, T-055)                         | `pnpm run test:delivery` | 14 passed                                                       |
+| Console fixture suite (simulated, development only)         | `pnpm run test:e2e`      | 25 passed (M09; not rerun in M12)                               |
 
 ## External action ledger
 

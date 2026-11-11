@@ -1,0 +1,14 @@
+{
+  "hooks": [
+    {
+      "hookId": "fulfilment",
+      "hookRevision": "1",
+      "effectType": "DELIVER_GOODS",
+      "sinkClass": "fulfilment-webhook",
+      "sourceLocatorDigest": null,
+      "mechanism": "subject-hook",
+      "scenarioSelectors": ["*"],
+      "coverageExpectation": "REQUIRED"
+    }
+  ]
+}

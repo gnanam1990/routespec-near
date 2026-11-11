@@ -1,0 +1,45 @@
+schemaVersion: '1.0'
+protocolProfile: oneclick-v0@1.0.0
+initialState:
+  clientClock: INJECTED
+operationTemplate:
+  originAsset: nep141:origin.sim
+  destinationAsset: nep141:destination.sim
+  amountIn: '1000000'
+  amountOut: '999000'
+  minAmountOut: '989010'
+  recipient: recipient.sim
+  refundTo: refund.sim
+resourceBudget: {}
+sourceProvenance:
+  class: SYNTHETIC
+  notes: RouteSpec reviewed synthetic core scenario
+scenarioId: happy-path
+revisionLabel: r1
+title: Quote, commit, and a proven delivered swap
+seed: core-happy-1
+steps:
+  - { id: quote, type: respond, match: { route: QUOTE } }
+  - { id: commit, type: respond, match: { route: COMMIT } }
+  - { id: processing, type: provider_status, status: PROCESSING }
+  - { id: success, type: provider_status, status: SUCCESS }
+  - { id: deposit, type: ground_truth, event: origin-deposit }
+  - { id: credit, type: ground_truth, event: destination-credit }
+  - { id: poll, type: respond, match: { route: STATUS } }
+  - { id: end, type: end }
+groundTruthEvents:
+  - { id: origin-deposit, fact: ORIGIN_DEPOSIT, assetId: nep141:origin.sim, amount: '1000000' }
+  - {
+      id: destination-credit,
+      fact: DESTINATION_CREDIT,
+      assetId: nep141:destination.sim,
+      amount: '999000',
+      recipient: recipient.sim,
+    }
+expectedOutcomes:
+  terminalStatus: SUCCESS
+  normalizedOutcome: SUCCESS_REPORTED
+forbiddenBehaviors: [SECOND_COMMIT_UNDER_UNCERTAINTY]
+requiredEvidence:
+  - { predicate: ORIGIN_DEBIT }
+  - { predicate: DESTINATION_CREDIT }

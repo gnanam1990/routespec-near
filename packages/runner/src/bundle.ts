@@ -21,21 +21,23 @@
 import { createHash, randomBytes } from 'node:crypto';
 import {
   closeSync,
-  existsSync,
   fsyncSync,
+  linkSync,
   lstatSync,
   mkdirSync,
   openSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
   writeSync,
 } from 'node:fs';
 import { homedir, hostname, tmpdir, userInfo } from 'node:os';
-import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { RouteSpecError, digestValue } from '@routespec/contracts';
+import { isWithin, resolveExtractionDir, resolveInputFile, resolveOutputFile } from '@routespec/hardening';
 import { scanForExport, type ExportFindingCategory } from '@routespec/regressions';
 import {
   GateJournal,
@@ -528,30 +530,32 @@ function rebuild(
   return { tar: built.tar, planDigest: plan.planDigest };
 }
 
-export function resolveOutputPath(outPath: string): string {
-  if (
-    typeof outPath !== 'string' ||
-    outPath.length === 0 ||
-    outPath.length > 1024 ||
-    outPath.includes('\0')
-  ) {
-    throw new RouteSpecError('RS_EXPORT_PATH_INVALID', 'An explicit local output path is required.');
-  }
-  if (/^(?:\\\\|\/\/)/.test(outPath)) {
-    throw new RouteSpecError('RS_EXPORT_PATH_INVALID', 'Network (UNC) and device paths are not accepted.');
-  }
-  const full = resolve(outPath);
-  const parent = dirname(full);
-  if (!existsSync(parent) || !statSync(parent).isDirectory()) {
-    throw new RouteSpecError('RS_EXPORT_PATH_INVALID', 'The output directory does not exist.');
-  }
-  if (existsSync(full)) {
-    const st = lstatSync(full);
-    if (st.isSymbolicLink() || !st.isFile()) {
-      throw new RouteSpecError('RS_EXPORT_PATH_INVALID', 'The output path is not a regular file.');
+/**
+ * Replace `to` with `from`. On Windows a just-written file can be held briefly by another
+ * process (for example a malware scanner), which makes the replacing rename fail with EPERM,
+ * EACCES, or EBUSY; that is retried for a bounded time, then reported as a write failure.
+ */
+function renameReplacing(from: string, to: string): void {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      renameSync(from, to);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (attempt >= 20 || !(code === 'EPERM' || code === 'EACCES' || code === 'EBUSY')) throw error;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
     }
   }
-  return full;
+}
+
+/**
+ * Resolve an explicit local output file (M11 path policy, T-040): plain local path syntax only
+ * (no UNC or device namespace, drive-relative path, alternate data stream, reserved device
+ * name, or trailing dot/space), an existing parent directory, and a final component that is
+ * absent or a regular file (never a link or junction, dangling links included).
+ */
+export function resolveOutputPath(outPath: string): string {
+  return resolveOutputFile(outPath, 'RS_EXPORT_PATH_INVALID').path;
 }
 
 export interface WriteExportOptions {
@@ -595,8 +599,9 @@ export function writeExport(
       'Writing requires the exact plan digest as confirmation.',
     );
   }
-  const full = resolveOutputPath(options.outPath);
-  const exists = existsSync(full);
+  const target = resolveOutputFile(options.outPath, 'RS_EXPORT_PATH_INVALID');
+  const full = target.path;
+  const exists = target.exists;
   if (exists && options.overwrite !== true) {
     throw new RouteSpecError(
       'RS_EXPORT_OVERWRITE_DENIED',
@@ -614,7 +619,26 @@ export function writeExport(
     } finally {
       closeSync(fd);
     }
-    renameSync(tmp, full);
+    if (exists) {
+      // Confirmed overwrite of the regular file checked above. A link planted since the check
+      // is itself replaced: rename never follows its destination.
+      renameReplacing(tmp, full);
+    } else {
+      // No overwrite confirmation: publish with an exclusive hard link, which fails if any entry
+      // (file, link, or junction) appeared at the target after the check.
+      try {
+        linkSync(tmp, full);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+          throw new RouteSpecError(
+            'RS_EXPORT_OVERWRITE_DENIED',
+            'The output file exists; overwriting needs a distinct confirmation.',
+          );
+        }
+        throw error;
+      }
+      rmSync(tmp, { force: true });
+    }
     if (sha256(readFileSync(full)) !== outputDigest) {
       throw new RouteSpecError('RS_EXPORT_WRITE_FAILED', 'Written bundle does not match its digest.');
     }
@@ -727,23 +751,33 @@ export function verifyBundle(
   extractDir: string,
   options: { configuredSecrets?: readonly string[]; localPathMarkers?: readonly string[] } = {},
 ): BundleVerification {
-  const bytes = readFileSync(bundlePath);
+  // Reading never writes, but a network or device path is refused here too: opening a UNC path
+  // can send the operator's credentials to a remote host.
+  const source = resolveInputFile(bundlePath, 'RS_EXPORT_PATH_INVALID', { followLinks: true });
+  if (statSync(source).size > MAX_BUNDLE_BYTES)
+    throw new RouteSpecError('RS_BUNDLE_VERIFY_FAILED', 'Bundle archive exceeds the size limit.');
+  const bytes = readFileSync(source);
   const bundleDigest = sha256(bytes);
   const entries = readTar(bytes);
-  const root = resolve(extractDir);
-  if (existsSync(root)) {
-    if (!statSync(root).isDirectory() || readdirSync(root).length > 0) {
+  const dir = resolveExtractionDir(extractDir, 'RS_EXPORT_PATH_INVALID');
+  if (dir.exists) {
+    if (readdirSync(dir.path).length > 0) {
       throw new RouteSpecError('RS_EXPORT_PATH_INVALID', 'The extraction directory must be new or empty.');
     }
   } else {
-    mkdirSync(root, { recursive: true });
+    mkdirSync(dir.path, { recursive: true, mode: 0o700 });
   }
+  // Every entry is checked against the canonical real path of the chosen directory, so neither
+  // a hostile name nor a link inside the tree can redirect a write elsewhere.
+  const root = realpathSync.native(dir.path);
   for (const e of entries) {
     if (!isSafeEntryName(e.path)) throw new RouteSpecError('RS_BUNDLE_VERIFY_FAILED', 'Unsafe entry name.');
     const target = resolve(root, ...e.path.split('/'));
-    if (!target.startsWith(root + sep))
+    if (target === root || !isWithin(root, target))
       throw new RouteSpecError('RS_BUNDLE_VERIFY_FAILED', 'Entry escapes the extraction directory.');
-    mkdirSync(dirname(target), { recursive: true });
+    mkdirSync(dirname(target), { recursive: true, mode: 0o700 });
+    if (!isWithin(root, realpathSync.native(dirname(target))))
+      throw new RouteSpecError('RS_BUNDLE_VERIFY_FAILED', 'Entry escapes the extraction directory.');
     const fd = openSync(target, 'wx', 0o600);
     try {
       writeSync(fd, e.content);

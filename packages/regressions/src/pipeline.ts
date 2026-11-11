@@ -39,11 +39,14 @@ export function sanitizeFilename(name: string): { name: string; unsafe: boolean 
     parts.some((p) => p === '..' || p === '.') ||
     /[\u0000-\u001f\u007f<>:"|?*\u202a-\u202e\u2066-\u2069]/.test(base) ||
     WINDOWS_RESERVED.test(base) ||
+    /[. ]$/.test(base) ||
     base.length > 128;
   base = base
     .replace(/[\u0000-\u001f\u007f<>:"|?*\u202a-\u202e\u2066-\u2069]/g, '_')
     .replace(/^\.+/, '_')
-    .slice(0, 128);
+    .slice(0, 128)
+    // Windows strips a trailing dot or space, so such a name would alias another one.
+    .replace(/[. ]+$/, '');
   if (WINDOWS_RESERVED.test(base)) base = `_${base}`;
   return { name: base.length > 0 ? base : 'trace.json', unsafe };
 }

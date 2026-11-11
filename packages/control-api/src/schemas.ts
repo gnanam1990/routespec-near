@@ -432,6 +432,8 @@ export const importPromote = z
 
 export const projectDelete = z.object({ confirmDigest: digest.optional() }).strict();
 
+export const retentionPurge = z.object({ confirmDigest: digest.optional() }).strict();
+
 export const compatibilityProbe = z.object({ buildRevisionId: uuid, protocolProfileId: shortId }).strict();
 
 /** Parse with a strict schema; failures carry only field paths and issue codes. */

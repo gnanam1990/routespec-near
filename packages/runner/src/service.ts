@@ -26,7 +26,13 @@ import {
   snapshotFromJournal,
   toPersistableEvaluation,
 } from '@routespec/kernel';
-import { CaseSupervisor, PROXY_REVISION, ScenarioProxy, type LaunchCredentials } from '@routespec/proxy';
+import {
+  CaseSupervisor,
+  PROXY_REVISION,
+  Redactor,
+  ScenarioProxy,
+  type LaunchCredentials,
+} from '@routespec/proxy';
 import type { CompiledScenario } from '@routespec/scenario';
 import {
   GateJournal,
@@ -101,6 +107,11 @@ export interface GateServiceOptions {
   readonly dataDirectory?: string;
   /** Additional sink for re-issued credentials (control API: one-time hand-off on recover). */
   readonly onCredentials?: (caseRunId: string, credentials: LaunchCredentials) => void;
+  /**
+   * Configured secret values (memory only, M11/INV-11): the proxy rejects any request value
+   * that contains one before persistence, and the default logger redacts them.
+   */
+  readonly configuredSecrets?: readonly string[];
 }
 
 /** What a control-API-driven launcher receives when it starts one case (no driver involved). */
@@ -137,11 +148,13 @@ export class GateService {
   private driver: CaseDriver | null = null;
   private readonly startedAt = new Map<string, number>();
   private readonly credentialSink: ((caseRunId: string, credentials: LaunchCredentials) => void) | null;
+  readonly #configuredSecrets: readonly string[];
 
   constructor(store: RouteSpecStore, options: GateServiceOptions = {}) {
     this.store = store;
     this.gates = new GateJournal(store);
-    this.logger = options.logger ?? new Logger();
+    this.#configuredSecrets = Object.freeze([...(options.configuredSecrets ?? [])]);
+    this.logger = options.logger ?? new Logger({ configuredSecrets: this.#configuredSecrets });
     this.runtime = options.runtime ?? RUNTIME_REVISIONS;
     this.leaseTtlMs = options.leaseTtlMs ?? 300_000;
     this.tokenTtlMs = options.tokenTtlMs ?? 600_000;
@@ -368,8 +381,16 @@ export class GateService {
       store: this.store,
       mode,
       cases: this.supervisor,
+      redactor: new Redactor(this.#configuredSecrets),
       log: (e) => {
         this.logger.metrics.increment(`proxy_${e.code.toLowerCase()}`);
+        this.logger.log({
+          level: e.level,
+          code: `proxy.${e.code}`,
+          session: e.session,
+          caseRun: e.caseRun,
+          details: { method: e.method, route: e.route, phase: e.phase, sequence: e.sequence },
+        });
       },
     });
     this.proxyMode = mode;
@@ -378,6 +399,11 @@ export class GateService {
 
   get proxyOrigin(): string | null {
     return this.proxy?.origin ?? null;
+  }
+
+  /** Counters of the networkless proxy, or null before it is opened (no request values). */
+  proxyStats(): Record<string, number> | null {
+    return this.proxy === null ? null : { ...this.proxy.stats };
   }
 
   /**

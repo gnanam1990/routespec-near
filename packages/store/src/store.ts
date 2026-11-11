@@ -92,6 +92,36 @@ export interface ExchangeAck {
 }
 
 /** Private-channel credential of one registered interceptor instance (never a case token). */
+/** Plain journal rows for one case, read in one consistent pass for the pure kernel (M04). */
+export interface EvaluationSnapshotRows {
+  readonly caseRun: Record<string, unknown>;
+  readonly session: Record<string, unknown>;
+  readonly gateRun: Record<string, unknown>;
+  readonly scenario: Record<string, unknown>;
+  readonly policy: Record<string, unknown> | null;
+  readonly manifest: Record<string, unknown> | null;
+  readonly manifestHooks: readonly Record<string, unknown>[];
+  readonly inventory: Record<string, unknown> | null;
+  readonly attestations: readonly Record<string, unknown>[];
+  readonly interceptors: readonly Record<string, unknown>[];
+  readonly boundaryObservations: readonly Record<string, unknown>[];
+  readonly coverageFindings: readonly Record<string, unknown>[];
+  readonly releaseAuthorizations: readonly Record<string, unknown>[];
+  readonly subjectReports: readonly Record<string, unknown>[];
+  readonly runOperations: readonly Record<string, unknown>[];
+  readonly lineage: readonly Record<string, unknown>[];
+  readonly quoteFinalizations: readonly Record<string, unknown>[];
+  readonly commitBindings: readonly Record<string, unknown>[];
+  readonly attempts: readonly Record<string, unknown>[];
+  readonly exchanges: readonly Record<string, unknown>[];
+  readonly events: readonly Record<string, unknown>[];
+  readonly conflicts: readonly Record<string, unknown>[];
+  readonly tokens: readonly Record<string, unknown>[];
+  readonly evidence: readonly Record<string, unknown>[];
+  readonly consumptions: readonly Record<string, unknown>[];
+  readonly allocations: readonly Record<string, unknown>[];
+}
+
 export interface InterceptorChannelAuth {
   readonly interceptorInstanceId: string;
   readonly channelKey: string;
@@ -2902,6 +2932,17 @@ export class RouteSpecStore {
         strOrNull(s, 'callsite_inventory_digest'),
         obs.frameDigest,
       );
+      if (this.journal.schemaVersion >= 4) {
+        // One total order with the case journal, so INV-04 can order a release frame against
+        // the release authorization (migration 004).
+        run(
+          db,
+          'INSERT INTO boundary_observation_order(observation_id, session_id, session_sequence) VALUES (?,?,?)',
+          observationId,
+          obs.sessionId,
+          this.nextSequence(db, obs.sessionId),
+        );
+      }
       return { observationId, duplicate: false };
     });
   }
@@ -2923,6 +2964,536 @@ export class RouteSpecStore {
         this.now(),
         str(inst, 'interceptor_instance_id'),
       );
+    });
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Protected-effect observation (M04): subject self-report, call-site inventory, release
+  // authorization, interceptor coverage findings, and the consistent evaluation snapshot.
+
+  /**
+   * Record one subject-reported protected-effect observation (TDD.md section 18). The caller
+   * presents the case token; every binding field through the fencing epoch is digested. An exact
+   * retry (same idempotency key, same binding) returns the original report; a changed binding
+   * under the same key, an undeclared or forged hook, or a foreign policy/manifest/operation
+   * fails closed. The row is always `SUBJECT_REPORTED` correlation and never proves coverage.
+   */
+  recordSubjectEffectReport(
+    auth: CaseAuth,
+    input: {
+      runOperationId: string | null;
+      policyDigest: string;
+      manifestDigest: string;
+      hookId: string;
+      hookRevision: string;
+      effectId: string;
+      effectType: string;
+      action: 'ATTEMPTED' | 'BLOCKED' | 'RELEASED';
+      idempotencyKey: string;
+      virtualMs?: number | null;
+    },
+  ): {
+    observationId: string;
+    duplicate: boolean;
+    sequence: number;
+    coverageClassification: 'SUBJECT_REPORTED';
+  } {
+    for (const [field, value] of [
+      ['hookId', input.hookId],
+      ['hookRevision', input.hookRevision],
+      ['effectId', input.effectId],
+      ['effectType', input.effectType],
+      ['idempotencyKey', input.idempotencyKey],
+    ] as const) {
+      if (typeof value !== 'string' || !/^[A-Za-z0-9._:@/-]{1,128}$/.test(value)) {
+        fail('RS_MATERIAL_INVALID', 'Effect report field is not a bounded identifier.', { field });
+      }
+    }
+    if (!['ATTEMPTED', 'BLOCKED', 'RELEASED'].includes(input.action)) {
+      fail('RS_MATERIAL_INVALID', 'Effect report action is not supported.', { field: 'action' });
+    }
+    return this.tx('effect.subject-report', (db) => {
+      const { session } = this.authorize(db, auth, null);
+      const virtualMs = input.virtualMs ?? null;
+      const binding = {
+        buildRevisionId: auth.buildRevisionId,
+        artifactDigest: auth.artifactDigest,
+        gateRunId: auth.gateRunId,
+        caseRunId: auth.caseRunId,
+        sessionId: auth.sessionId,
+        runOperationId: input.runOperationId,
+        policyDigest: input.policyDigest,
+        manifestDigest: input.manifestDigest,
+        hookId: input.hookId,
+        hookRevision: input.hookRevision,
+        effectId: input.effectId,
+        effectType: input.effectType,
+        action: input.action,
+        fencingEpoch: auth.fencingEpoch,
+        virtualMs,
+      };
+      const resultDigest = digestValue('routespec.subject-effect-report/1', binding);
+      const keyDigest = digestValue('routespec.effect-idempotency-key/1', input.idempotencyKey);
+      const prior = one(
+        db,
+        'SELECT * FROM protected_effect_observations WHERE session_id = ? AND idempotency_key_digest = ?',
+        auth.sessionId,
+        keyDigest,
+      );
+      if (prior) {
+        if (prior['result_digest'] === resultDigest) {
+          return {
+            observationId: str(prior, 'observation_id'),
+            duplicate: true,
+            sequence: num(prior, 'sequence'),
+            coverageClassification: 'SUBJECT_REPORTED' as const,
+          };
+        }
+        fail('RS_IDEMPOTENCY_KEY_REUSED', 'Idempotency key was already used for a different effect report.');
+      }
+      if (
+        input.policyDigest !== str(session, 'effect_coverage_policy_digest') ||
+        input.manifestDigest !== str(session, 'effect_manifest_digest')
+      ) {
+        fail('RS_IDENTITY_MISMATCH', 'Effect report names a policy or manifest other than the case binding.');
+      }
+      const hook = one(
+        db,
+        `SELECT h.* FROM effect_manifest_hooks h JOIN effect_manifests m USING (manifest_id)
+          WHERE m.manifest_digest = ? AND h.hook_id = ?`,
+        input.manifestDigest,
+        input.hookId,
+      );
+      if (!hook || hook['hook_revision'] !== input.hookRevision || hook['effect_type'] !== input.effectType) {
+        fail('RS_EFFECT_HOOK_UNDECLARED', 'Effect hook is not declared by the bound manifest.', {
+          hookId: input.hookId,
+        });
+      }
+      if (input.runOperationId !== null) {
+        const op = one(
+          db,
+          'SELECT case_run_id FROM run_operations WHERE run_operation_id = ?',
+          input.runOperationId,
+        );
+        if (!op || op['case_run_id'] !== auth.caseRunId) {
+          fail('RS_IDENTITY_MISMATCH', 'Effect report names a run operation of a different case.');
+        }
+      }
+      const sequence = this.nextSequence(db, auth.sessionId);
+      const observationId = randomUUID();
+      run(
+        db,
+        `INSERT INTO protected_effect_observations(observation_id, build_revision_id, gate_run_id, case_run_id, session_id,
+           run_operation_id, policy_digest, manifest_digest, hook_id, hook_revision, effect_id, effect_type, action,
+           idempotency_key_digest, fencing_epoch, sequence, coverage_classification, result_digest, virtual_ms, created_at_ms)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'SUBJECT_REPORTED',?,?,?)`,
+        observationId,
+        auth.buildRevisionId,
+        auth.gateRunId,
+        auth.caseRunId,
+        auth.sessionId,
+        input.runOperationId,
+        input.policyDigest,
+        input.manifestDigest,
+        input.hookId,
+        input.hookRevision,
+        input.effectId,
+        input.effectType,
+        input.action,
+        keyDigest,
+        auth.fencingEpoch,
+        sequence,
+        resultDigest,
+        virtualMs,
+        this.now(),
+      );
+      return {
+        observationId,
+        duplicate: false,
+        sequence,
+        coverageClassification: 'SUBJECT_REPORTED' as const,
+      };
+    });
+  }
+
+  /**
+   * Register an immutable build-time call-site inventory for a build and manifest. Idempotent by
+   * digest. Its attestation (if any) is selected by the caller; the kernel decides whether it is
+   * acceptable. An inventory never replaces runtime interception.
+   */
+  registerCallsiteInventory(input: {
+    buildRevisionId: string;
+    manifestDigest: string;
+    analyzerDigest: string;
+    attestationId: string | null;
+    callsites: ReadonlyArray<{
+      callsiteId: string;
+      sinkClass: string;
+      hookId: string | null;
+      dynamic: boolean;
+    }>;
+    unsupportedFindings: number;
+  }): { inventoryId: string; inventoryDigest: Digest } {
+    if (!Number.isInteger(input.unsupportedFindings) || input.unsupportedFindings < 0) {
+      fail('RS_MATERIAL_INVALID', 'Unsupported finding count must be a non-negative integer.');
+    }
+    const callsites = [...input.callsites]
+      .map((c) => ({
+        callsiteId: c.callsiteId,
+        sinkClass: c.sinkClass,
+        hookId: c.hookId,
+        dynamic: c.dynamic,
+      }))
+      .sort((a, b) => (a.callsiteId < b.callsiteId ? -1 : a.callsiteId > b.callsiteId ? 1 : 0));
+    const body = {
+      buildRevisionId: input.buildRevisionId,
+      manifestDigest: input.manifestDigest,
+      analyzerDigest: input.analyzerDigest,
+      attestationId: input.attestationId,
+      callsites,
+      unsupportedFindings: input.unsupportedFindings,
+    };
+    const inventoryDigest = digestValue('routespec.effect-callsite-inventory/1', body);
+    return this.tx('effect-inventory.register', (db) => {
+      const existing = one(
+        db,
+        'SELECT inventory_id FROM effect_callsite_inventories WHERE inventory_digest = ?',
+        inventoryDigest,
+      );
+      if (existing) return { inventoryId: str(existing, 'inventory_id'), inventoryDigest };
+      const manifest = one(
+        db,
+        'SELECT build_revision_id FROM effect_manifests WHERE manifest_digest = ?',
+        input.manifestDigest,
+      );
+      if (!manifest || manifest['build_revision_id'] !== input.buildRevisionId) {
+        fail('RS_IDENTITY_MISMATCH', 'Inventory build and manifest do not belong together.');
+      }
+      const inventoryId = randomUUID();
+      run(
+        db,
+        `INSERT INTO effect_callsite_inventories(inventory_id, build_revision_id, manifest_digest, analyzer_digest, attestation_id,
+           inventory_json, unsupported_findings, inventory_digest, issued_at_ms) VALUES (?,?,?,?,?,?,?,?,?)`,
+        inventoryId,
+        input.buildRevisionId,
+        input.manifestDigest,
+        input.analyzerDigest,
+        input.attestationId,
+        json(callsites),
+        input.unsupportedFindings,
+        inventoryDigest,
+        this.now(),
+      );
+      return { inventoryId, inventoryDigest };
+    });
+  }
+
+  /**
+   * Journal the runner's decision to release protected effects, citing the completion evidence
+   * it relied on, at one session sequence. The cited evidence must belong to this case; whether it
+   * was acceptable is the kernel's independent judgement (a weak citation makes a later release
+   * a forbidden release).
+   */
+  recordEffectReleaseAuthorization(
+    fence: ExecutionFence,
+    input: { interceptorInstanceId: string | null; completionEvidenceIds: readonly string[] },
+  ): { authorizationId: string; sequence: number; decisionDigest: Digest } {
+    if (input.completionEvidenceIds.length === 0 || input.completionEvidenceIds.length > 64) {
+      fail('RS_MATERIAL_INVALID', 'A release authorization cites between 1 and 64 evidence items.');
+    }
+    return this.tx('effect.release-authorization', (db) => {
+      const c = this.assertFence(db, fence);
+      if (str(c, 'execution_lifecycle') !== 'RUNNING') fail('RS_PHASE_INVALID', 'Case is not RUNNING.');
+      const sessionId = str(c, 'session_id');
+      const ids = [...new Set(input.completionEvidenceIds)].sort();
+      for (const id of ids) {
+        const ev = one(db, 'SELECT case_run_id FROM evidence_items WHERE evidence_id = ?', id);
+        if (!ev || ev['case_run_id'] !== fence.caseRunId) {
+          fail('RS_IDENTITY_MISMATCH', 'Release authorization cites evidence of a different case.');
+        }
+      }
+      if (input.interceptorInstanceId !== null) {
+        const inst = one(
+          db,
+          'SELECT case_run_id FROM effect_interceptor_instances WHERE interceptor_instance_id = ?',
+          input.interceptorInstanceId,
+        );
+        if (!inst || inst['case_run_id'] !== fence.caseRunId) {
+          fail('RS_IDENTITY_MISMATCH', 'Release authorization names an interceptor of a different case.');
+        }
+      }
+      const decisionDigest = digestValue('routespec.effect-release-authorization/1', {
+        caseRunId: fence.caseRunId,
+        fencingEpoch: fence.fencingEpoch,
+        interceptorInstanceId: input.interceptorInstanceId,
+        completionEvidenceIds: ids,
+      });
+      const sequence = this.nextSequence(db, sessionId);
+      const authorizationId = randomUUID();
+      run(
+        db,
+        `INSERT INTO effect_release_authorizations(authorization_id, case_run_id, session_id, interceptor_instance_id, fencing_epoch,
+           session_sequence, completion_evidence_ids_json, decision_digest, created_at_ms) VALUES (?,?,?,?,?,?,?,?,?)`,
+        authorizationId,
+        fence.caseRunId,
+        sessionId,
+        input.interceptorInstanceId,
+        fence.fencingEpoch,
+        sequence,
+        json(ids),
+        decisionDigest,
+        this.now(),
+      );
+      return { authorizationId, sequence, decisionDigest };
+    });
+  }
+
+  /**
+   * Journal a coverage defect reported by an authenticated interceptor over its private channel.
+   * Exact duplicates are idempotent. Only the channel key reaches this path.
+   */
+  recordCoverageFinding(
+    channel: InterceptorChannelAuth,
+    input: {
+      kind: 'PROCESS_TREE_ESCAPE' | 'UNSUPPORTED_DYNAMIC_CALL' | 'SINK_BYPASS';
+      sinkClass: string | null;
+      fencingEpoch: number;
+      detailDigest: string;
+    },
+  ): { findingId: string; duplicate: boolean } {
+    return this.tx('interceptor.coverage-finding', (db) => {
+      const inst = this.assertChannel(db, channel);
+      const c = one(db, 'SELECT * FROM case_runs WHERE case_run_id = ?', str(inst, 'case_run_id')) as Row;
+      if (
+        num(inst, 'fencing_epoch') !== input.fencingEpoch ||
+        num(c, 'fencing_epoch') !== input.fencingEpoch
+      ) {
+        fail('RS_STALE_FENCING_EPOCH', 'Interceptor instance is bound to a stale fencing epoch.');
+      }
+      if (!['PROCESS_TREE_ESCAPE', 'UNSUPPORTED_DYNAMIC_CALL', 'SINK_BYPASS'].includes(input.kind)) {
+        fail('RS_MATERIAL_INVALID', 'Coverage finding kind is not supported.');
+      }
+      const findingDigest = digestValue('routespec.effect-coverage-finding/1', {
+        interceptorInstanceId: channel.interceptorInstanceId,
+        kind: input.kind,
+        sinkClass: input.sinkClass,
+        fencingEpoch: input.fencingEpoch,
+        detailDigest: input.detailDigest,
+      });
+      const prior = one(
+        db,
+        'SELECT finding_id FROM effect_coverage_findings WHERE interceptor_instance_id = ? AND finding_digest = ?',
+        channel.interceptorInstanceId,
+        findingDigest,
+      );
+      if (prior) return { findingId: str(prior, 'finding_id'), duplicate: true };
+      const sessionId = str(inst, 'session_id');
+      const findingId = randomUUID();
+      run(
+        db,
+        `INSERT INTO effect_coverage_findings(finding_id, interceptor_instance_id, case_run_id, session_id, kind, sink_class,
+           fencing_epoch, session_sequence, finding_digest, created_at_ms) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        findingId,
+        channel.interceptorInstanceId,
+        str(inst, 'case_run_id'),
+        sessionId,
+        input.kind,
+        input.sinkClass,
+        input.fencingEpoch,
+        this.nextSequence(db, sessionId),
+        findingDigest,
+        this.now(),
+      );
+      return { findingId, duplicate: false };
+    });
+  }
+
+  listSubjectEffectReports(caseRunId: string): Row[] {
+    return this.journal.read((db) =>
+      all(
+        db,
+        'SELECT * FROM protected_effect_observations WHERE case_run_id = ? ORDER BY sequence',
+        caseRunId,
+      ),
+    );
+  }
+
+  /**
+   * One consistent read of every journal row the kernel evaluates for a case (TDD.md section 11).
+   * Plain rows only: the pure kernel maps and validates them; this method computes nothing.
+   */
+  readEvaluationSnapshot(caseRunId: string): EvaluationSnapshotRows {
+    return this.journal.read((db) => {
+      const caseRun = one(db, 'SELECT * FROM case_runs WHERE case_run_id = ?', caseRunId);
+      if (!caseRun) fail('RS_NOT_FOUND', 'Case run not found.');
+      const sessionId = strOrNull(caseRun, 'session_id');
+      if (sessionId === null) fail('RS_PHASE_INVALID', 'Case run never started a session.');
+      const session = one(db, 'SELECT * FROM sessions WHERE session_id = ?', sessionId) as Row;
+      const gateRun = one(
+        db,
+        'SELECT * FROM gate_runs WHERE gate_run_id = ?',
+        str(caseRun, 'gate_run_id'),
+      ) as Row;
+      const scenario = one(
+        db,
+        `SELECT scenario_revision_id, scenario_stable_id, compiled_json, revision_digest, seed
+           FROM scenario_revisions WHERE scenario_revision_id = ?`,
+        str(caseRun, 'scenario_revision_id'),
+      ) as Row;
+      const policy =
+        one(
+          db,
+          'SELECT * FROM effect_coverage_policies WHERE policy_digest = ?',
+          str(session, 'effect_coverage_policy_digest'),
+        ) ?? null;
+      const manifest =
+        one(
+          db,
+          'SELECT * FROM effect_manifests WHERE manifest_digest = ?',
+          str(session, 'effect_manifest_digest'),
+        ) ?? null;
+      const manifestHooks = manifest
+        ? all(
+            db,
+            'SELECT * FROM effect_manifest_hooks WHERE manifest_id = ? ORDER BY hook_id',
+            str(manifest, 'manifest_id'),
+          )
+        : [];
+      const inventoryDigest =
+        (policy ? strOrNull(policy, 'callsite_inventory_digest') : null) ??
+        strOrNull(session, 'callsite_inventory_digest');
+      const inventory =
+        inventoryDigest === null
+          ? null
+          : (one(
+              db,
+              'SELECT * FROM effect_callsite_inventories WHERE inventory_digest = ?',
+              inventoryDigest,
+            ) ?? null);
+      const interceptors = all(
+        db,
+        `SELECT i.*, c.gate_run_id, c.policy_digest, c.manifest_digest, c.containment, c.peer_pid,
+                t.reason AS teardown_reason
+           FROM effect_interceptor_instances i JOIN interceptor_channels c USING (interceptor_instance_id)
+           LEFT JOIN interceptor_teardowns t USING (interceptor_instance_id)
+          WHERE i.case_run_id = ? ORDER BY i.started_at_ms, i.interceptor_instance_id`,
+        caseRunId,
+      );
+      const v4 = this.journal.schemaVersion >= 4;
+      const boundaryObservations = all(
+        db,
+        `SELECT o.*, f.effect_type, f.interceptor_profile_digest, f.callsite_inventory_digest, f.frame_digest,
+                ${v4 ? 'q.session_sequence' : 'NULL AS session_sequence'}
+           FROM effect_boundary_observations o JOIN boundary_observation_frames f USING (observation_id)
+           ${v4 ? 'LEFT JOIN boundary_observation_order q USING (observation_id)' : ''}
+          WHERE o.case_run_id = ? ORDER BY o.interceptor_instance_id, o.sequence`,
+        caseRunId,
+      );
+      const attestationIds = new Set<string>();
+      for (const id of [
+        strOrNull(gateRun, 'build_attestation_id'),
+        strOrNull(session, 'case_launch_attestation_id'),
+        policy ? strOrNull(policy, 'selected_attestation_id') : null,
+        inventory ? strOrNull(inventory, 'attestation_id') : null,
+        ...interceptors.map((i) => strOrNull(i, 'attestation_id')),
+      ]) {
+        if (id !== null) attestationIds.add(id);
+      }
+      const attestations = [...attestationIds].sort().flatMap((id) => {
+        const a = one(
+          db,
+          `SELECT a.*, p.enabled AS principal_enabled, p.revocation_epoch AS principal_current_revocation_epoch,
+                  p.policy_digest AS principal_current_policy_digest
+             FROM subject_attestations a JOIN attester_principals p USING (principal_id) WHERE a.attestation_id = ?`,
+          id,
+        );
+        return a ? [a] : [];
+      });
+      const runOperations = all(
+        db,
+        'SELECT * FROM run_operations WHERE case_run_id = ? ORDER BY created_sequence',
+        caseRunId,
+      );
+      const opIds = runOperations.map((o) => str(o, 'run_operation_id'));
+      const byOps = (sql: string): Row[] => opIds.flatMap((id) => all(db, sql, id));
+      return {
+        caseRun,
+        session,
+        gateRun,
+        scenario,
+        policy,
+        manifest,
+        manifestHooks,
+        inventory,
+        attestations,
+        interceptors,
+        boundaryObservations,
+        coverageFindings: v4
+          ? all(
+              db,
+              'SELECT * FROM effect_coverage_findings WHERE case_run_id = ? ORDER BY session_sequence',
+              caseRunId,
+            )
+          : [],
+        releaseAuthorizations: v4
+          ? all(
+              db,
+              'SELECT * FROM effect_release_authorizations WHERE case_run_id = ? ORDER BY session_sequence',
+              caseRunId,
+            )
+          : [],
+        subjectReports: all(
+          db,
+          'SELECT * FROM protected_effect_observations WHERE case_run_id = ? ORDER BY sequence',
+          caseRunId,
+        ),
+        runOperations,
+        lineage: byOps(
+          `SELECT * FROM run_operation_lineage WHERE from_run_operation_id = ?1 OR to_run_operation_id = ?1
+            ORDER BY relation, from_run_operation_id, to_run_operation_id`,
+        ),
+        quoteFinalizations: byOps('SELECT * FROM quote_finalizations WHERE run_operation_id = ?'),
+        commitBindings: byOps('SELECT * FROM commit_bindings WHERE run_operation_id = ?'),
+        attempts: all(
+          db,
+          'SELECT * FROM attempts WHERE session_id = ? ORDER BY run_operation_id, attempt_ordinal',
+          sessionId,
+        ),
+        exchanges: all(db, 'SELECT * FROM proxy_exchanges WHERE session_id = ? ORDER BY sequence', sessionId),
+        events: all(db, 'SELECT * FROM lifecycle_events WHERE session_id = ? ORDER BY sequence', sessionId),
+        conflicts: all(
+          db,
+          'SELECT * FROM operation_conflicts WHERE session_id = ? ORDER BY created_at_ms, conflict_id',
+          sessionId,
+        ),
+        tokens: all(
+          db,
+          `SELECT t.purpose, t.fencing_epoch, t.client_instance_digest, t.issued_at_ms, t.expires_at_ms,
+                  r.reason_code AS revocation_reason, r.revoked_at_epoch
+             FROM case_tokens t LEFT JOIN token_revocations r USING (token_digest)
+            WHERE t.case_run_id = ? ORDER BY t.fencing_epoch, t.purpose`,
+          caseRunId,
+        ),
+        evidence: all(
+          db,
+          `SELECT e.*, ${v4 || this.journal.schemaVersion >= 3 ? 'r.recipient_digest' : 'NULL AS recipient_digest'}
+             FROM evidence_items e
+             ${this.journal.schemaVersion >= 3 ? 'LEFT JOIN evidence_recipients r USING (evidence_id)' : ''}
+            WHERE e.case_run_id = ? ORDER BY e.sequence`,
+          caseRunId,
+        ),
+        consumptions: byOps(
+          'SELECT * FROM evidence_consumptions WHERE run_operation_id = ? ORDER BY consumption_id',
+        ),
+        allocations: all(
+          db,
+          `SELECT a.*, p.run_operation_id AS part_run_operation_id, p.amount AS part_amount
+             FROM evidence_allocations a JOIN evidence_allocation_parts p USING (allocation_id)
+             JOIN evidence_items e USING (evidence_id)
+            WHERE e.case_run_id = ? ORDER BY a.allocation_id, p.run_operation_id`,
+          caseRunId,
+        ),
+      };
     });
   }
 

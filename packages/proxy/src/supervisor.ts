@@ -262,6 +262,29 @@ export class CaseSupervisor implements CaseRuntimeRegistry {
     return { ...finished, revokedTokens };
   }
 
+  /**
+   * Adopt the fence of a recovery performed outside this supervisor (control API recovery
+   * after an expired lease). The epoch must only move forward; the runtime is kept so
+   * read-only reconciliation can continue against the same scenario state.
+   */
+  adoptFence(caseRunId: string, fencingEpoch: number): void {
+    const state = this.cases.get(caseRunId);
+    if (!state) return;
+    if (fencingEpoch <= state.fence.fencingEpoch) {
+      throw new RouteSpecError('RS_STALE_FENCING_EPOCH', 'Adopted fence must advance the epoch.');
+    }
+    state.fence = { ...state.fence, fencingEpoch };
+    state.fencedForUncertainty = true;
+  }
+
+  supervises(caseRunId: string): boolean {
+    return this.cases.has(caseRunId);
+  }
+
+  clientInstanceOf(caseRunId: string): string | null {
+    return this.cases.get(caseRunId)?.clientInstanceId ?? null;
+  }
+
   summaryFor(caseRunId: string): RuntimeSummary | null {
     return this.cases.get(caseRunId)?.summary ?? null;
   }

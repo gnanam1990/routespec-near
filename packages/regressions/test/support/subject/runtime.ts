@@ -67,6 +67,35 @@ export interface JobRequest {
   readonly logicalJob: string;
   readonly quote: Record<string, unknown>;
   readonly txHash: string;
+  /**
+   * Where this integration performs its protected effect (order fulfilment). When the launcher
+   * runs the build under containment (M14) this is the loopback tunnel to RouteSpec's effect
+   * interceptor; absent, the build performs no effect.
+   */
+  readonly effectSink?: { readonly origin: string; readonly sinkClass: string } | null;
+}
+
+export interface EffectAttempt {
+  readonly status: number | null;
+  readonly released: boolean;
+}
+
+/** One protected-effect delivery attempt at the configured sink (plain HTTP, no SDK). */
+export async function deliverEffect(
+  sink: { readonly origin: string; readonly sinkClass: string },
+  effectId: string,
+): Promise<EffectAttempt> {
+  try {
+    const res = await fetch(`${sink.origin}/sink/${sink.sinkClass}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ effectId }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { denied?: boolean };
+    return { status: res.status, released: res.status === 202 && body.denied === false };
+  } catch {
+    return { status: null, released: false };
+  }
 }
 
 export type Job = (ctx: JobContext, request: JobRequest) => Promise<Record<string, unknown>>;

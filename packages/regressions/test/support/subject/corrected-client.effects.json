@@ -1,0 +1,16 @@
+{
+  "schema": "routespec.declared-effect-hooks/1",
+  "adapterRevision": "routespec-adapter@1.0.0",
+  "hooks": [
+    {
+      "hookId": "fulfilment",
+      "hookRevision": "1",
+      "effectType": "DELIVER_GOODS",
+      "sinkClass": "fulfilment-canary",
+      "sourceLocatorDigest": null,
+      "mechanism": "boundary-sink",
+      "scenarioSelectors": ["*"],
+      "coverageExpectation": "REQUIRED"
+    }
+  ]
+}

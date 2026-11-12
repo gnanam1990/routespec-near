@@ -54,6 +54,11 @@ export const TraceIdentity = z
     fencingEpoch: z.number().int().min(0),
     caseVerdict: z.enum(VERDICTS).nullable(),
     coverageBasis: z.enum(EFFECT_COVERAGE_BASES),
+    /**
+     * Containment of the captured subject's process tree as the journal recorded it for every
+     * interceptor instance of the case (M14). Absent on captures without an interceptor.
+     */
+    processTreeContainment: z.enum(['PROCESS_TREE_ENFORCED', 'DECLARED_HOOKS_ONLY']).optional(),
   })
   .strict();
 export type TraceIdentity = z.infer<typeof TraceIdentity>;

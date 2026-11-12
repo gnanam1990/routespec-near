@@ -9,6 +9,7 @@
     "@defuse-protocol/one-click-sdk-typescript": "0.1.26",
     "@playwright/test": "1.65.0",
     "@routespec/client-adapter": "workspace:*",
+    "@routespec/containment": "workspace:*",
     "@routespec/contracts": "workspace:*",
     "@routespec/hardening": "workspace:*",
     "@routespec/scenario": "workspace:*"

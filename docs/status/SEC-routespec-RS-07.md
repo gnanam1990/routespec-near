@@ -67,12 +67,23 @@ User-asserted builds behave as before.
 | `npx vitest run packages/control-api/test/t044-control-mutations.test.ts -t "attester enrollment"`, before | 1    | 1 failed: post-revocation evaluate returned `200`, `created: false`, `findings: []`, the same decision digest as before revocation |
 | `npx vitest run` of t034, t044 and t012, after                                                             | 0    | 3 files, 26 passed                                                                                                                 |
 
-## Full regression (after `git merge main`)
+## Full regression (after `git merge main`, main at `b80b83e`)
 
-Environment: `ROUTESPEC_TEST_PORT_BASE=9760` (ports 9760-9769). The change does not touch
-containment, control-api transport, proxy or runner process code, so only `pnpm run check` is
-required.
+Environment: `ROUTESPEC_TEST_PORT_BASE=9760`, `ROUTESPEC_DELIVERY_PORT=9765`, `FIXTURE_PORT=9768`
+(ports 9760-9769). `ROUTESPEC_CONTAINER_CLI` is
+`["wsl.exe","-d","Ubuntu-24.04","-u","root","--exec","docker"]`. The change touches
+`packages/runner`, so the containment and delivery suites were run as well.
 
-| Command          | Exit | Result |
-| ---------------- | ---- | ------ |
-| `pnpm run check` | TBD  | TBD    |
+| Command                     | Exit | Result                                                                            |
+| --------------------------- | ---- | --------------------------------------------------------------------------------- |
+| `pnpm run check`            | 0    | typecheck, lint, format clean; 83 files, 710 passed, 2 skipped; secret scan clean |
+| `pnpm run test:containment` | 0    | 4 files, 19 passed                                                                |
+| `pnpm run test:delivery`    | 0    | 2 files, 21 passed                                                                |
+
+Note: the host was heavily loaded by other suites running in parallel (CPU about 87%). Under that
+load, some earlier `pnpm run check` runs had one or two timing failures in tests this change does
+not touch: T-057 (`export write --overwrite` gave `RS_EXPORT_WRITE_FAILED` from the Windows
+rename-replace), T-025 (no `KILLING` event before the child exited), and a T-022/T-023 crash test
+that timed out at 60 s. An earlier `test:delivery` run also had one failure in the T-054
+clean-clone regression step. Each of these passed when run alone, the same T-054 regression set
+passed 3 of 3 later runs, and the final runs above passed in full.

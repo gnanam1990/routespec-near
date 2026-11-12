@@ -147,6 +147,15 @@ crash and restart.
   checked against its published SHA-256 list, plus a frozen-lockfile `pnpm install` from the npm
   registry in a temporary clone. No system setting was changed.
 
+## Security fix: RS-04 (external security audit)
+
+- The import quarantine finding set dropped every new finding once 512 were held, so a user
+  trace that filled it with advisory active-content findings lost its blocking findings and
+  could be mapped. Fixed: past the per-path bound, findings merge into one `$` record per
+  category instead of being dropped, so blocking and rejecting findings always survive and the
+  list stays within the journal limit (`docs/status/SEC-routespec-RS-04.md`). No ADR: no
+  protocol or format change.
+
 ## External action ledger
 
 All NOT_AUTHORIZED and NOT_RUN by this build: push, fetch, remote creation, PR creation, remote

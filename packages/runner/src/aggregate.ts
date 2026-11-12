@@ -61,6 +61,8 @@ export interface GateIdentity {
     readonly scenarioRevisionId: string;
     readonly sessionId: string | null;
     readonly fencingEpoch: number | null;
+    /** Present only for a case with its own effect-coverage policy (M14). */
+    readonly effectCoveragePolicyDigest?: string;
   }>;
 }
 
@@ -77,6 +79,8 @@ export interface GateCaseRunInput {
   readonly clientInstanceDigest: string | null;
   readonly teardownRecorded: boolean;
   readonly terminalResultDigest: string | null;
+  /** The case's own effect-coverage policy (M14); null: the gate run's policy. */
+  readonly effectCoveragePolicyDigest?: string | null;
 }
 
 export interface GateCaseResultInput {
@@ -191,7 +195,11 @@ function identityMismatches(
     ['evaluatorRevision', c.evaluatorRevision, id.evaluatorRevision],
     ['evaluatorRevision', r.evaluatorRevision, id.evaluatorRevision],
     ['configurationDigest', c.configurationDigest, id.configurationDigest],
-    ['effectCoveragePolicyDigest', c.effectCoveragePolicyDigest, id.effectCoveragePolicyDigest],
+    [
+      'effectCoveragePolicyDigest',
+      c.effectCoveragePolicyDigest,
+      caseRun.effectCoveragePolicyDigest ?? id.effectCoveragePolicyDigest,
+    ],
     ['effectManifestDigest', c.effectManifestDigest, id.effectManifestDigest],
     ['callsiteInventoryDigest', c.callsiteInventoryDigest, id.callsiteInventoryDigest],
     ['fencingEpoch', c.fencingEpoch, caseRun.fencingEpoch],

@@ -139,6 +139,76 @@ describe('T-034 — Release aggregation follows fail-closed precedence', () => {
     expect(reused.cases[0]?.findings).toContain('CLIENT_INSTANCE_REUSED');
   });
 
+  it('a trusted build attestation is re-checked at every evaluation: revoked, disabled, changed, or missing is REVIEW (TB-07)', () => {
+    const allPass: CaseKind[] = ['PASS', 'PASS'];
+    const trusted = (
+      cls: 'TRUSTED_LAUNCHER' | 'CI_ATTESTED',
+      policy: 'REQUIRE_TRUSTED' | 'ALLOW_USER_ASSERTED',
+    ) =>
+      gateInput(allPass, {
+        identity: {
+          buildAttestationClass: cls,
+          buildAttestationId: '10000000-0000-4000-8000-0000000000a1',
+          buildAttestationPolicy: policy,
+        },
+      });
+    const usable = {
+      attestationId: '10000000-0000-4000-8000-0000000000a1',
+      attestationClass: 'TRUSTED_LAUNCHER' as const,
+      scope: 'BUILD_REGISTRATION',
+      buildRevisionId: '10000000-0000-4000-8000-000000000004',
+      principalEnabled: true,
+      principalRevocationEpochAtIssue: 0,
+      principalCurrentRevocationEpoch: 0,
+      principalPolicyDigestAtIssue: 'sha256:p',
+      principalCurrentPolicyDigest: 'sha256:p',
+    };
+    for (const cls of ['TRUSTED_LAUNCHER', 'CI_ATTESTED'] as const) {
+      for (const policy of ['REQUIRE_TRUSTED', 'ALLOW_USER_ASSERTED'] as const) {
+        const base = trusted(cls, policy);
+        const state = { ...usable, attestationClass: cls };
+        // Still usable: PASS, no attestation finding.
+        const fresh = aggregateGate({ ...base, buildAttestation: state });
+        expect(fresh.decision, `${cls}/${policy}`).toBe('PASS');
+        expect(fresh.findings.filter((f) => f.startsWith('BUILD_'))).toEqual([]);
+        const cases: Array<[Record<string, unknown> | null, string]> = [
+          [{ principalEnabled: false, principalCurrentRevocationEpoch: 1 }, 'BUILD_ATTESTER_REVOKED'],
+          [{ principalEnabled: false }, 'BUILD_ATTESTER_DISABLED'],
+          [{ principalCurrentPolicyDigest: 'sha256:q' }, 'BUILD_ATTESTER_POLICY_CHANGED'],
+          [{ buildRevisionId: '10000000-0000-4000-8000-00000000ffff' }, 'BUILD_ATTESTATION_BUILD_MISMATCH'],
+          [{ scope: 'CASE_LAUNCH' }, 'BUILD_ATTESTATION_SCOPE_MISMATCH'],
+          [{ attestationId: '10000000-0000-4000-8000-0000000000a2' }, 'BUILD_ATTESTATION_NOT_FOUND'],
+          [null, 'BUILD_ATTESTATION_NOT_FOUND'],
+        ];
+        for (const [change, finding] of cases) {
+          const out = aggregateGate({
+            ...base,
+            buildAttestation: change === null ? null : { ...state, ...change },
+          });
+          expect(out.decision, `${cls}/${policy}/${finding}`).toBe('REVIEW');
+          expect(out.findings).toContain(finding);
+          expect(out.decisionDigest).not.toBe(fresh.decisionDigest);
+        }
+        // An input that carries no attestation state at all fails closed too.
+        const absent = aggregateGate(base);
+        expect(absent.decision).toBe('REVIEW');
+        expect(absent.findings).toContain('BUILD_ATTESTATION_NOT_FOUND');
+      }
+    }
+    // FAIL still dominates a revoked attestation.
+    const failing = gateInput(['FAIL', 'PASS'], {
+      identity: {
+        buildAttestationClass: 'TRUSTED_LAUNCHER',
+        buildAttestationId: '10000000-0000-4000-8000-0000000000a1',
+      },
+    });
+    expect(
+      aggregateGate({ ...failing, buildAttestation: { ...usable, principalEnabled: false } }).decision,
+    ).toBe('FAIL');
+    // A user-asserted build carries no attestation state and is unchanged.
+    expect(aggregateGate(gateInput(allPass)).decision).toBe('PASS');
+  });
+
   it('end to end: cancelled and failed-client cases are REVIEW, FAIL still dominates, and a plan-only gate is NOT_RUN', async () => {
     const t = tempDir();
     try {

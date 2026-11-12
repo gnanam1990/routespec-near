@@ -163,6 +163,26 @@ crash and restart.
   Fixed: held barriers are keyed by the authenticated case run and step id, and an abandoned
   entry is dropped (`docs/status/SEC-routespec-RS-06.md`).
 
+## Security fix: RS-07 (external security audit)
+
+- A gate evaluation after the selected build attester was revoked or disabled still returned
+  PASS, because the attestation was checked only at gate-run creation. Fixed: every evaluation
+  re-reads the attestation and its principal in the gate snapshot and re-checks it inside the
+  write. A trusted class that is missing, disabled, revoked, policy-changed or mismatched is a
+  blocking gate finding (REVIEW). Aggregator `routespec-gate@1.2.0`
+  (`docs/status/SEC-routespec-RS-07.md`). Expiry is still enforced at gate-run creation and per
+  case at input close, not at gate level.
+
+## Security fix: RS-05 (external security audit)
+
+- The CLI created the journal data directory without a mode (0755 under umask 0022) and SQLite
+  created `journal.db` as 0644, so other local accounts could read the journal; the service's
+  `mode: 0o700` applied only to a directory it created itself. Fixed: the store's
+  `ensurePrivateDataDir` creates or tightens the directory to 0700 for both the CLI and the
+  service, and `JournalDb.open` creates the journal as 0600 and tightens it and its `-wal`,
+  `-shm`, `-journal` and writer-lock files to 0600 on every writable open
+  (`docs/status/SEC-routespec-RS-05.md`). POSIX only; Windows relies on the profile ACLs.
+
 ## Security fix: RS-03 (external security audit)
 
 - Credential-less local requests spent the global read/mutation budget before authentication and

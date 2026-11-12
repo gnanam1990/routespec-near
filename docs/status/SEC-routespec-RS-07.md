@@ -80,6 +80,10 @@ Environment: `ROUTESPEC_TEST_PORT_BASE=9760`, `ROUTESPEC_DELIVERY_PORT=9765`, `F
 | `pnpm run test:containment` | 0    | 4 files, 19 passed                                                                |
 | `pnpm run test:delivery`    | 0    | 2 files, 21 passed                                                                |
 
+After a further `git merge main` (main at `b4b74df`, containment framing only, RS-02):
+`pnpm run check` exit 0 (84 files, 715 passed, 2 skipped; secret scan clean) and
+`pnpm run test:containment` exit 0 (4 files, 19 passed).
+
 Note: the host was heavily loaded by other suites running in parallel (CPU about 87%). Under that
 load, some earlier `pnpm run check` runs had one or two timing failures in tests this change does
 not touch: T-057 (`export write --overwrite` gave `RS_EXPORT_WRITE_FAILED` from the Windows

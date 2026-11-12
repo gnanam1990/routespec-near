@@ -985,3 +985,16 @@ input[type='radio'] {
     outline: 2px solid Highlight;
   }
 }
+
+/* Release-evidence refusal reasons (M16): stable codes are long single words; let them wrap. */
+.release-evidence {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.release-evidence ul {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+.release-evidence li {
+  overflow-wrap: anywhere;
+}

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useMutation, useResource } from '../app/context.tsx';
 import { usePageTitle } from '../app/usePageTitle.ts';
@@ -27,7 +28,10 @@ export function GateRunPage() {
     client.startGateRun(id, { expectedRevision: rev }),
   );
   const evaluate = useMutation((client, gateId: string, id: string) => client.evaluateGate(gateId, id));
-  const plan = useMutation((client, gateEvaluationId: string) => client.planExport(gateEvaluationId));
+  const plan = useMutation((client, gateEvaluationId: string, use: 'RELEASE_EVIDENCE' | 'DIAGNOSTIC_ONLY') =>
+    client.planExport(gateEvaluationId, use),
+  );
+  const [exportUse, setExportUse] = useState<'RELEASE_EVIDENCE' | 'DIAGNOSTIC_ONLY'>('RELEASE_EVIDENCE');
   usePageTitle('Gate run');
   const base = `/projects/${encodeURIComponent(projectId)}`;
 
@@ -166,11 +170,25 @@ export function GateRunPage() {
                     <span className="mono">{g.gateEvaluationId}</span>. Planning runs the privacy scan and
                     writes nothing; writing the file needs a separate local confirmation.
                   </p>
+                  <label className="field-label" htmlFor="export-evidence-use">
+                    Bundle use
+                  </label>
+                  <select
+                    id="export-evidence-use"
+                    className="input"
+                    value={exportUse}
+                    onChange={(e) => setExportUse(e.target.value as typeof exportUse)}
+                  >
+                    <option value="RELEASE_EVIDENCE">
+                      Release evidence (refused if a capture is diagnostic only)
+                    </option>
+                    <option value="DIAGNOSTIC_ONLY">Diagnostic only</option>
+                  </select>
                   <button
                     type="button"
                     className="btn"
                     disabled={plan.state.status === 'pending'}
-                    onClick={() => void plan.submit(g.gateEvaluationId as string)}
+                    onClick={() => void plan.submit(g.gateEvaluationId as string, exportUse)}
                   >
                     {plan.state.status === 'pending' ? 'Planning export…' : 'Plan export'}
                   </button>
@@ -320,6 +338,7 @@ function ExportPlanView({ plan }: { plan: ExportPlan }) {
       <KeyValues
         items={[
           ['Plan', <span className="mono">{plan.exportId}</span>],
+          ['Bundle use', <span className="mono">{plan.evidenceUse ?? 'RELEASE_EVIDENCE'}</span>],
           ['Privacy scan', <span className="mono">{plan.privacyScanResult}</span>],
           ['Plan digest', <Digest value={plan.planDigest} label="export plan digest" />],
           ['Bundle digest', <Digest value={plan.bundleDigest} label="bundle digest" />],

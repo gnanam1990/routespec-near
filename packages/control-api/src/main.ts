@@ -3,6 +3,8 @@
  *
  *   node packages/control-api/src/main.ts --data <dir> [--port <n>] [--host 127.0.0.1|::1]
  *        [--console <dist>] [--handoff stderr|ipc|none] [--log-file <path> | --no-log]
+ *        [--subject-root <dir> [--container-cli <json>] [--container-image <ref>]]
+ *        [--launcher <script> --launcher-key <file>]
  *
  * Opens the journal in `<dir>/journal.db` and binds the loopback control API. Nothing is printed
  * to stdout except one JSON line with the bound origin.
@@ -19,6 +21,15 @@
  * appended to `<dir>/logs/control.jsonl` (owner-only) unless `--log-file` or `--no-log` says
  * otherwise. No telemetry leaves the machine.
  *
+ * Containment (M14). `--subject-root` enables contained subject cases: registered builds whose
+ * `git+file:` locator names a file inside that directory run in a Linux container through the
+ * configured engine command (`--container-cli`, else `ROUTESPEC_CONTAINER_CLI`, else `docker`;
+ * for Docker Engine in WSL 2: `["wsl.exe","-d","Ubuntu-24.04","-u","root","--exec","docker"]`).
+ * The image (`--container-image`, default `node:22-bookworm-slim`) must already be present; the
+ * service never pulls. `--launcher` names the reviewed attesting launcher the service may fork
+ * for an enrolled LOCAL_LAUNCHER_KEY principal with that launcher's digest; `--launcher-key` is
+ * the operator's private key file, passed to the launcher as a path (the service never reads it).
+ *
  * Configured secret values (for example test canaries or credentials an integrator's client
  * holds) are given once through `ROUTESPEC_CONFIGURED_SECRETS` (one value per line). The
  * variable is read and deleted before anything else runs, so no child process inherits it and
@@ -27,6 +38,7 @@
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { RouteSpecStore } from '@routespec/store';
+import { DEFAULT_CONTAINER_IMAGE, parseContainerCli } from '@routespec/containment';
 import { ControlServer } from './server.ts';
 import type { LocalConfirmationNotice } from './routes.ts';
 
@@ -82,6 +94,42 @@ function deliver(kind: 'console' | 'confirmation', payload: Record<string, unkno
   else if (handoff === 'ipc') process.send?.({ type: `routespec.${kind}`, ...payload });
 }
 
+const subjectRoot = arg('subject-root');
+const containerImage =
+  arg('container-image') ?? process.env['ROUTESPEC_CONTAINER_IMAGE'] ?? DEFAULT_CONTAINER_IMAGE;
+let containment: { cli: ReturnType<typeof parseContainerCli>; imageRef: string; subjectRoot: string } | null =
+  null;
+if (subjectRoot !== undefined) {
+  try {
+    containment = {
+      cli: parseContainerCli(arg('container-cli') ?? process.env['ROUTESPEC_CONTAINER_CLI']),
+      imageRef: containerImage,
+      subjectRoot: resolve(subjectRoot),
+    };
+  } catch (error) {
+    process.stderr.write(`routespec: ${(error as Error).message}\n`);
+    process.exit(3);
+  }
+}
+const launcherScript = arg('launcher');
+const launcherKey = arg('launcher-key');
+if ((launcherScript === undefined) !== (launcherKey === undefined) || (launcherScript && !containment)) {
+  process.stderr.write('routespec: --launcher needs --launcher-key and --subject-root\n');
+  process.exit(3);
+}
+const launcher =
+  launcherScript !== undefined && launcherKey !== undefined && containment !== null
+    ? {
+        script: resolve(launcherScript),
+        args: [
+          resolve(launcherKey),
+          containment.subjectRoot,
+          JSON.stringify(containment.cli.argv),
+          containment.imageRef,
+        ],
+      }
+    : null;
+
 const store = RouteSpecStore.open({ path: join(data, 'journal.db') });
 const port = arg('port');
 const host = arg('host');
@@ -90,6 +138,8 @@ const server = await ControlServer.start({
   store,
   dataDirectory: data,
   configuredSecrets,
+  containment,
+  launcher,
   ...(logSink ? { logSink } : {}),
   onLocalConfirmation: (n: LocalConfirmationNotice) =>
     deliver(

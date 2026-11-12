@@ -36,6 +36,7 @@ import { compileScenario } from '@routespec/scenario';
 import type { CaseAuth, ControlJournal, GateJournal, ImportJournal, RouteSpecStore } from '@routespec/store';
 import type { ZodTypeAny } from 'zod';
 import { AttesterChannel, verifyOidcCompletion } from './attestation.ts';
+import type { ContainmentHost } from './containment-host.ts';
 import { CursorCodec, parseLimit, type CursorPosition } from './cursor.ts';
 import { importDetailView, runOperationView } from './detail-views.ts';
 import * as S from './schemas.ts';
@@ -104,6 +105,10 @@ export interface AppDeps extends ViewDeps {
   readonly cursors: CursorCodec;
   readonly bind: { readonly host: string; readonly port: () => number };
   readonly launchers: Map<string, AttesterChannel>;
+  /** Attached or configured reviewed launcher of a principal (M14). */
+  readonly launcherFor: (principalId: string) => AttesterChannel | undefined;
+  /** Contained subject cases (M14). */
+  readonly containment: ContainmentHost;
   readonly pendingCredentials: Map<string, LaunchCredentials>;
   readonly onLocalConfirmation: (notice: LocalConfirmationNotice) => void;
   readonly confirmationTtlMs: number;
@@ -952,7 +957,7 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
         const binding = challengeBinding(b);
         const kind = String(principal.principal['kind']);
         if (kind === 'LOCAL_LAUNCHER_KEY') {
-          const channel = d.launchers.get(b.principalId);
+          const channel = d.launcherFor(b.principalId);
           if (!channel) {
             throw new RouteSpecError(
               'RS_PEER_BINDING_UNAVAILABLE',
@@ -1250,6 +1255,7 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
           buildAttestation: { class: 'USER_ASSERTED_LOCAL' } | { subjectAttestationId: string };
           mode: string;
           maxParallelCases: number;
+          casePolicies?: Array<{ scenarioRevisionId: string; effectCoveragePolicyDigest: string }>;
         };
         if (b.mode === 'LIVE_DRY_PROBE') {
           throw new RouteSpecError(
@@ -1271,6 +1277,14 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
           !control.getInterceptorProfile(b.projectId, b.interceptorProfileDigest)
         ) {
           notFound('Interceptor profile');
+        }
+        const casePolicyByScenario: Record<string, string> = {};
+        for (const cp of b.casePolicies ?? []) {
+          mustScoped(b.projectId, 'EFFECT_POLICY', cp.effectCoveragePolicyDigest, 'Effect coverage policy');
+          mustScoped(b.projectId, 'SCENARIO_REVISION', cp.scenarioRevisionId, 'Scenario revision');
+          if (cp.scenarioRevisionId in casePolicyByScenario)
+            throw new RouteSpecError('RS_SCHEMA_INVALID', 'A scenario has more than one case policy.');
+          casePolicyByScenario[cp.scenarioRevisionId] = cp.effectCoveragePolicyDigest;
         }
         let gate = null;
         if (b.gateId !== null) {
@@ -1309,6 +1323,7 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
           buildAttestation,
           mode: b.mode,
           maxParallelCases: b.maxParallelCases,
+          ...(Object.keys(casePolicyByScenario).length > 0 ? { casePolicyByScenario } : {}),
           ...lineageRolesFor(b.corpusRevisionId, b.buildRevisionId),
         });
         control.setGateRunMode(created.gateRunId, b.mode);
@@ -1431,8 +1446,9 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
       auth: 'control',
       mutation: true,
       schema: S.empty,
-      handle: ({ params }) => {
+      handle: async ({ params }) => {
         const { c, g } = mustCase(params['caseRunId'] as string);
+        if (d.containment.holds(s(c, 'case_run_id'))) await d.containment.finish(s(c, 'case_run_id'));
         service.finishExternalCase(s(c, 'case_run_id'));
         return ok(caseRunView(d, store.getCaseRun(s(c, 'case_run_id')) as Row, g));
       },
@@ -1443,8 +1459,9 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
       auth: 'control',
       mutation: true,
       schema: S.abortBody,
-      handle: ({ params, body }) => {
+      handle: async ({ params, body }) => {
         const { c, g } = mustCase(params['caseRunId'] as string);
+        if (d.containment.holds(s(c, 'case_run_id'))) await d.containment.abort(s(c, 'case_run_id'));
         service.abortExternalCase(
           s(c, 'case_run_id'),
           (body as { reasonCode?: string }).reasonCode ?? 'OPERATOR_CANCELLED',
@@ -1461,6 +1478,22 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
       handle: ({ params }) => {
         const { c } = mustCase(params['caseRunId'] as string);
         const caseRunId = s(c, 'case_run_id');
+        if (d.containment.holds(caseRunId)) {
+          const r = service.recoverForReconciliation(caseRunId);
+          d.containment.deliverCredentials(caseRunId, r.credentials);
+          const after = store.getCaseRun(caseRunId) as Row;
+          return ok({
+            caseRunId,
+            previousEpoch: r.previousEpoch,
+            fencingEpoch: r.credentials.fencingEpoch,
+            revokedTokenPurpose: 'EXECUTION',
+            lifecycle: s(after, 'execution_lifecycle'),
+            clientInstanceId: null,
+            allowedPhases: ['READ_ONLY_RECONCILIATION'],
+            token: null,
+            tokenDelivery: 'CONTAINED_SUBJECT',
+          });
+        }
         const pending = d.pendingCredentials.get(caseRunId);
         let previousEpoch: number;
         let credentials: LaunchCredentials;
@@ -1485,6 +1518,55 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
           token: tokenOut(credentials),
         };
         return ok(body, 200, redactToken(body));
+      },
+    },
+    {
+      method: 'POST',
+      path: '/case-runs/:caseRunId/contained-start',
+      auth: 'control',
+      mutation: true,
+      schema: S.containedStart,
+      handle: async ({ params, body }) => {
+        const { c, g } = mustCase(params['caseRunId'] as string);
+        const b = body as {
+          attesterPrincipalId: string | null;
+          job: { logicalJob: string; quote: Record<string, unknown>; txHash: string };
+        };
+        if (b.attesterPrincipalId !== null) {
+          const p = control.getPrincipal(b.attesterPrincipalId);
+          if (!p || p.projectId !== s(g, 'project_id')) notFound('Attester principal');
+        }
+        const view = await d.containment.start(s(c, 'case_run_id'), {
+          principalId: b.attesterPrincipalId,
+          job: b.job,
+        });
+        return ok(
+          {
+            ...view,
+            gateRunId: s(g, 'gate_run_id'),
+            case: caseRunView(d, store.getCaseRun(s(c, 'case_run_id')) as Row, g),
+            token: null,
+            tokenDelivery: 'CONTAINED_SUBJECT',
+          },
+          201,
+        );
+      },
+    },
+    {
+      method: 'GET',
+      path: '/case-runs/:caseRunId/containment',
+      auth: 'control',
+      mutation: false,
+      handle: async ({ params }) => {
+        const { c } = mustCase(params['caseRunId'] as string);
+        const rt = await d.containment.runtime();
+        return ok({
+          ...d.containment.view(s(c, 'case_run_id')),
+          runtime:
+            rt.status === 'AVAILABLE'
+              ? { status: rt.status, engine: rt.engine, serverVersion: rt.serverVersion, imageId: rt.imageId }
+              : { status: rt.status, reason: rt.reason },
+        });
       },
     },
     {
@@ -1926,6 +2008,7 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
           toolchainDigest: s(build, 'toolchain_digest'),
           manifestDigest: s(build, 'effect_manifest_digest'),
           adapterRevision: ADAPTER_REVISION,
+          repositoryLocator: s(build, 'repository_locator'),
         };
       }
       mustScoped(projectId, 'EFFECT_MANIFEST', b['manifestDigest'] as string, 'Effect manifest');

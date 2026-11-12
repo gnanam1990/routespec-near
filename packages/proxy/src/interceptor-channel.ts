@@ -16,7 +16,10 @@
  *   must carry the exact build/gate/case/session/epoch/policy/manifest/profile binding and a
  *   supported sink class, or the store rejects it (fail closed; the subject is denied).
  * - Containment: without an OS sandbox that confines the subject's process tree, this host
- *   reports `DECLARED_HOOKS_ONLY` and never claims complete boundary coverage.
+ *   reports `DECLARED_HOOKS_ONLY` and never claims complete boundary coverage. A caller that
+ *   launched the subject inside a verified container (M14, `@routespec/containment`) passes the
+ *   engine-verified containment evidence; only that evidence can register
+ *   `PROCESS_TREE_ENFORCED`, with its sandbox-scope digest.
  * - Teardown: an orderly `TEARDOWN` record, or `CHANNEL_LOST` when the interceptor exits or the
  *   pipe closes first. A torn-down instance cannot journal again.
  */
@@ -86,6 +89,14 @@ export interface InterceptorFrameAck {
   readonly observationId: string | null;
 }
 
+export interface VerifiedContainment {
+  readonly containment: Containment;
+  readonly reason: string;
+  readonly sandboxScopeDigest: Digest | null;
+}
+
+export type InterceptorFrame = Frame;
+
 interface Frame {
   sequence: number;
   buildRevisionId: string;
@@ -142,6 +153,8 @@ export class InterceptorHost {
   private readonly child: ChildProcess;
   readonly #channelKey: string;
   #closed = false;
+  #onFrame: ((frame: InterceptorFrame, ack: InterceptorFrameAck) => void) | null = null;
+  readonly #fencingEpoch: number;
 
   private constructor(args: {
     store: RouteSpecStore;
@@ -151,8 +164,10 @@ export class InterceptorHost {
     sinkPort: number;
     containment: Containment;
     profileDigest: Digest;
+    fencingEpoch: number;
   }) {
     this.store = args.store;
+    this.#fencingEpoch = args.fencingEpoch;
     this.child = args.child;
     this.#channelKey = args.channelKey;
     this.interceptorInstanceId = args.interceptorInstanceId;
@@ -174,6 +189,14 @@ export class InterceptorHost {
     store: RouteSpecStore;
     fence: ExecutionFence;
     profile?: InterceptorProfile;
+    /** Digest of the interceptor profile as registered in the control journal (M14). */
+    registeredProfileDigest?: Digest;
+    /** Engine-verified containment of the subject (M14); absent means declared hooks only. */
+    containment?: VerifiedContainment;
+    /** EFFECT_INTERCEPTOR_LAUNCH attestation completed for this launch (M14). */
+    attestationId?: string | null;
+    /** Called after each frame is journaled (or refused). */
+    onFrame?: (frame: InterceptorFrame, ack: InterceptorFrameAck) => void;
   }): Promise<InterceptorHost> {
     const profile = input.profile ?? CANARY_INTERCEPTOR_PROFILE;
     const actual = artifactDigestOf(profile.artifactPath);
@@ -192,8 +215,15 @@ export class InterceptorHost {
       throw new RouteSpecError('RS_PHASE_INVALID', 'Interceptor requires a started case.');
     }
     const session = input.store.getSession(sessionId) as Record<string, unknown>;
-    const { containment, reason, platform } = detectContainment();
-    const profileDigest = interceptorProfileDigest(profile);
+    const detected = detectContainment();
+    const verified = input.containment;
+    const containment: Containment =
+      verified !== undefined && verified.containment === 'PROCESS_TREE_ENFORCED'
+        ? 'PROCESS_TREE_ENFORCED'
+        : 'DECLARED_HOOKS_ONLY';
+    const reason = verified === undefined ? detected.reason : verified.reason;
+    const platform = detected.platform;
+    const profileDigest = input.registeredProfileDigest ?? interceptorProfileDigest(profile);
     const channelKey = randomBytes(32).toString('base64url');
     // Minimal environment: nothing secret is inherited; the key travels only over the pipe.
     const env: Record<string, string> = {};
@@ -218,12 +248,15 @@ export class InterceptorHost {
       const { interceptorInstanceId } = input.store.registerInterceptorInstance(input.fence, {
         interceptorProfileDigest: profileDigest,
         interceptorArtifactDigest: profile.artifactDigest,
-        sandboxScopeDigest: digestValue('routespec.sandbox-scope/1', { containment, reason, platform }),
+        sandboxScopeDigest:
+          verified !== undefined && verified.sandboxScopeDigest !== null
+            ? verified.sandboxScopeDigest
+            : digestValue('routespec.sandbox-scope/1', { containment, reason, platform }),
         supportedSinks: Object.keys(profile.sinkEffects),
         containment,
         channelKeyDigest: digestValue(INTERCEPTOR_CHANNEL_KEY_DOMAIN, channelKey),
         peerPid: child.pid as number,
-        attestationId: null,
+        attestationId: input.attestationId ?? null,
       });
       const ready = waitFor(child, 'ready');
       child.send({
@@ -243,7 +276,7 @@ export class InterceptorHost {
         },
       });
       const sinkPort = Number((await ready)['sinkPort']);
-      return new InterceptorHost({
+      const host = new InterceptorHost({
         store: input.store,
         child,
         channelKey,
@@ -251,7 +284,10 @@ export class InterceptorHost {
         sinkPort,
         containment,
         profileDigest,
+        fencingEpoch: input.fence.fencingEpoch,
       });
+      if (input.onFrame) host.#onFrame = input.onFrame;
+      return host;
     } catch (error) {
       child.kill();
       throw error;
@@ -282,6 +318,27 @@ export class InterceptorHost {
     this.close('TEARDOWN');
     if (this.child.exitCode === null)
       await new Promise<void>((resolve) => this.child.once('exit', () => resolve()));
+  }
+
+  /**
+   * Journal a coverage defect this host observed about the boundary (for example a subject
+   * container that survived teardown) over the instance's own private channel.
+   */
+  reportFinding(
+    kind: 'PROCESS_TREE_ESCAPE' | 'SINK_BYPASS',
+    sinkClass: string | null,
+    detail: unknown,
+  ): void {
+    if (this.#closed) return;
+    this.store.recordCoverageFinding(
+      { interceptorInstanceId: this.interceptorInstanceId, channelKey: this.#channelKey },
+      {
+        kind,
+        sinkClass,
+        fencingEpoch: this.#fencingEpoch,
+        detailDigest: digestValue('routespec.coverage-finding-detail/1', detail),
+      },
+    );
   }
 
   private close(reason: 'TEARDOWN' | 'CHANNEL_LOST'): void {
@@ -317,6 +374,11 @@ export class InterceptorHost {
       ack = { sequence: frame.sequence, ok: false, code, observationId: null };
     }
     this.acks.push(ack);
+    try {
+      this.#onFrame?.(frame, ack);
+    } catch {
+      // A listener never decides whether the frame was journaled.
+    }
     if (this.child.connected)
       this.child.send({ type: 'ack', sequence: ack.sequence, ok: ack.ok, code: ack.code });
   }

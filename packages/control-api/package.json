@@ -15,6 +15,7 @@
     "serve": "node --no-warnings src/main.ts"
   },
   "dependencies": {
+    "@routespec/containment": "workspace:*",
     "@routespec/contracts": "workspace:*",
     "@routespec/hardening": "workspace:*",
     "@routespec/kernel": "workspace:*",

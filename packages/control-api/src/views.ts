@@ -143,10 +143,24 @@ export function attestationRef(
   };
 }
 
+/**
+ * Effect coverage of a scope as the journal records it.
+ *
+ * `COMPLETE` is reported only from persisted kernel results: the scope's INV-04 (complete-effect)
+ * results exist and every one is PASS, which the kernel gives only with an attested independent
+ * interceptor, process-tree containment, and every required sink observed (M14). Otherwise the
+ * finding is `INCOMPLETE` with the kernel's missing predicates. Without a scope (or without any
+ * INV-04 result yet) it stays `INCOMPLETE`, never `COMPLETE`.
+ */
 export function coverageFor(
   store: RouteSpecStore,
   policyDigest: string,
   interceptorProfileDigest: string | null,
+  scope?: {
+    readonly caseRunIds: readonly string[];
+    readonly control?: ControlJournal;
+    readonly nowMs?: number;
+  },
 ): Record<string, unknown> {
   const p = row(store, 'SELECT * FROM effect_coverage_policies WHERE policy_digest = ?', policyDigest);
   const basis = p ? str(p, 'basis') : null;
@@ -157,16 +171,61 @@ export function coverageFor(
   const profile = interceptorProfileDigest
     ? row(store, 'SELECT * FROM interceptor_profiles WHERE profile_digest = ?', interceptorProfileDigest)
     : undefined;
+  let complete = false;
+  let freshness = 'NOT_APPLICABLE';
+  if (scope && scope.caseRunIds.length > 0 && basis !== null && basis !== 'DECLARED_HOOKS_ONLY') {
+    const latest = scope.caseRunIds.map((caseRunId) =>
+      row(
+        store,
+        `SELECT verdict, missing_predicates_json FROM invariant_results WHERE case_run_id = ? AND invariant_id = 'INV-04'
+          ORDER BY created_at_ms DESC, rowid DESC LIMIT 1`,
+        caseRunId,
+      ),
+    );
+    complete = latest.every((r) => r !== undefined && r['verdict'] === 'PASS');
+    for (const r of latest) {
+      if (r === undefined) missing.push('INV04_NOT_EVALUATED');
+      else if (r['verdict'] !== 'PASS') {
+        for (const m of JSON.parse(str(r, 'missing_predicates_json')) as string[]) missing.push(m);
+      }
+    }
+    if (scope.control && scope.caseRunIds.length === 1) {
+      const inst = row(
+        store,
+        `SELECT attestation_id FROM effect_interceptor_instances WHERE case_run_id = ?
+          ORDER BY started_at_ms DESC, rowid DESC LIMIT 1`,
+        scope.caseRunIds[0] as string,
+      );
+      const attId = inst ? strOrNull(inst, 'attestation_id') : null;
+      if (attId !== null)
+        freshness = freshnessOf(scope.control.getAttestation(attId), scope.nowMs ?? Date.now());
+    }
+  }
   return {
     basis,
-    // The API never reports COMPLETE coverage: a complete-effect claim needs an attested
-    // runtime interceptor that this service cannot verify on its own (REVIEW-bound).
-    finding: basis === null ? 'NOT_EVALUATED' : 'INCOMPLETE',
-    missing,
+    finding: basis === null ? 'NOT_EVALUATED' : complete ? 'COMPLETE' : 'INCOMPLETE',
+    missing: [...new Set(missing)].sort().slice(0, 64),
     interceptorProfileId: profile ? str(profile, 'profile_id') : null,
-    interceptorFreshness: 'NOT_APPLICABLE',
+    interceptorFreshness: freshness,
     processTreeScope: profile ? str(profile, 'process_tree_scope') : null,
   };
+}
+
+/** The effect-coverage policy a case ran under: its own (M14) or the gate run's. */
+export function casePolicyDigest(store: RouteSpecStore, c: Row, gate: Row): string {
+  const sessionId = strOrNull(c, 'session_id');
+  const session = sessionId === null ? undefined : store.getSession(sessionId);
+  if (session && typeof session['effect_coverage_policy_digest'] === 'string')
+    return str(session, 'effect_coverage_policy_digest');
+  const own =
+    store.schemaVersion >= 8
+      ? row(
+          store,
+          'SELECT effect_coverage_policy_digest FROM gate_run_case_policies WHERE case_run_id = ?',
+          str(c, 'case_run_id'),
+        )
+      : undefined;
+  return own ? str(own, 'effect_coverage_policy_digest') : str(gate, 'effect_coverage_policy_digest');
 }
 
 export function rsCode(code: string): string {
@@ -276,6 +335,15 @@ export function gateRunView(d: ViewDeps, gate: Row): Record<string, unknown> {
       d.store,
       str(gate, 'effect_coverage_policy_digest'),
       strOrNull(gate, 'interceptor_profile_digest'),
+      {
+        caseRunIds: (
+          d.store.journal.read((db) =>
+            db
+              .prepare('SELECT case_run_id FROM case_runs WHERE gate_run_id = ?')
+              .all(str(gate, 'gate_run_id')),
+          ) as Row[]
+        ).map((r) => str(r, 'case_run_id')),
+      },
     ),
     artifactReady: manifest ? manifest['artifact_ready'] === 1 : null,
     enforcementMode: evaluation
@@ -377,8 +445,9 @@ export function caseRunView(d: ViewDeps, c: Row, gate: Row): Record<string, unkn
     fencingEpoch: Number(c['fencing_epoch']),
     effectCoverage: coverageFor(
       d.store,
-      str(gate, 'effect_coverage_policy_digest'),
+      casePolicyDigest(d.store, c, gate),
       strOrNull(gate, 'interceptor_profile_digest'),
+      { caseRunIds: [caseRunId], control: d.control, nowMs: d.nowMs() },
     ),
     severity: corpusCase ? str(corpusCase, 'severity') : null,
     requiredInvariants: JSON.parse(str(c, 'required_invariants_json')) as string[],

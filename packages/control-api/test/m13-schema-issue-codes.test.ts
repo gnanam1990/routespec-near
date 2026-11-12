@@ -58,6 +58,15 @@ describe('M13 control API schema issue codes', () => {
     ]);
   });
 
+  it('an absent or non-string enum value is a type failure, as before', () => {
+    expect(fieldsOf(attesterRevoke, {}).fields).toEqual([
+      { field: 'reasonCode', code: 'INVALID_TYPE', message: 'Invalid value.' },
+    ]);
+    expect(fieldsOf(attesterRevoke, { reasonCode: 3 }).fields).toEqual([
+      { field: 'reasonCode', code: 'INVALID_TYPE', message: 'Invalid value.' },
+    ]);
+  });
+
   it('the issuer URL check still rejects non-URLs and non-https issuers', () => {
     const base = {
       kind: 'CI_OIDC',

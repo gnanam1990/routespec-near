@@ -373,7 +373,7 @@ export function compileScenario(source: string | unknown, options: CompileOption
   if (!parsed.success) {
     const unknown = parsed.error.issues.filter((i) => i.code === 'unrecognized_keys');
     invalid(unknown.length > 0 ? 'unknown-field' : 'schema', {
-      issues: parsed.error.issues.slice(0, 8).map((i) => `${i.path.join('.')}: ${stableIssueCode(i)}`),
+      issues: parsed.error.issues.slice(0, 8).map((i) => `${i.path.join('.')}: ${stableIssueCode(i, raw)}`),
     });
   }
   const s = parsed.data;

@@ -8,6 +8,9 @@
       "path": "packages/hardening"
     },
     {
+      "path": "packages/containment"
+    },
+    {
       "path": "packages/store"
     },
     {

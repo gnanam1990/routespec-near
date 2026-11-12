@@ -57,7 +57,7 @@ input), and the merge in `withholdSecrets`.
 
 | Command                                        | Host    | Exit | Result                                                                                        |
 | ---------------------------------------------- | ------- | ---- | --------------------------------------------------------------------------------------------- |
-| `ROUTESPEC_TEST_PORT_BASE=9500 pnpm run check` | Windows | 0    | typecheck, lint, format clean; 80 files, 701 passed, 2 skipped; secret scan clean (508 files) |
+| `ROUTESPEC_TEST_PORT_BASE=9500 pnpm run check` | Windows | 0    | typecheck, lint, format clean; 80 files, 701 passed, 2 skipped; secret scan clean (510 files) |
 
 Delivery, containment and browser e2e suites were not rerun: no route, console, container or
 delivery code changed, and none of them invoke the gate action or `routespec-ci`.

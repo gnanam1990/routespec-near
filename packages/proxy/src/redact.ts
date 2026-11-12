@@ -25,12 +25,14 @@ export interface RedactionFinding {
   readonly path: string;
 }
 
+// Credential shapes carry no leading word boundary: a letter, digit or underscore placed
+// directly before a JWT or an rsct_/rsctl_ token must not hide it (security fix vuln-0002).
 const PATTERNS: ReadonlyArray<readonly [RedactionCategory, RegExp]> = [
-  ['jwt', /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g],
+  ['jwt', /eyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g],
   ['bearer', /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi],
   ['private-key', /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(-----END [A-Z ]*PRIVATE KEY-----|$)/g],
-  ['case-token', /\brsct_[A-Za-z0-9_-]{20,}/g],
-  ['control-token', /\brsctl_[A-Za-z0-9_-]{20,}/g],
+  ['case-token', /rsct_[A-Za-z0-9_-]{20,}/g],
+  ['control-token', /rsctl_[A-Za-z0-9_-]{20,}/g],
 ];
 
 const FORBIDDEN_FIELD =

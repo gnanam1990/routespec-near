@@ -6,12 +6,13 @@
  * Every string detail is checked against high-confidence secret shapes and configured secret
  * values before formatting; a hit is replaced with `[REDACTED]` and counted.
  */
+// Credential shapes carry no leading word boundary (security fix vuln-0002).
 const SECRET_SHAPES: readonly RegExp[] = [
-  /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/,
+  /eyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/,
   /\bBearer\s+\S{8,}/i,
   /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
-  /\brsct_[A-Za-z0-9_-]{20,}/,
-  /\brsctl_[A-Za-z0-9_-]{20,}/,
+  /rsct_[A-Za-z0-9_-]{20,}/,
+  /rsctl_[A-Za-z0-9_-]{20,}/,
 ];
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';

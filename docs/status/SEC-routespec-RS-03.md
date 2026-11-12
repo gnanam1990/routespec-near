@@ -54,15 +54,24 @@ Environment: `ROUTESPEC_TEST_PORT_BASE=9720`, `ROUTESPEC_DELIVERY_PORT=9725`, `F
 (ports 9720-9729), `ROUTESPEC_CONTAINER_CLI` naming Docker in WSL 2 (Ubuntu 24.04, `-u root
 --exec docker`); everything else binds OS-assigned loopback ports.
 
-| Command                                   | Exit | Result                                                                       |
-| ----------------------------------------- | ---- | ---------------------------------------------------------------------------- |
-| `pnpm run check` (before merging `main`)  | 0    | typecheck, lint, format, 82 files / 708 passed, 2 skipped; secret-scan clean |
-| `pnpm run test:containment`               | 0    | 4 files, 19 passed (engine configured)                                       |
-| `pnpm run test:delivery`                  | 0    | 2 files, 21 passed (includes the contained journey)                          |
-| `pnpm run check` (after `git merge main`) | 0    | see final line below                                                         |
+| Command                                              | Exit | Result                                                                       |
+| ---------------------------------------------------- | ---- | ---------------------------------------------------------------------------- |
+| `pnpm run check` (before merging `main`)             | 0    | typecheck, lint, format, 82 files / 708 passed, 2 skipped; secret-scan clean |
+| `pnpm run test:containment` (before merging `main`)  | 0    | 4 files, 19 passed (engine configured)                                       |
+| `pnpm run test:delivery` (before merging `main`)     | 0    | 2 files, 21 passed (includes the contained journey)                          |
+| `pnpm run check` (after `git merge main`)            | 0    | typecheck, lint, format, 84 files / 714 passed, 2 skipped; secret-scan clean |
+| `pnpm run test:containment` (after `git merge main`) | 0    | 4 files, 19 passed                                                           |
+| `pnpm run test:delivery` (after `git merge main`)    | 0    | 2 files, 21 passed                                                           |
 
-`main` brought in RS-04 (`packages/regressions` only); it does not touch containment, the control
-API, the proxy or the runner, so the containment and delivery runs above stand.
+`main` brought in RS-04 (`packages/regressions`) and RS-06 (`packages/proxy`); neither touches
+`packages/control-api/src/server.ts`. Merge conflicts were limited to `BUILD-STATUS.md` (both
+entries kept).
+
+Note: three intermediate `pnpm run check` runs after the first merge, made while several sibling
+branches were running their own suites on this host (CPU at 100%), failed only in timing-bound
+tests (T-057 and T-025 in `packages/cli`, and the 2 s-window T-042 flood case). Each passed when
+run alone (T-057 2/2, T-025 5/5 twice, T-042 12/12), and the full suite passed on the quiet-host
+rerun above.
 
 ## Residual
 

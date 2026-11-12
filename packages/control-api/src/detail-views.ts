@@ -8,7 +8,12 @@
  * masked. The import lineage is the M05 regression lineage, never recomputed here.
  */
 import { EVIDENCE_CLASSES, NORMALIZED_FACTS, RAW_PROVIDER_STATUSES } from '@routespec/contracts';
-import { REVIEW_CONFIRMATION, REVIEW_DECISIONS, regressionLineage } from '@routespec/regressions';
+import {
+  REVIEW_CONFIRMATION,
+  REVIEW_DECISIONS,
+  classifyCaptureEvidence,
+  regressionLineage,
+} from '@routespec/regressions';
 import type { ImportJournal } from '@routespec/store';
 import { coverageFor, iso, row, rows, rsCode, str, strOrNull, type ViewDeps } from './views.ts';
 
@@ -407,6 +412,23 @@ export function importDetailView(
     replayOnlyPass: promotion !== null && !passed,
     regressionStatus: lineage.status,
     promotion,
+    // M16 (RP-08): whether this capture can be release evidence, derived from the journal now.
+    releaseEvidence: (() => {
+      if (rejected || view.sanitized === null) return null;
+      let c: ReturnType<typeof classifyCaptureEvidence>;
+      try {
+        c = classifyCaptureEvidence(imports, importId);
+      } catch {
+        // The source journal rows are unavailable: no classification is shown, and promotion
+        // re-checks inside its own transaction.
+        return null;
+      }
+      return {
+        releaseEvidence: c.releaseEvidence,
+        refusalReasons: c.refusalReasons,
+        promotableAs: c.releaseEvidence ? ['RELEASE_EVIDENCE', 'DIAGNOSTIC_ONLY'] : ['DIAGNOSTIC_ONLY'],
+      };
+    })(),
     correctedRuns: corrected,
     mapping: mapping
       ? { mappingRevisionId: mapping.mappingRevisionId, mappingDigest: mapping.mappingDigest }

@@ -16,6 +16,7 @@ import type {
   LineageRelation,
   NormalizedFact,
   OperationPhase,
+  ProfileReviewFact,
   SubjectAttestationClass,
   TokenPurpose,
   Verdict,
@@ -387,6 +388,11 @@ export interface KernelInput {
   readonly releaseAuthorizations: readonly ReleaseAuthorizationRecord[];
   readonly attestations: readonly AttestationRecord[];
   readonly probeResults: readonly ProbeResultRecord[];
+  /**
+   * Reviews of the policy's pinned interceptor profile (M16), with their current revocation
+   * state. Absent or empty: the profile is unreviewed, so complete-effect coverage stays REVIEW.
+   */
+  readonly interceptorProfileReviews?: readonly ProfileReviewFact[];
 }
 
 /** One invariant evaluated for one run operation (or the whole case when `runOperationId` is null). */

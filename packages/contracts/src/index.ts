@@ -19,5 +19,6 @@ export * from './protocol/sdk-pin.ts';
 export * from './protocol/status.ts';
 export * from './protocol/oneclick-v0.ts';
 export * from './protocol/adapter.ts';
+export * from './review.ts';
 
 export const CONTRACTS_REVISION = 'routespec-contracts@1.0.0' as const;

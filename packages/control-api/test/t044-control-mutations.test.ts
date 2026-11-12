@@ -1216,12 +1216,37 @@ describe('T-044 — Control mutations are idempotent and schema-strict', () => {
           .prepare('SELECT * FROM corpus_cases WHERE corpus_revision_id = ? ORDER BY case_ordinal')
           .all(p.corpusRevisionId),
       );
+      // M16 (RP-08): this capture ran without containment or a reviewed interceptor profile, so
+      // the default release-evidence promotion is refused with a stable code and its reasons.
+      const evidence = expectOk(await h.api('GET', `/imports/${importId}/release-evidence`), 200);
+      expect(evidence).toMatchObject({ releaseEvidence: false, promotableAs: ['DIAGNOSTIC_ONLY'] });
+      const refused = await h.api(
+        'POST',
+        `/imports/${importId}/promote`,
+        {
+          reviewId: review['reviewId'],
+          baseCorpusRevisionId: p.corpusRevisionId,
+          corpusLabel: 'corpus-life-promoted',
+          severity: 'HIGH',
+          gatePolicy: 'REQUIRED',
+        },
+        { ifMatch: Number(review['revision']), idem: key('promote-release') },
+      );
+      expect(refused.status).toBe(422);
+      expect(errorCode(refused)).toBe('RS_CAPTURE_NOT_RELEASE_EVIDENCE');
+      expect((refused.json?.['error'] as Record<string, unknown>)['details']).toEqual({
+        reasons: evidence['refusalReasons'],
+      });
+      expect(evidence['refusalReasons']).toEqual(
+        expect.arrayContaining(['DECLARED_HOOKS_ONLY', 'PROCESS_TREE_NOT_CONFINED']),
+      );
       const promoteBody = {
         reviewId: review['reviewId'],
         baseCorpusRevisionId: p.corpusRevisionId,
         corpusLabel: 'corpus-life-promoted',
         severity: 'HIGH',
-        gatePolicy: 'REQUIRED',
+        gatePolicy: 'ADVISORY',
+        evidenceUse: 'DIAGNOSTIC_ONLY',
       };
       const pIdem = key('promote');
       const promoted = await h.api('POST', `/imports/${importId}/promote`, promoteBody, {
@@ -1232,6 +1257,8 @@ describe('T-044 — Control mutations are idempotent and schema-strict', () => {
       expect(promoted.json).toMatchObject({
         baseCorpusMutated: false,
         baseCorpusRevisionId: p.corpusRevisionId,
+        evidenceUse: 'DIAGNOSTIC_ONLY',
+        refusalReasons: evidence['refusalReasons'],
       });
       const newCorpus = String(promoted.json?.['corpusRevisionId']);
       expect(newCorpus).not.toBe(p.corpusRevisionId);

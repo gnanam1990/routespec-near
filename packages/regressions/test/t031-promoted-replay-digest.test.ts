@@ -271,6 +271,50 @@ describe('T-031 — Promoted regression replays to the same digest', () => {
       idempotencyKey: 't031-review',
     });
     const base = p.journal.getCorpus(baseline.corpusRevisionId);
+    // M16 (RP-08): this capture ran without containment or a reviewed interceptor profile, so
+    // it is refused as release evidence; nothing is created by the refused promotion.
+    const scenariosBefore = p.store.countRows('scenario_revisions');
+    let refused: { code: string; reasons: unknown } | null = null;
+    try {
+      promoteImport(p.journal, {
+        importId,
+        expectedRevision: review.revision,
+        reviewId: review.reviewId,
+        baseCorpusRevisionId: baseline.corpusRevisionId,
+        corpusLabel: 'release-corpus',
+        severity: 'HIGH',
+        gatePolicy: 'REQUIRED',
+        idempotencyKey: 't031-promote-release',
+      });
+    } catch (error) {
+      refused = isRouteSpecError(error)
+        ? { code: error.code, reasons: error.details['reasons'] }
+        : { code: 'UNTYPED', reasons: null };
+    }
+    expect(refused?.code).toBe('RS_CAPTURE_NOT_RELEASE_EVIDENCE');
+    expect(refused?.reasons).toEqual(
+      expect.arrayContaining([
+        'DECLARED_HOOKS_ONLY',
+        'PROCESS_TREE_NOT_CONFINED',
+        'INTERCEPTOR_PROFILE_UNPINNED',
+      ]),
+    );
+    expect(p.store.countRows('scenario_revisions')).toBe(scenariosBefore);
+    expect(p.journal.getImport(importId).state).toBe('REVIEWED');
+    // A diagnostic-only promotion cannot add a required case either.
+    expect(() =>
+      promoteImport(p.journal, {
+        importId,
+        expectedRevision: review.revision,
+        reviewId: review.reviewId,
+        baseCorpusRevisionId: baseline.corpusRevisionId,
+        corpusLabel: 'release-corpus',
+        severity: 'HIGH',
+        gatePolicy: 'REQUIRED',
+        idempotencyKey: 't031-promote-diagnostic-required',
+        evidenceUse: 'DIAGNOSTIC_ONLY',
+      }),
+    ).toThrow(/ADVISORY/);
     promotion = promoteImport(p.journal, {
       importId,
       expectedRevision: review.revision,
@@ -278,9 +322,12 @@ describe('T-031 — Promoted regression replays to the same digest', () => {
       baseCorpusRevisionId: baseline.corpusRevisionId,
       corpusLabel: 'release-corpus',
       severity: 'HIGH',
-      gatePolicy: 'REQUIRED',
+      gatePolicy: 'ADVISORY',
       idempotencyKey: 't031-promote',
+      evidenceUse: 'DIAGNOSTIC_ONLY',
     });
+    expect(promotion.evidenceUse).toBe('DIAGNOSTIC_ONLY');
+    expect(promotion.refusalReasons).toEqual(refused?.reasons);
     expect(promotion.scenarioRevisionId).not.toBe(baseline.scenarioRevisionId);
     expect(promotion.corpusRevisionId).not.toBe(baseline.corpusRevisionId);
     expect(promotion.corpusDigest).not.toBe(base.corpusDigest);
@@ -312,8 +359,9 @@ describe('T-031 — Promoted regression replays to the same digest', () => {
         baseCorpusRevisionId: baseline.corpusRevisionId,
         corpusLabel: 'release-corpus',
         severity: 'HIGH',
-        gatePolicy: 'REQUIRED',
+        gatePolicy: 'ADVISORY',
         idempotencyKey: 't031-promote',
+        evidenceUse: 'DIAGNOSTIC_ONLY',
       }).corpusRevisionId,
     ).toBe(promotion.corpusRevisionId);
     let second: string | null = null;
@@ -325,8 +373,9 @@ describe('T-031 — Promoted regression replays to the same digest', () => {
         baseCorpusRevisionId: baseline.corpusRevisionId,
         corpusLabel: 'release-corpus-2',
         severity: 'HIGH',
-        gatePolicy: 'REQUIRED',
+        gatePolicy: 'ADVISORY',
         idempotencyKey: 't031-promote-again',
+        evidenceUse: 'DIAGNOSTIC_ONLY',
       });
     } catch (error) {
       second = isRouteSpecError(error) ? error.code : 'UNTYPED';

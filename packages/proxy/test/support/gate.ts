@@ -117,7 +117,7 @@ export function createGate(
     corpusRevisionId,
     protocolProfileId: profileId,
     adapterRevision,
-    evaluatorRevision: 'routespec-kernel@1.0.0',
+    evaluatorRevision: 'routespec-kernel@1.1.0',
     proxyRevision: 'routespec-proxy@1.0.0',
     configurationDigest: d('config'),
     effectManifestDigest: manifestDigest,

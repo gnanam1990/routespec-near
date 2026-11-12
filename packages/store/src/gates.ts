@@ -24,6 +24,7 @@ import {
   type Verdict,
 } from '@routespec/contracts';
 import { assertNoSecrets } from './guards.ts';
+import { corpusEvidenceClassIn } from './imports.ts';
 import type { RouteSpecStore } from './store.ts';
 
 type Row = Record<string, unknown>;
@@ -473,10 +474,15 @@ export class GateJournal {
         schemaVersion: this.store.schemaVersion,
         gateRun,
         definition: definitionRow ? this.definitionView(definitionRow) : null,
+        // Each corpus case carries how its scenario revision may be used (M16, RP-08).
         corpusCases: all(
           db,
           'SELECT * FROM corpus_cases WHERE corpus_revision_id = ? ORDER BY case_ordinal',
           s(gateRun, 'corpus_revision_id'),
+        ).map((c) =>
+          this.store.schemaVersion >= 9
+            ? { ...c, evidence_class: corpusEvidenceClassIn(db, s(c, 'scenario_revision_id')) }
+            : c,
         ),
         caseRuns: all(db, 'SELECT * FROM case_runs WHERE gate_run_id = ? ORDER BY case_ordinal', gateRunId),
         caseResults: all(

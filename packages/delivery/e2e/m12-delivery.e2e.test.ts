@@ -304,7 +304,20 @@ describe('T-055 — Full local product journey captures and fixes a real client 
     expect(g['mappingRequiredInvariants']).toEqual(['INV-01', 'INV-02', 'INV-03', 'INV-04']);
     expect(g['mappingEffectCoverage']).toMatchObject({ basis: 'DECLARED_HOOKS_ONLY' });
     expect((g['review'] as J)['stateAfter']).toBe('REVIEWED');
+    // M16 (RP-08): an uncontained, declared-hooks-only capture is refused as release evidence
+    // with a stable code; it is kept only as an explicit diagnostic-only ADVISORY case.
+    expect(g['releaseEvidence']).toMatchObject({ releaseEvidence: false, promotableAs: ['DIAGNOSTIC_ONLY'] });
+    expect(g['promotionRefusal']).toMatchObject({ status: 422, code: 'RS_CAPTURE_NOT_RELEASE_EVIDENCE' });
+    expect((g['promotionRefusal'] as J)['reasons']).toEqual(
+      expect.arrayContaining([
+        'DECLARED_HOOKS_ONLY',
+        'PROCESS_TREE_NOT_CONFINED',
+        'INTERCEPTOR_PROFILE_UNPINNED',
+      ]),
+    );
+    expect((g['promotionRefusal'] as J)['reasons']).toEqual((g['releaseEvidence'] as J)['refusalReasons']);
     const p = g['promotion'] as J;
+    expect(p['evidenceUse']).toBe('DIAGNOSTIC_ONLY');
     expect(p['baseCorpusMutated']).toBe(false);
     expect(p['corpusRevisionId']).not.toBe(p['baseCorpusRevisionId']);
     expect(p['lineageAfterPromotion']).toBe('PROMOTED_AWAITING_CORRECTED_RUN');
@@ -384,6 +397,11 @@ describe('T-055 — Full local product journey captures and fixes a real client 
     const e = journey['export'] as J;
     const v = journey['bundleVerify'] as J;
     const corrected = journey['correctedRun'] as Gate;
+    // M16 (RP-08): the gate uses a diagnostic-only capture, so a release-evidence bundle is
+    // refused and the bundle is an explicit DIAGNOSTIC_ONLY export.
+    expect(e['refusal']).toMatchObject({ status: 422, code: 'RS_CAPTURE_NOT_RELEASE_EVIDENCE' });
+    expect(e['refusal'] as J).toMatchObject({ reasons: ['CAPTURE_NOT_RELEASE_EVIDENCE:DIAGNOSTIC_ONLY'] });
+    expect(e['evidenceUse']).toBe('DIAGNOSTIC_ONLY');
     expect(e['blocked']).toBe(false);
     expect(e['artifactReady']).toBe(true);
     expect(e['decisionAfterExport']).toBe(corrected.decision);
@@ -395,6 +413,9 @@ describe('T-055 — Full local product journey captures and fixes a real client 
       expect.arrayContaining(['manifest.json', 'checksums.sha256', 'reports/gate-report.json']),
     );
     expect(v['decisionInBundle']).toBe(corrected.decision);
+    const checks = ((v['result'] as J)['checks'] as Array<{ name: string; ok: boolean }>) ?? [];
+    expect(checks.find((x) => x.name === 'evidence-use-declared')?.ok).toBe(true);
+    expect(checks.find((x) => x.name === 'release-evidence-consistent')?.ok).toBe(true);
     const c = journey['canaries'] as J;
     expect(c['exportFindings']).toEqual([]);
     expect(c['extractedFindings']).toEqual([]);

@@ -465,6 +465,60 @@ const queued = await gateRun(release, many.corpusRevisionId, many.gateId, 4);
 const failingCase = String((evaluated.cases[2] as J)['caseRunId']);
 const capture = await api('POST', `/case-runs/${failingCase}/captures`, {});
 
+// 5b. M16 (RP-08): an installed capture of an uncontained case is refused as release evidence;
+//     it is promoted as an explicit diagnostic-only ADVISORY case, and a gate on that corpus is
+//     evaluated so the console can show the release-evidence export refusal.
+const diagCase = String((evaluated.cases[0] as J)['caseRunId']);
+const diagCapture = await api('POST', `/case-runs/${diagCase}/captures`, {});
+const diagImportId = String(diagCapture['importId']);
+const diagProposal = await api('GET', `/imports/${diagImportId}/proposed-mapping`);
+await api(
+  'POST',
+  `/imports/${diagImportId}/mapping`,
+  { mapping: diagProposal['mapping'] },
+  Number(diagProposal['revision']),
+);
+const diagMapped = await api('GET', `/imports/${diagImportId}`);
+await api('POST', `/imports/${diagImportId}/verify-replay`, {}, Number(diagMapped['revision']));
+const diagVerified = await api('GET', `/imports/${diagImportId}`);
+const diagReview = diagVerified['review'] as { decisions: string[]; confirmationPhrase: string };
+await api(
+  'POST',
+  `/imports/${diagImportId}/reviews`,
+  {
+    reviewer: 'seed reviewer',
+    decisions: Object.fromEntries(diagReview.decisions.map((k) => [k, true])),
+    confirmation: diagReview.confirmationPhrase,
+  },
+  Number(diagVerified['revision']),
+);
+const diagReviewed = await api('GET', `/imports/${diagImportId}`);
+const diagPromoted = await api(
+  'POST',
+  `/imports/${diagImportId}/promote`,
+  {
+    reviewId: String((diagReviewed['review'] as J)['latestReviewId']),
+    baseCorpusRevisionId: releaseGate.corpusRevisionId,
+    corpusLabel: 'release corpus + diagnostic capture',
+    severity: 'HIGH',
+    gatePolicy: 'ADVISORY',
+    evidenceUse: 'DIAGNOSTIC_ONLY',
+  },
+  Number(diagReviewed['revision']),
+);
+const diagCorpus = String(diagPromoted['corpusRevisionId']);
+const diagGate = await api('POST', '/gates', {
+  projectId: release.projectId,
+  name: 'release gate with a diagnostic capture',
+  corpusRevisionId: diagCorpus,
+  enforcementMode: 'LOCAL_ADVISORY',
+  buildAttestationPolicy: 'ALLOW_USER_ASSERTED',
+});
+const diagRun = await gateRun(release, diagCorpus, String(diagGate['gateId']), 1);
+const diagEvaluation = await api('POST', `/gates/${String(diagGate['gateId'])}/evaluate`, {
+  gateRunId: diagRun.gateRunId,
+});
+
 // 6. Crashed runners: each subject is killed mid-job and its lease is left to expire.
 const crashGate = await corpusAndGate(release, 'crash-corpus', [releaseCases[0] as never]);
 const crashes: Array<{ gateRunId: string; caseRunId: string }> = [];
@@ -508,6 +562,11 @@ const seed = {
   },
   queued: { gateRunId: queued.gateRunId },
   capture: { importId: String(capture['importId']), sourceCaseRunId: failingCase },
+  diagnostic: {
+    importId: diagImportId,
+    gateRunId: diagRun.gateRunId,
+    gateEvaluationId: String(diagEvaluation['gateEvaluationId']),
+  },
   crashes,
   timings,
 };

@@ -343,9 +343,12 @@ describe('T-030 — Disputed incident promotes only as ambiguity case', () => {
       baseCorpusRevisionId: null,
       corpusLabel: 'ambiguity-corpus',
       severity: 'MEDIUM',
-      gatePolicy: 'REQUIRED',
+      gatePolicy: 'ADVISORY',
       idempotencyKey: 't030-promote',
+      // A user file is never independent release evidence (M16, RP-08).
+      evidenceUse: 'DIAGNOSTIC_ONLY',
     });
+    expect(promoted.refusalReasons).toEqual(['DECLARED_HOOKS_ONLY', 'NOT_INSTALLED_CAPTURE']);
     const scenario = p.store.getScenarioRevision(promoted.scenarioRevisionId) as Record<string, unknown>;
     expect(scenario['provenance_class']).toBe('DISPUTED_AMBIGUITY_CASE');
     const plan = JSON.parse(String(scenario['compiled_json'])) as {

@@ -21,6 +21,7 @@ import { EVALUATOR_REVISION } from '@routespec/kernel';
 import type { LaunchCredentials } from '@routespec/proxy';
 import {
   captureInstalledCase,
+  classifyCaptureEvidence,
   importUserFile,
   promoteImport,
   proposeMapping,
@@ -33,7 +34,17 @@ import {
 } from '@routespec/regressions';
 import { planExport, writeExport, type GateService } from '@routespec/runner';
 import { compileScenario } from '@routespec/scenario';
-import type { CaseAuth, ControlJournal, GateJournal, ImportJournal, RouteSpecStore } from '@routespec/store';
+import {
+  ProfileReviewJournal,
+  reviewRevocationPlanDigest,
+  reviewerEnrollmentPlanDigest,
+  reviewerRevocationPlanDigest,
+  type CaseAuth,
+  type ControlJournal,
+  type GateJournal,
+  type ImportJournal,
+  type RouteSpecStore,
+} from '@routespec/store';
 import type { ZodTypeAny } from 'zod';
 import { AttesterChannel, verifyOidcCompletion } from './attestation.ts';
 import type { ContainmentHost } from './containment-host.ts';
@@ -234,6 +245,58 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
     if (!g) notFound('Gate run');
     mustProject(s(g, 'project_id'));
     return g;
+  };
+  const reviews = new ProfileReviewJournal(control);
+  const mustProfile = (profileId: string): Row => {
+    const p = reviews.getProfile(profileId);
+    if (!p) notFound('Interceptor profile');
+    mustProject(s(p, 'project_id'));
+    return p;
+  };
+  const reviewerView = (r: Row) => ({
+    reviewerId: s(r, 'reviewer_id'),
+    projectId: s(r, 'project_id'),
+    label: s(r, 'label'),
+    kind: s(r, 'kind'),
+    keyDigest: s(r, 'key_digest'),
+    validFrom: iso(r['valid_from_ms']),
+    validUntil: iso(r['valid_until_ms']),
+    revoked: r['revoked'] === 1,
+    independentOfLaunchers: true,
+  });
+  const profileView = (p: Row, withReviews = false) => {
+    const projectId = s(p, 'project_id');
+    const profileDigest = s(p, 'profile_digest');
+    const state = reviews.profileReviewState(projectId, profileDigest);
+    return {
+      profileId: s(p, 'profile_id'),
+      projectId,
+      profileDigest,
+      interceptorArtifactDigest: s(p, 'interceptor_artifact_digest'),
+      containment: s(p, 'containment'),
+      processTreeScope: s(p, 'process_tree_scope'),
+      supportedSinks: JSON.parse(s(p, 'supported_sinks_json')) as string[],
+      denialMechanism: s(p, 'denial_mechanism'),
+      declaredState: s(p, 'review_state'),
+      reviewState: state.state,
+      effectiveReviewId: state.reviewId,
+      reviewCount: state.reviewCount,
+      ...(withReviews
+        ? {
+            reviews: reviews.listReviews(projectId, profileDigest).map((r) => ({
+              reviewId: s(r, 'review_id'),
+              reviewerId: s(r, 'reviewer_id'),
+              decision: s(r, 'decision'),
+              checklist: JSON.parse(s(r, 'checklist_json')) as Record<string, boolean>,
+              statementDigest: s(r, 'statement_digest'),
+              reviewDigest: s(r, 'review_digest'),
+              reviewedAt: iso(r['reviewed_at_ms']),
+              revoked: r['revoked'] === 1,
+              revocationReason: (r['revocation_reason'] as string | null) ?? null,
+            })),
+          }
+        : {}),
+    };
   };
   const mustCase = (caseRunId: string): { c: Row; g: Row } => {
     const c = store.getCaseRun(caseRunId);
@@ -693,12 +756,198 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
         const b = body as Parameters<ControlJournal['registerInterceptorProfile']>[0];
         mustProject(b.projectId);
         const r = control.registerInterceptorProfile(b);
+        // Registration never reviews a profile; an existing identical profile keeps its reviews.
         return ok(
-          { profileId: r.profileId, profileDigest: r.profileDigest, reviewState: 'DECLARED_UNREVIEWED' },
+          {
+            profileId: r.profileId,
+            profileDigest: r.profileDigest,
+            reviewState: reviews.profileReviewState(b.projectId, r.profileDigest).state,
+          },
           201,
         );
       },
     },
+    // -----------------------------------------------------------------------------------------
+    // Interceptor profile review (M16, RP-02/RP-06): reviewer principals distinct from the
+    // operator, single-use challenges, reviewer-signed immutable reviews, revocations.
+    {
+      method: 'GET',
+      path: '/projects/:projectId/interceptor-profiles',
+      auth: 'control',
+      mutation: false,
+      handle: ({ params }) => {
+        const projectId = params['projectId'] as string;
+        mustProject(projectId);
+        return ok({ items: reviews.listProfiles(projectId).map((p) => profileView(p)) });
+      },
+    },
+    {
+      method: 'GET',
+      path: '/interceptor-profiles/:profileId',
+      auth: 'control',
+      mutation: false,
+      handle: ({ params }) => ok(profileView(mustProfile(params['profileId'] as string), true)),
+    },
+    {
+      method: 'POST',
+      path: '/profile-reviewers',
+      auth: 'control',
+      mutation: true,
+      schema: S.reviewerEnroll,
+      handle: ({ body }) => {
+        const b = body as {
+          projectId: string;
+          label: string;
+          publicKeyJwk: { kty: 'OKP'; crv: 'Ed25519'; x: string };
+          validFromMs: number;
+          validUntilMs: number;
+          confirmation?: { confirmationId: string; code: string };
+        };
+        mustProject(b.projectId);
+        const planDigest = reviewerEnrollmentPlanDigest({
+          projectId: b.projectId,
+          label: b.label,
+          publicKeyX: b.publicKeyJwk.x,
+          validFromMs: b.validFromMs,
+          validUntilMs: b.validUntilMs,
+        });
+        const flow = confirmFlow(
+          'PROFILE_REVIEWER_ENROLL',
+          planDigest,
+          `Enroll interceptor profile reviewer "${b.label}"`,
+          b.confirmation,
+        );
+        if ('status' in flow) return flow;
+        const r = reviews.enrollReviewer({ ...b, confirmation: flow });
+        return ok(reviewerView(reviews.getReviewer(r.reviewerId) as Row), 201);
+      },
+    },
+    {
+      method: 'GET',
+      path: '/projects/:projectId/profile-reviewers',
+      auth: 'control',
+      mutation: false,
+      handle: ({ params }) => {
+        const projectId = params['projectId'] as string;
+        mustProject(projectId);
+        return ok({ items: reviews.listReviewers(projectId).map(reviewerView) });
+      },
+    },
+    {
+      method: 'POST',
+      path: '/profile-reviewers/:reviewerId/revoke',
+      auth: 'control',
+      mutation: true,
+      schema: S.reviewerRevoke,
+      handle: ({ params, body }) => {
+        const reviewerId = params['reviewerId'] as string;
+        const r = reviews.getReviewer(reviewerId);
+        if (!r) notFound('Profile reviewer');
+        mustProject(s(r, 'project_id'));
+        const b = body as { reasonCode: string; confirmation?: { confirmationId: string; code: string } };
+        const flow = confirmFlow(
+          'PROFILE_REVIEWER_REVOKE',
+          reviewerRevocationPlanDigest(reviewerId, b.reasonCode),
+          `Revoke interceptor profile reviewer "${s(r, 'label')}"`,
+          b.confirmation,
+        );
+        if ('status' in flow) return flow;
+        reviews.revokeReviewer({ reviewerId, reasonCode: b.reasonCode, confirmation: flow });
+        return ok({
+          ...reviewerView(reviews.getReviewer(reviewerId) as Row),
+          existingReviews: 'NO_LONGER_EFFECTIVE',
+        });
+      },
+    },
+    {
+      method: 'POST',
+      path: '/interceptor-profiles/:profileId/review-challenges',
+      auth: 'control',
+      mutation: true,
+      schema: S.reviewChallengeCreate,
+      handle: ({ params, body }) => {
+        const profile = mustProfile(params['profileId'] as string);
+        const b = body as {
+          reviewerId: string;
+          decision: 'APPROVED' | 'REJECTED';
+          checklist: Record<string, boolean>;
+        };
+        const c = reviews.createReviewChallenge({
+          projectId: s(profile, 'project_id'),
+          profileDigest: s(profile, 'profile_digest'),
+          reviewerId: b.reviewerId,
+          decision: b.decision,
+          checklist: b.checklist,
+          ttlMs: d.challengeTtlMs,
+        });
+        return ok(
+          {
+            challengeId: c.challengeId,
+            statement: c.statement,
+            statementDigest: c.statementDigest,
+            signingPayload: c.signingPayload,
+            signingAlgorithm: 'Ed25519',
+            expiresAt: iso(c.expiresAtMs),
+            note: 'The reviewer signs signingPayload with their own key; RouteSpec never holds it.',
+          },
+          201,
+        );
+      },
+    },
+    {
+      method: 'POST',
+      path: '/profile-review-challenges/:challengeId/complete',
+      auth: 'control',
+      mutation: true,
+      schema: S.reviewComplete,
+      handle: ({ params, body }) => {
+        const challengeId = params['challengeId'] as string;
+        const c = reviews.getChallenge(challengeId);
+        if (!c) notFound('Review challenge');
+        mustProject(s(c, 'project_id'));
+        const r = reviews.recordReview({ challengeId, signature: (body as { signature: string }).signature });
+        const profile = mustProfile(s(c, 'profile_id'));
+        return ok(
+          {
+            reviewId: r.reviewId,
+            reviewDigest: r.reviewDigest,
+            decision: r.decision,
+            reviewedAt: iso(r.reviewedAtMs),
+            profile: profileView(profile),
+          },
+          201,
+        );
+      },
+    },
+    {
+      method: 'POST',
+      path: '/interceptor-profile-reviews/:reviewId/revoke',
+      auth: 'control',
+      mutation: true,
+      schema: S.reviewRevoke,
+      handle: ({ params, body }) => {
+        const reviewId = params['reviewId'] as string;
+        const r = reviews.getReview(reviewId);
+        if (!r) notFound('Profile review');
+        mustProject(s(r, 'project_id'));
+        const b = body as { reasonCode: string; confirmation?: { confirmationId: string; code: string } };
+        const flow = confirmFlow(
+          'PROFILE_REVIEW_REVOKE',
+          reviewRevocationPlanDigest(reviewId, b.reasonCode),
+          'Revoke an interceptor profile review',
+          b.confirmation,
+        );
+        if ('status' in flow) return flow;
+        reviews.revokeReview({ reviewId, reasonCode: b.reasonCode, confirmation: flow });
+        return ok({
+          reviewId,
+          revoked: true,
+          record: 'IMMUTABLE',
+          profile: profileView(mustProfile(s(r, 'profile_id'))),
+        });
+      },
+    },
+
     {
       method: 'POST',
       path: '/effect-coverage-policies',
@@ -764,6 +1013,11 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
             basis: b.basis,
             completeEffectPredicates:
               b.basis === 'DECLARED_HOOKS_ONLY' ? 'REVIEW_ONLY' : 'REQUIRES_ATTESTED_INTERCEPTOR',
+            // M16: complete-effect predicates also need an effective signed profile review.
+            interceptorProfileReviewState:
+              b.interceptorProfileDigest === null
+                ? null
+                : reviews.profileReviewState(b.projectId, b.interceptorProfileDigest).state,
           },
           201,
         );
@@ -1891,6 +2145,26 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
       },
     },
     {
+      method: 'GET',
+      path: '/imports/:importId/release-evidence',
+      auth: 'control',
+      mutation: false,
+      handle: ({ params }) => {
+        const view = d.imports.getImport(params['importId'] as string);
+        mustProject(view.projectId);
+        const c = classifyCaptureEvidence(d.imports, view.importId);
+        return ok({
+          importId: view.importId,
+          origin: view.origin,
+          releaseEvidence: c.releaseEvidence,
+          refusalReasons: c.refusalReasons,
+          interceptorProfileDigest: c.interceptorProfileDigest,
+          interceptorReviewId: c.interceptorReviewId,
+          promotableAs: c.releaseEvidence ? ['RELEASE_EVIDENCE', 'DIAGNOSTIC_ONLY'] : ['DIAGNOSTIC_ONLY'],
+        });
+      },
+    },
+    {
       method: 'POST',
       path: '/imports/:importId/promote',
       auth: 'control',
@@ -1906,6 +2180,7 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
           corpusLabel: string;
           severity: string;
           gatePolicy: string;
+          evidenceUse?: 'RELEASE_EVIDENCE' | 'DIAGNOSTIC_ONLY';
         };
         if (b.baseCorpusRevisionId !== null)
           mustScoped(view.projectId, 'CORPUS_REVISION', b.baseCorpusRevisionId, 'Corpus revision');
@@ -1918,6 +2193,7 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
           severity: b.severity,
           gatePolicy: b.gatePolicy,
           idempotencyKey: idempotencyKey as string,
+          evidenceUse: b.evidenceUse ?? 'RELEASE_EVIDENCE',
         });
         control.scopeRecord(view.projectId, 'SCENARIO_REVISION', r.scenarioRevisionId);
         control.scopeRecord(view.projectId, 'CORPUS_REVISION', r.corpusRevisionId);
@@ -1938,6 +2214,7 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
           gateEvaluationId: string;
           includeAddresses?: boolean;
           acknowledgeAddresses?: boolean;
+          evidenceUse?: 'RELEASE_EVIDENCE' | 'DIAGNOSTIC_ONLY';
         };
         const view = gates.getGateEvaluation(b.gateEvaluationId);
         mustGateRun(view.gateRunId);
@@ -1946,8 +2223,12 @@ export function buildRoutes(d: AppDeps): RouteDef[] {
           configuredSecrets: d.configuredSecrets,
           ...(b.includeAddresses !== undefined ? { includeAddresses: b.includeAddresses } : {}),
           ...(b.acknowledgeAddresses !== undefined ? { acknowledgeAddresses: b.acknowledgeAddresses } : {}),
+          evidenceUse: b.evidenceUse ?? 'RELEASE_EVIDENCE',
         });
-        return ok({ ...plan, written: false }, plan.created ? 201 : 200);
+        return ok(
+          { ...plan, written: false, evidenceUse: b.evidenceUse ?? 'RELEASE_EVIDENCE' },
+          plan.created ? 201 : 200,
+        );
       },
     },
     {

@@ -36,6 +36,7 @@ export const IDS = Object.freeze({
   interceptorAttestation: uuid(12),
   inventoryAttestation: uuid(13),
   interceptor: uuid(14),
+  profileReview: uuid(15),
 });
 
 export const ASSETS = Object.freeze({ origin: 'nep141:origin.sim', destination: 'nep141:destination.sim' });
@@ -453,6 +454,20 @@ export function baseInput(): KernelInput {
       attestation(IDS.inventoryAttestation, 'EFFECT_INVENTORY', [], IDS.build),
     ],
     probeResults: [],
+    // The pinned interceptor profile carries one effective signed review (M16).
+    interceptorProfileReviews: [
+      {
+        reviewId: IDS.profileReview,
+        profileDigest: profile,
+        decision: 'APPROVED',
+        reviewedAtMs: 1_899_999_000_000,
+        reviewDigest: d('interceptor-profile-review'),
+        reviewRevoked: false,
+        reviewerRevoked: false,
+        reviewerValidFromMs: 1_800_000_000_000,
+        reviewerValidUntilMs: 2_000_000_000_000,
+      },
+    ],
   };
 }
 

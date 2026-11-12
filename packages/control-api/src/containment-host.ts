@@ -21,7 +21,11 @@
  *    must equal it or nothing is attested.
  * 4. Interceptor: launched when the subject first connects to the effect sink, so it binds the
  *    case's fencing epoch at that moment (an accepted-then-lost response advances the epoch
- *    during the case). Until then the sink tunnel has no target and nothing can leave.
+ *    during the case). Until then the sink tunnel has no target and nothing can leave. The
+ *    interceptor's sink is a host loopback listener any local process could reach, so a
+ *    per-case sink token is generated here, handed only to the contained subject in its run
+ *    request, and bound into the interceptor at launch; a sink request without it is refused
+ *    before anything is framed or a release is decided.
  * 5. Release: on the first ATTEMPTED frame the runner decides (ground truth must prove accepted
  *    completion) and only then releases the interceptor; otherwise every attempt stays BLOCKED.
  * 6. Teardown: the subject tree is stopped and the engine must forget the container; a container
@@ -42,6 +46,7 @@ import {
 import {
   CANARY_INTERCEPTOR_PROFILE,
   InterceptorHost,
+  newSinkToken,
   type InterceptorFrame,
   type InterceptorFrameAck,
   type LaunchCredentials,
@@ -77,6 +82,8 @@ interface CaseState {
   readonly runtime: Extract<RuntimeStatus, { status: 'AVAILABLE' }>;
   readonly startedAtMs: number;
   readonly sinkClasses: Record<string, string>;
+  /** Per-case interceptor sink token: only the contained subject and the interceptor hold it. */
+  readonly sinkToken: string;
   interceptor: InterceptorHost | null;
   interceptorLaunch: Promise<number | null> | null;
   caseLaunchAttestationId: string | null;
@@ -304,6 +311,7 @@ export class ContainmentHost {
       runtime,
       startedAtMs: Date.now(),
       sinkClasses: Object.fromEntries(manifestHooks.map((h) => [s(h, 'sink_class'), s(h, 'effect_type')])),
+      sinkToken: newSinkToken(),
       interceptor: null,
       interceptorLaunch: null,
       caseLaunchAttestationId: null,
@@ -352,7 +360,9 @@ export class ContainmentHost {
           request: {
             ...input.job,
             effectSink:
-              sinkClass === null ? null : { origin: `http://127.0.0.1:${SINK_CONTAINER_PORT}`, sinkClass },
+              sinkClass === null
+                ? null
+                : { origin: `http://127.0.0.1:${SINK_CONTAINER_PORT}`, sinkClass, token: state.sinkToken },
           },
         },
         300_000,
@@ -407,6 +417,7 @@ export class ContainmentHost {
           sandboxScopeDigest: v.sandboxScopeDigest,
         },
         attestationId: st.interceptorAttestationId,
+        sinkToken: st.sinkToken,
         onFrame: (frame, ack) => this.#onFrame(st, frame, ack),
       });
       st.interceptor = host;

@@ -59,7 +59,9 @@ rejection keeps the profile out of `REVIEWED`.
 `POST /__routespec/v1/profile-review-challenges/{challengeId}/complete` with
 `{"signature": "..."}`. The service verifies the signature and records one immutable review.
 `node packages/cli/src/main.ts profile review-status --data <dir> --project ... --profile ...`
-then reports `REVIEWED`. Run gate cases only after this: a review recorded after a case's input
+then reports `REVIEWED` (the CLI needs the journal writer lock, so stop the service first, or
+read `GET /__routespec/v1/interceptor-profiles/{profileId}` while it runs; otherwise exit 5,
+`RS_WRITER_LOCKED`). Run gate cases only after this: a review recorded after a case's input
 closed does not change that case.
 
 ## 6. Revoking

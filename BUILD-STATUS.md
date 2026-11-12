@@ -156,6 +156,16 @@ crash and restart.
   list stays within the journal limit (`docs/status/SEC-routespec-RS-04.md`). No ADR: no
   protocol or format change.
 
+## Security fix: RS-01 (external security audit)
+
+- The canary interceptor's loopback sink accepted effect attempts from any local process, so an
+  unrelated process could journal boundary observations for a running case, clear INV-04's
+  `REQUIRED_SINK_UNOBSERVED` gap, and (contained mode) use up the one-shot release decision.
+  Fixed: a random per-instance sink token is bound over the interceptor's private pipe and handed
+  only to the subject; requests without it get 401 `SINK_UNAUTHENTICATED` before anything is
+  framed. The reviewed interceptor artifact digest pin is updated (ADR-0023,
+  `docs/status/SEC-routespec-RS-01.md`).
+
 ## External action ledger
 
 All NOT_AUTHORIZED and NOT_RUN by this build: push, fetch, remote creation, PR creation, remote

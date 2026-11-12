@@ -8,10 +8,20 @@
  * for one purpose: scanning upload candidates for exact leaks. The values are never printed,
  * written, or passed as arguments.
  *
+ * Deleting a variable from `process.env` does not remove it from the process's initial
+ * environment block, which Linux keeps serving through `/proc/<pid>/environ` to the process
+ * itself and to any same-user process (a subject included). The composite action therefore
+ * removes these variables in the step shell before it starts Node (`withheldNames`, then
+ * `export -n` and `exec`), and hands the values to the entry point over a pipe only, so they never
+ * appear in any environment block of the action process (`parseLauncherWithheld`). In-process
+ * withholding cannot protect against hostile code loaded into the same process: the values stay
+ * in this process's memory for the leak scan.
+ *
  * A provider secret present in an untrusted job is a workflow misconfiguration (GitHub does not
  * hand repository secrets to fork pull requests; `pull_request_target` would). It is withheld
  * like any other and reported as a finding; the gate still runs and reports its own decision.
  */
+import { RouteSpecError } from '@routespec/contracts';
 import type { CiContext } from './context.ts';
 import { isTrusted } from './context.ts';
 
@@ -36,22 +46,60 @@ export interface WithheldSecrets {
 
 /**
  * Remove provider and CI credentials from `env` in place and return what was withheld.
- * `env` is normally `process.env`.
+ * `env` is normally `process.env`. `launcherWithheld` holds the credentials the step shell already
+ * removed before starting this process (see `parseLauncherWithheld`); they are recorded the same
+ * way so findings and the leak scan do not depend on where a credential was removed.
  */
-export function withholdSecrets(env: Record<string, string | undefined>): WithheldSecrets {
-  const names: string[] = [];
+export function withholdSecrets(
+  env: Record<string, string | undefined>,
+  launcherWithheld: Readonly<Record<string, string>> = {},
+): WithheldSecrets {
+  const names = new Set<string>();
   const values: string[] = [];
   let provider = false;
-  for (const name of Object.keys(env)) {
-    const isProvider = PROVIDER_SECRET.test(name);
-    if (!isProvider && !CI_CREDENTIAL.test(name)) continue;
-    const v = env[name];
-    if (typeof v === 'string' && v.length >= 8) values.push(v);
-    delete env[name];
-    names.push(name);
-    if (isProvider && v !== undefined && v !== '') provider = true;
+  const record = (name: string, v: string | undefined): void => {
+    if (typeof v === 'string' && v.length >= 8 && !values.includes(v)) values.push(v);
+    names.add(name);
+    if (PROVIDER_SECRET.test(name) && v !== undefined && v !== '') provider = true;
+  };
+  for (const [name, v] of Object.entries(launcherWithheld)) {
+    if (isWithheldName(name)) record(name, v);
   }
-  return { names: names.sort(), providerSecretPresent: provider, values };
+  for (const name of Object.keys(env)) {
+    if (!isWithheldName(name)) continue;
+    record(name, env[name]);
+    delete env[name];
+  }
+  return { names: [...names].sort(), providerSecretPresent: provider, values };
+}
+
+/** Names in `env` the step shell must remove before it starts the entry point. */
+export function withheldNames(env: Readonly<Record<string, string | undefined>>): string[] {
+  return Object.keys(env)
+    .filter((name) => isWithheldName(name) && /^[A-Za-z_][A-Za-z0-9_]*$/.test(name))
+    .sort();
+}
+
+/**
+ * Parse what the step shell handed over on the withheld-credentials pipe: `NAME=VALUE` entries,
+ * each terminated by a NUL byte. Only withheld names are accepted; anything else fails closed.
+ */
+export function parseLauncherWithheld(bytes: Uint8Array): Record<string, string> {
+  const out: Record<string, string> = {};
+  const text = Buffer.from(bytes).toString('utf8');
+  if (text === '') return out;
+  if (!text.endsWith('\0')) {
+    throw new RouteSpecError('RS_INTERNAL', 'The withheld-credentials handoff is malformed.');
+  }
+  for (const entry of text.slice(0, -1).split('\0')) {
+    const eq = entry.indexOf('=');
+    const name = eq > 0 ? entry.slice(0, eq) : '';
+    if (!isWithheldName(name) || name in out) {
+      throw new RouteSpecError('RS_INTERNAL', 'The withheld-credentials handoff is malformed.');
+    }
+    out[name] = entry.slice(eq + 1);
+  }
+  return out;
 }
 
 /** The finding for a withheld provider secret, by job trust. */

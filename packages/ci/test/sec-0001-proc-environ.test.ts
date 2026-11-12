@@ -28,6 +28,58 @@ import {
   writeConfig,
   type Fixture,
 } from './support/harness.ts';
+import { parseLauncherWithheld, withheldNames, withholdSecrets } from '../src/secrets.ts';
+
+describe('SEC vuln-0001 — the withheld-credentials handoff from the step shell', () => {
+  const entry = (name: string, value: string) => `${name}=${value}\0`;
+
+  it('names only withheld variables the shell can unexport', () => {
+    expect(
+      withheldNames({
+        GITHUB_TOKEN: 'x',
+        ROUTESPEC_PROVIDER_JWT: 'y',
+        INPUT_API_KEY: 'z',
+        PATH: '/usr/bin',
+        GITHUB_SHA: 'abc',
+      }),
+    ).toEqual(['GITHUB_TOKEN', 'INPUT_API_KEY', 'ROUTESPEC_PROVIDER_JWT']);
+  });
+
+  it('parses NUL-terminated NAME=VALUE entries, keeping "=" and newlines inside values', () => {
+    const bytes = Buffer.from(entry('ROUTESPEC_PROVIDER_JWT', 'a=b\nc-value') + entry('GITHUB_TOKEN', ''));
+    expect(parseLauncherWithheld(bytes)).toEqual({
+      ROUTESPEC_PROVIDER_JWT: 'a=b\nc-value',
+      GITHUB_TOKEN: '',
+    });
+    expect(parseLauncherWithheld(Buffer.alloc(0))).toEqual({});
+  });
+
+  it('fails closed on a malformed handoff or a name that is not withheld', () => {
+    for (const bad of [
+      'GITHUB_TOKEN=unterminated',
+      entry('PATH', '/usr/bin'),
+      '=value\0',
+      entry('GITHUB_TOKEN', 'a') + entry('GITHUB_TOKEN', 'b'),
+    ]) {
+      expect(() => parseLauncherWithheld(Buffer.from(bad)), JSON.stringify(bad)).toThrow(
+        expect.objectContaining({ code: 'RS_INTERNAL' }),
+      );
+    }
+  });
+
+  it('records shell-withheld credentials like in-process ones (names, provider finding, scan values)', () => {
+    const env: Record<string, string | undefined> = { NPM_TOKEN: 'npm-token-value-1', PATH: '/usr/bin' };
+    const w = withholdSecrets(env, {
+      ROUTESPEC_PROVIDER_JWT: 'provider-value-1',
+      GITHUB_TOKEN: 'short',
+      PATH: 'ignored-not-withheld',
+    });
+    expect(w.names).toEqual(['GITHUB_TOKEN', 'NPM_TOKEN', 'ROUTESPEC_PROVIDER_JWT']);
+    expect(w.providerSecretPresent).toBe(true);
+    expect([...w.values].sort()).toEqual(['npm-token-value-1', 'provider-value-1']);
+    expect(env).toEqual({ PATH: '/usr/bin' });
+  });
+});
 
 const PROVIDER = `rs-canary-provider-${randomBytes(12).toString('hex')}`;
 const ID_TOKEN = `rs-canary-id-token-${randomBytes(12).toString('hex')}`;

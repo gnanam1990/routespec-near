@@ -77,6 +77,12 @@ export interface GateRunRequest {
    * promotion corpus); scenarios not listed use `lineageRole`.
    */
   readonly lineageRoleByScenario?: Readonly<Record<string, CaseLineageRole>>;
+  /**
+   * Per-scenario effect-coverage policy (M14). A policy binds exactly one scenario revision, so a
+   * corpus with several scenarios selects one policy per case; scenarios not listed use
+   * `effectCoveragePolicyDigest`. Each selected policy is validated like the gate's own.
+   */
+  readonly casePolicyByScenario?: Readonly<Record<string, string>>;
   /** Pinned revisions; default to this runtime's. A different pin is recorded, never upgraded. */
   readonly adapterRevision?: string;
   readonly evaluatorRevision?: string;
@@ -263,6 +269,13 @@ export class GateService {
           request.lineageRole ??
           'BASELINE',
         requiredInvariants: JSON.parse(String(c['required_invariants_json'])) as string[],
+        ...(request.casePolicyByScenario?.[String(c['scenario_revision_id'])] !== undefined
+          ? {
+              effectCoveragePolicyDigest: request.casePolicyByScenario[
+                String(c['scenario_revision_id'])
+              ] as string,
+            }
+          : {}),
       })),
       ...(request.gate !== null ? { gateDefinitionRevisionId: request.gate.gateDefinitionRevisionId } : {}),
     });
@@ -321,6 +334,26 @@ export class GateService {
       }
       if (p['basis'] === 'DECLARED_HOOKS_ONLY') note('DECLARED_HOOKS_ONLY_COMPLETE_EFFECT_REVIEW');
       if (p['interceptor_profile_digest'] === null) note('NO_INDEPENDENT_INTERCEPTOR');
+    }
+    for (const cp of this.store.listCasePolicies(gateRunId)) {
+      const q = this.gates.readGateResolution({
+        buildRevisionId: String(gate['build_revision_id']),
+        effectManifestDigest: String(gate['effect_manifest_digest']),
+        effectCoveragePolicyDigest: String(cp['effect_coverage_policy_digest']),
+        corpusRevisionId: String(gate['corpus_revision_id']),
+        callsiteInventoryDigest: (gate['callsite_inventory_digest'] as string | null) ?? null,
+      }).policy;
+      if (!q) block('CASE_EFFECT_POLICY_NOT_FOUND');
+      else if (
+        q['build_revision_id'] !== gate['build_revision_id'] ||
+        q['artifact_digest'] !== gate['artifact_digest'] ||
+        q['manifest_digest'] !== gate['effect_manifest_digest'] ||
+        q['scenario_revision_id'] !== cp['scenario_revision_id'] ||
+        (q['interceptor_profile_digest'] ?? null) !== (gate['interceptor_profile_digest'] ?? null) ||
+        (q['callsite_inventory_digest'] ?? null) !== (gate['callsite_inventory_digest'] ?? null)
+      ) {
+        block('CASE_EFFECT_POLICY_IDENTITY_MISMATCH');
+      }
     }
     if (gate['callsite_inventory_digest'] !== null && !res.inventory) block('CALLSITE_INVENTORY_NOT_FOUND');
     if (gate['adapter_revision'] !== ADAPTER_REVISION) block('ADAPTER_REVISION_UNSUPPORTED');
@@ -715,6 +748,52 @@ export class GateService {
         firstCase,
       },
     };
+  }
+
+  /** The runner's current execution fence of a started external case (M14 interceptor launch). */
+  fenceForExternalCase(caseRunId: string): ExecutionFence {
+    const fence = this.supervisor.fenceOf(caseRunId);
+    if (fence === null)
+      throw new RouteSpecError('RS_PHASE_INVALID', 'Case is not running under this service.');
+    return fence;
+  }
+
+  /**
+   * Decide whether protected effects of a running external case may be released (M14, INV-04).
+   *
+   * The subject attempted a protected effect at the interceptor boundary. Scenario input is
+   * closed (ground truth is journaled under the current fence), and the release is authorized
+   * only when scenario ground truth independently proves accepted completion of the effect
+   * (`effect_completion` or `destination_credit`, PROVEN in the simulated ground-truth scope).
+   * The authorization cites exactly that evidence; the kernel judges it independently later.
+   * Returns null when nothing proves completion: the effect stays blocked.
+   */
+  authorizeEffectRelease(
+    caseRunId: string,
+    interceptorInstanceId: string,
+  ): { authorizationId: string; evidenceIds: string[] } | null {
+    const fence = this.fenceForExternalCase(caseRunId);
+    if (!this.supervisor.inputFinished(caseRunId)) this.supervisor.finishInput(caseRunId);
+    const proven = this.store
+      .listCaseEvidence(caseRunId)
+      .filter(
+        (e) =>
+          (e['subject'] === 'effect_completion' || e['subject'] === 'destination_credit') &&
+          e['evidence_class'] === 'PROVEN' &&
+          e['evidence_scope'] === 'SIMULATED_GROUND_TRUTH' &&
+          Number(e['fencing_epoch']) === fence.fencingEpoch,
+      )
+      .map((e) => String(e['evidence_id']));
+    if (proven.length === 0) {
+      this.logger.info('effect.release-withheld', { caseRun: caseRunId, epoch: fence.fencingEpoch });
+      return null;
+    }
+    const r = this.store.recordEffectReleaseAuthorization(fence, {
+      interceptorInstanceId,
+      completionEvidenceIds: proven,
+    });
+    this.logger.info('effect.release-authorized', { caseRun: caseRunId, epoch: fence.fencingEpoch });
+    return { authorizationId: r.authorizationId, evidenceIds: proven };
   }
 
   /** Client input is closed: teardown (revoke tokens, record runtime evidence) and evaluate. */

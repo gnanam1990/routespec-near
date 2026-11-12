@@ -73,6 +73,9 @@ export function gateInputFromSnapshot(rows: GateSnapshotRows, runtime: RuntimeRe
   const interrupted = new Set(rows.interruptions.map((i) => s(i, 'case_run_id')));
   const caseByOrdinal = new Map(rows.caseRuns.map((c) => [n(c, 'case_ordinal'), c]));
   const corpusByOrdinal = new Map(rows.corpusCases.map((c) => [n(c, 'case_ordinal'), c]));
+  const casePolicy = new Map(
+    (rows.casePolicies ?? []).map((p) => [s(p, 'case_run_id'), s(p, 'effect_coverage_policy_digest')]),
+  );
   const ordinals = [...new Set([...caseByOrdinal.keys(), ...corpusByOrdinal.keys()])].sort((a, b) => a - b);
   const cases: GateCaseInput[] = ordinals.map((ordinal) => {
     const c = caseByOrdinal.get(ordinal) ?? null;
@@ -101,6 +104,7 @@ export function gateInputFromSnapshot(rows: GateSnapshotRows, runtime: RuntimeRe
             clientInstanceDigest: sn(c, 'client_instance_digest'),
             teardownRecorded: typeof c['teardown_recorded_at_ms'] === 'number',
             terminalResultDigest: sn(c, 'terminal_result_digest'),
+            effectCoveragePolicyDigest: casePolicy.get(s(c, 'case_run_id')) ?? null,
           }
         : null,
       result: result ? readResult(result) : null,
@@ -137,6 +141,9 @@ export function gateInputFromSnapshot(rows: GateSnapshotRows, runtime: RuntimeRe
       scenarioRevisionId: c.caseRun?.scenarioRevisionId ?? c.corpusCase?.scenarioRevisionId ?? 'missing',
       sessionId: c.caseRun?.sessionId ?? null,
       fencingEpoch: c.caseRun?.fencingEpoch ?? null,
+      ...(c.caseRun?.effectCoveragePolicyDigest
+        ? { effectCoveragePolicyDigest: c.caseRun.effectCoveragePolicyDigest }
+        : {}),
     })),
   };
   const enforcementMode: EnforcementMode = definition?.enforcementMode ?? 'LOCAL_ADVISORY';

@@ -871,6 +871,12 @@ describe('T-044 — Control mutations are idempotent and schema-strict', () => {
       const attRow = h.store.journal.read((db) =>
         db.prepare('SELECT * FROM subject_attestations WHERE attestation_id = ?').get(buildAttestationId),
       );
+      const runId = String(run['gateRunId']);
+      const before = expectOk(
+        await h.api('POST', `/gates/${p.gateId}/evaluate`, { gateRunId: runId }),
+        [200, 201],
+      );
+      expect((before['findings'] as string[]).filter((f) => f.startsWith('BUILD_'))).toEqual([]);
       const first = expectOk(
         await h.api('POST', `/attester-principals/${localPrincipal}/revoke`, {
           reasonCode: 'KEY_COMPROMISED',
@@ -912,6 +918,20 @@ describe('T-044 — Control mutations are idempotent and schema-strict', () => {
       ).toEqual(attRow);
       const view = expectOk(await h.api('GET', `/gate-runs/${String(run['gateRunId'])}`), 200);
       expect(view['attestation']).toMatchObject({ class: 'TRUSTED_LAUNCHER', freshness: 'REVOKED' });
+      // An evaluation after revocation re-reads the principal (TB-07): the in-progress gate run
+      // records the revoked attester; the earlier evaluation is kept unchanged.
+      const after = expectOk(await h.api('POST', `/gates/${p.gateId}/evaluate`, { gateRunId: runId }), 201);
+      expect(after['findings']).toEqual(
+        expect.arrayContaining(['BUILD_ATTESTER_DISABLED', 'BUILD_ATTESTER_REVOKED']),
+      );
+      expect(after['decisionDigest']).not.toBe(before['decisionDigest']);
+      expect(after['decision']).not.toBe('PASS');
+      const kept = h.store.journal.read((db) =>
+        db
+          .prepare('SELECT decision, decision_digest FROM gate_evaluations WHERE gate_evaluation_id = ?')
+          .get(String(before['gateEvaluationId'])),
+      ) as { decision: string; decision_digest: string };
+      expect(kept).toEqual({ decision: before['decision'], decision_digest: before['decisionDigest'] });
       const again = await enroll(h, p.projectId, 'local launcher re-enrolled', launcherPolicy());
       expect(again).not.toBe(localPrincipal);
       const list = expectOk(await h.api('GET', `/projects/${p.projectId}/attester-principals`), 200);

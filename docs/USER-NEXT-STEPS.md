@@ -1,10 +1,84 @@
 # What is left for you to do
 
-These steps need your accounts, your credentials, or your explicit decision, so the build did
-not do them. Each one says what to run and what to record. Nothing here moves funds: RouteSpec
-has no funded mode.
+These steps need your accounts, your credentials, another person, or your explicit decision, so
+the build did not do them. Each one says what to run and what to record. Nothing here moves
+funds: RouteSpec has no funded mode. Updated by the M18 consolidation on 2026-11-12.
 
-## 1. Official live dry probe (RP-07, `OFFICIAL_ENDPOINT_COMPATIBLE`)
+## 0. What `WORKING_LOCAL` still needs (read this first)
+
+Done on this host (M14, M16, M17): process-tree containment with a required seccomp filter,
+attested launches and interceptors, complete-effect INV-04 PASS for the corrected client,
+refusal of ineligible captures as release evidence (RP-08), a signed profile review workflow
+used by INV-04, and the container-host part of T-036. No `WORKING_*` level is claimed. Exactly
+these remain:
+
+1. **RP-05 — a green clean-checkout run on a real CI service** (section 1). Your GitHub run of
+   the `ci` workflow (fixed by M15) is that evidence; the build did not observe it.
+2. **RP-02/RP-06 — an independent review of the canary interceptor profile** (section 2). The
+   journeys review the profile with a locally generated test key held by the same operator,
+   which proves the mechanics but not independence.
+3. After both: rerun `pnpm run test:delivery` with the engine configured on the same commit,
+   record the results, and only then reconsider the claim from that runtime evidence.
+
+RP-07 (section 3) and the independent security review (section 5) are outside `WORKING_LOCAL`.
+
+## 1. Remote CI run (RP-05, M10, M15)
+
+1. Check the three pinned action SHAs against their upstream release tags:
+   `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683` (v4.2.2),
+   `actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af` (v4.1.0),
+   `actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882` (v4.4.3).
+2. Push `main` yourself (repository `gnanam1990/routespec-near`; keep it private unless you
+   decide otherwise). No module pushed or created anything remotely.
+3. `ci` runs on ubuntu-24.04, macos-15, and windows-2022: frozen install, the pinned Playwright
+   Chromium install (M15), `pnpm run check`, the T-027/T-009 parity step, and the SBOM.
+   `routespec-gate` runs on ubuntu-24.04. Record per-OS results, run URLs, and uploaded report
+   names in `docs/status/M10.md` and the RP-05 row of `BUILD-STATUS.md`. A green run also gives
+   the first Linux/macOS evidence for T-009, T-027, and the rest of the suite.
+4. For the clean-install check on those systems, also run `pnpm run test:delivery` on a Linux and
+   a macOS machine and record the result in `docs/status/M12.md`.
+5. Hosted runners have no WSL. For the contained journey on a Linux runner set
+   `ROUTESPEC_CONTAINER_CLI='["docker"]'`, pull `node:22-bookworm-slim` in a setup step, and run
+   `pnpm run test:containment` and `pnpm run test:delivery`. Without an engine those tests report
+   NOT_RUN, which is not a pass.
+6. If you configure a required status check, RouteSpec still reports
+   `REQUIRED_CHECK_UNVERIFIED`; it has no adapter that can verify repository settings.
+
+## 2. Independent interceptor profile review (RP-02, RP-06)
+
+RouteSpec cannot tell whether a reviewer is a different person; you must arrange one. The full
+procedure is `docs/runbooks/interceptor-profile-review.md`. In short:
+
+1. Prepare a data directory with the contained setup: either keep the work directory of
+   `node --no-warnings packages/delivery/src/journey.ts --work <dir> --out <file> --contained`
+   (its data is in `<dir>/data`), or set one up by hand as in
+   `docs/runbooks/container-containment.md` ("Run the control service with containment
+   yourself").
+2. Start the service on that data directory with containment
+   (`node --no-warnings packages/control-api/src/main.ts --data <dir>/data --subject-root ...
+--container-cli ... --launcher ... --launcher-key ...`).
+3. If you reuse a journey directory, revoke its test reviewer first
+   (`POST /__routespec/v1/profile-reviewers/{reviewerId}/revoke` with the local confirmation), so
+   only the independent review can make the profile `REVIEWED`.
+4. The reviewer creates their own Ed25519 key on their own machine and sends only the public
+   `x` value; you enroll it (local confirmation; a launcher key is refused with
+   `RS_REVIEWER_NOT_INDEPENDENT`).
+5. Request a challenge for the canary interceptor profile, give `challenge.json` to the
+   reviewer, who checks the artifact digest and the checklist and signs offline with
+   `node packages/cli/src/main.ts profile review-sign --challenge challenge.json --key reviewer.pem`.
+   Complete the challenge with the signature; `profile review-status` must report `REVIEWED`.
+6. Run a new contained gate run in that data directory **after** the review (a review recorded
+   after a case's input closed does not count for that case). Check that every case's INV-04 is
+   PASS, the capture classification has no refusal reasons, and the exported
+   `routespec.bundle/2` verifies with `profile-review-signatures`.
+7. Record the reviewer (role, not private details), review id and digest, the reviewed artifact
+   digest, findings, and the gate run in `docs/status/M16.md` ("Independent profile review").
+
+Known limit: the delivery journey always enrolls its own test reviewer and has no mode that
+waits for an external reviewer's signature, so step 6 is a manual run through the service or
+CLI, not `pnpm run test:delivery`.
+
+## 3. Official live dry probe (RP-07, `OFFICIAL_ENDPOINT_COMPATIBLE`)
 
 Optional. It is separate from `WORKING_LOCAL` and never changes a local verdict. It sends one
 `dry: true` quote to the pinned official endpoint; committed quotes, deposits, signatures, and
@@ -32,89 +106,65 @@ transfers are refused before any credential, DNS lookup, or socket.
    holds only the redacted shape, reason, HTTP status, timing, and token state. Add it to
    `docs/status/M07.md` and the RP-07 row of `BUILD-STATUS.md`.
 
-## 2. First remote CI run (RP-05 CI part, M10) — now the main `WORKING_LOCAL` gap you can close
-
-1. Check the three pinned action SHAs against their upstream release tags:
-   `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683` (v4.2.2),
-   `actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af` (v4.1.0),
-   `actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882` (v4.4.3).
-2. Decide whether the repository `gnanam1990/routespec-near` should exist and stay private, then
-   push `main` yourself. No module pushed or created anything remotely.
-3. Let `ci` (ubuntu, macos, windows: `pnpm run check`, the T-027/T-009 parity step, the SBOM) and
-   `routespec-gate` run. Record per-OS results, run URLs, and the uploaded report names in
-   `docs/status/M10.md`. This also gives the first Linux/macOS evidence for T-009, T-027, and the
-   rest of the suite.
-4. For the clean-install check on those systems, also run `pnpm run test:delivery` on a Linux and
-   a macOS machine and record the result in `docs/status/M12.md`.
-5. If you configure a required status check, RouteSpec still reports
-   `REQUIRED_CHECK_UNVERIFIED`; it has no adapter that can verify repository settings.
-6. Hosted runners have no WSL; for the contained journey on a Linux runner set
-   `ROUTESPEC_CONTAINER_CLI='["docker"]'`, pull `node:22-bookworm-slim` in a setup step, and run
-   `pnpm run test:containment` and `pnpm run test:delivery`. Without an engine those tests report
-   NOT_RUN, which is not a pass.
-
-## 3. Demo recording (only after the gates it shows)
+## 4. Demo recording (only after the gates it shows)
 
 1. Record only the normal product path that has passed. Today that is the contained local
    journey (`pnpm run delivery:journey -- --work <dir> --out <file> --contained` with the engine
-   configured): confined subjects, attested launches, the corrected client's gate PASS. Say on
-   screen that `WORKING_LOCAL` is still not claimed (no real CI run yet, declared-hooks-only
-   captures are labelled rather than refused, the interceptor profile is not reviewed).
+   configured): confined subjects, attested launches, the capture accepted as release evidence,
+   the corrected client's gate PASS, and the uncontained capture refused as release evidence.
+   Say on screen that `WORKING_LOCAL` is still not claimed (no real CI run observed, the
+   interceptor profile is reviewed only with a local test key).
 2. A safe script: `pnpm run test:delivery`, then start
-   `node packages/control-api/src/main.ts --data <dir> --console apps/console/dist` on a data
-   directory produced by `pnpm run delivery:journey -- --work <dir> --out <file>` and walk the
-   gate runs, the case, the run operation and evidence drawer, the regression review, and the
-   exported bundle. Do not show tokens, the terminal hand-off URL, or your home path.
+   `node packages/control-api/src/main.ts --data <dir>/data --console apps/console/dist` on a data
+   directory produced by the journey and walk the gate runs, the case, the run operation and
+   evidence drawer, the regression review ("Not release evidence" for the uncontained capture),
+   and the exported bundle. Do not show tokens, the terminal hand-off URL, or your home path.
 3. A recording is a submission artifact; it never creates or upgrades evidence. Never describe a
    dry quote as a deposit, swap, delivery, or settlement.
 
-## 4. Before any publication or event submission
-
-1. Refresh the official event rules and deadlines immediately before you publish or submit
-   (not done by the build; `docs/spec/EVENT-NOTES.md` is the last recorded copy).
-2. Keep the sibling-project disclosure from `docs/spec/EVENT-NOTES.md`: RouteSpec and Dockside are
-   independent products with separate repositories, code, state, demos, and submissions. The M12
-   check found no reference to Dockside outside the sealed specification.
-3. Publishing, posting, making the repository public, and submitting are your actions.
-
 ## 5. Independent security review
 
-Arrange a reviewer outside this team for the areas listed in `docs/spec/SECURITY.md` section 15
-and ADR-0016. Record findings before any production use. Until then production readiness is
-blocked.
+Arrange a reviewer outside this team for the areas listed in `docs/spec/SECURITY.md` section 15,
+ADR-0016, ADR-0019, ADR-0020 (container-host access, seccomp), and ADR-0021 (review signatures,
+release-evidence classification). Record findings before any production use. Until then
+production readiness is blocked.
 
 ## 6. Dependency follow-ups
 
-- Done by M13: zod 4.6.7, react-router 7.18.5, vitest 4.1.12 (`docs/status/M13.md`).
-- On or after 2026-11-18, set `node-forge` to `1.4.3` in `packages/live-dry-adapter/package.json`
-  (dev only), run `pnpm install`, `pnpm run check`, and `pnpm audit` (expected afterwards: 1
-  moderate, minimatch through typescript-eslint).
-- Decide whether to move typescript-eslint to a release that drops minimatch 9.
+- Done: zod 4.6.7, react-router 7.18.5, vitest 4.1.12 (M13); the minimatch advisory
+  GHSA-g3hv-75wg-m249 is resolved by the scoped override to 11.0.3 (M17, ADR-0020).
+- `pnpm audit` on 2026-11-12: 4 advisories (1 low, 3 moderate), all node-forge 1.4.2, dev only.
+  On or after 2026-11-18, set `node-forge` to `1.4.3` in `packages/live-dry-adapter/package.json`,
+  run `pnpm install`, `pnpm run check`, and `pnpm audit` (expected afterwards: 0 advisories).
+- When typescript-eslint releases a version that depends on minimatch `>=11.0.1`, upgrade it and
+  drop the three `pnpm.overrides` entries in `package.json`.
+- A lockfile-wide release-age policy (pnpm `minimumReleaseAge`) is not enabled: it refuses the
+  current lockfile (`@rollup/rollup-win32-x64-msvc` 4.68.2 via vite). Decide whether to adopt it
+  after that package ages past the window.
 
-## 7. Container containment (M14)
+## 7. Container containment (M14, M17)
 
 - This machine is already set up: Docker Engine 29.1.3 in the WSL 2 distribution Ubuntu-24.04,
   image `node:22-bookworm-slim` pulled. Keep the distribution's Docker service enabled. Before a
   run, set `ROUTESPEC_CONTAINER_CLI='["wsl.exe","-d","Ubuntu-24.04","-u","root","--exec","docker"]'`.
 - On another machine follow `docs/runbooks/container-containment.md`. RouteSpec never installs
   an engine, changes Windows features, or pulls images by itself.
+- Keep the engine's default seccomp profile on: since M17 a container without an active seccomp
+  filter is reported `DECLARED_HOOKS_ONLY` (`SELF_SECCOMP_NOT_FILTERED`).
 - When you update the image tag, rerun `pnpm run test:containment` and `pnpm run test:delivery`:
   the image id is part of every contained build's toolchain identity, so builds registered with
   the old id no longer attest.
+- Not run here: WSL `mirrored` networking mode, plain Linux Docker, rootless or user-namespaced
+  engines. If you use one of them, rerun `pnpm run test:containment` (it includes T-036
+  container-host access) there and record the result.
+- To run the runtime and delivery suites beside other jobs on one machine, give them a host port
+  window: `ROUTESPEC_TEST_PORT_BASE=<base>` (50 ports from the base, default 9350) and
+  `ROUTESPEC_DELIVERY_PORT=<port>` (the contained journey uses the next port).
 
-## 8. What `WORKING_LOCAL` still needs
+## 8. Before any publication or event submission
 
-Resolved by M14 on this host: process-tree containment, an independent interceptor launched and
-attested per case, trust-rooted launches through the standalone service, complete-effect INV-04
-PASS for the corrected client, one effect policy per scenario, and the export-boundary kill test.
-Still open:
-
-- **RP-05 (your action):** a clean-checkout run on a real CI service (section 2).
-- **RP-08 (engineering):** promotion must refuse declared-hooks-only or unconfined captures as
-  release evidence instead of labelling them; this changes the console's promotion flow
-  (an explicit diagnostic-only choice) and the uncontained M12 journey.
-- **RP-02/RP-06 (review):** a review workflow for interceptor profiles (they stay
-  `DECLARED_UNREVIEWED`) and the independent security review (section 5).
-
-When these exist, rerun `pnpm run test:delivery` with the engine configured; only then can the
-claim be reconsidered, with the runtime evidence.
+1. Refresh the official event rules and deadlines immediately before you publish or submit
+   (not done by the build; `docs/spec/EVENT-NOTES.md` is the last recorded copy).
+2. Keep the sibling-project disclosure from `docs/spec/EVENT-NOTES.md`: RouteSpec and Dockside are
+   independent products with separate repositories, code, state, demos, and submissions.
+3. Publishing, posting, making the repository public, and submitting are your actions.

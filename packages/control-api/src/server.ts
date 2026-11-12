@@ -162,7 +162,11 @@ class Windows {
     this.limits = limits;
     this.now = now;
   }
-  take(bucket: 'reads' | 'mutations' | 'authFailures'): boolean {
+  /**
+   * `static` (console assets, which carry no credential) is a separate counter with the read
+   * limit, so unauthenticated asset traffic never spends the API read budget (SEC RS-03).
+   */
+  take(bucket: 'reads' | 'mutations' | 'authFailures' | 'static'): boolean {
     const t = this.now();
     if (t - this.#start >= this.limits.windowMs) {
       this.#start = t;
@@ -170,7 +174,7 @@ class Windows {
     }
     const n = (this.#counts.get(bucket) ?? 0) + 1;
     this.#counts.set(bucket, n);
-    return n <= this.limits[bucket];
+    return n <= this.limits[bucket === 'static' ? 'reads' : bucket];
   }
   exhausted(bucket: 'authFailures'): boolean {
     const t = this.now();
@@ -456,12 +460,18 @@ export class ControlServer {
       const method = req.method ?? 'GET';
       const mutating = !['GET', 'HEAD', 'OPTIONS'].includes(method);
       // The boundary runs first so refused cross-site / foreign-Host requests never spend the
-      // shared budgets that the operator's own requests depend on.
+      // shared budgets that the operator's own requests depend on. The read/mutation budgets are
+      // charged only after a credential is accepted (SEC RS-03): any local process can reach the
+      // port, so requests that fail authentication count only in the authFailures budget.
       checkBrowserBoundary(req, policy);
-      if (!this.#limits.take(mutating ? 'mutations' : 'reads')) {
-        req.resume();
-        throw new RouteSpecError('RS_RATE_LIMITED', 'Too many requests; retry later.', { recoverable: true });
-      }
+      const charge = (bucket: 'reads' | 'mutations' | 'static') => {
+        if (!this.#limits.take(bucket)) {
+          req.resume();
+          throw new RouteSpecError('RS_RATE_LIMITED', 'Too many requests; retry later.', {
+            recoverable: true,
+          });
+        }
+      };
       const url = new URL(req.url ?? '/', policy.primaryOrigin);
       if (method === 'OPTIONS') {
         // Same-origin pages never need a preflight; foreign origins were already refused.
@@ -469,6 +479,7 @@ export class ControlServer {
         throw new RouteSpecError('RS_METHOD_NOT_ALLOWED', 'Preflight requests are not served.');
       }
       if (url.pathname !== CONTROL_PREFIX && !url.pathname.startsWith(`${CONTROL_PREFIX}/`)) {
+        charge('static');
         this.#static(req, res, url, method);
         return;
       }
@@ -478,26 +489,26 @@ export class ControlServer {
         .map((r) => ({ r, m: r.regex.exec(sub) }))
         .filter((x): x is { r: CompiledRoute; m: RegExpExecArray } => x.m !== null);
       const match = matches.find((x) => x.r.def.method === method) ?? null;
-      if (match?.r.def.auth === 'case') {
-        // The single subject route: a case token, never a control bearer token.
-      } else {
-        try {
-          authenticate(req, this.token);
-        } catch (error) {
-          // Only failing credentials are throttled: once the failure window is exhausted further
-          // failures are answered 429, while the genuine control token keeps working (any local
-          // process can reach the port, so a global lockout would be a denial of service).
-          const exhausted = this.#limits.exhausted('authFailures');
-          this.#limits.take('authFailures');
-          req.resume();
-          if (exhausted) {
-            throw new RouteSpecError('RS_RATE_LIMITED', 'Too many requests; retry later.', {
-              recoverable: true,
-            });
-          }
-          throw error;
+      let caseAuth: ReturnType<typeof caseAuthFromHeaders> | null = null;
+      try {
+        // The single subject route takes a case token, never a control bearer token.
+        if (match?.r.def.auth === 'case') caseAuth = caseAuthFromHeaders(req.headers, this.store);
+        else authenticate(req, this.token);
+      } catch (error) {
+        // Only failing credentials are throttled: once the failure window is exhausted further
+        // failures are answered 429, while the genuine control token keeps working (any local
+        // process can reach the port, so a global lockout would be a denial of service).
+        const exhausted = this.#limits.exhausted('authFailures');
+        this.#limits.take('authFailures');
+        req.resume();
+        if (exhausted) {
+          throw new RouteSpecError('RS_RATE_LIMITED', 'Too many requests; retry later.', {
+            recoverable: true,
+          });
         }
+        throw error;
       }
+      charge(mutating ? 'mutations' : 'reads');
       if (match === null) {
         req.resume();
         if (matches.length > 0)
@@ -506,7 +517,6 @@ export class ControlServer {
       }
       const def = match.r.def;
       const params = Object.fromEntries(match.r.names.map((n, i) => [n, match.m[i + 1] as string]));
-      const caseAuth = def.auth === 'case' ? caseAuthFromHeaders(req.headers, this.store) : null;
       let rawBody: unknown = undefined;
       if (def.schema !== undefined) rawBody = await readJsonBody(req, def.maxBody ?? this.#maxBody);
       else assertNoBody(req);

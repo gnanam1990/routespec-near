@@ -19,7 +19,7 @@ import {
   CORPUS_EVIDENCE_CLASSES,
 } from '@routespec/contracts';
 import type { GateSnapshotRows } from '@routespec/store';
-import type { GateCaseInput, GateIdentity, GateInput } from './aggregate.ts';
+import type { GateBuildAttestationState, GateCaseInput, GateIdentity, GateInput } from './aggregate.ts';
 
 type Row = Readonly<Record<string, unknown>>;
 
@@ -74,6 +74,22 @@ function readResult(row: Row): GateCaseInput['result'] {
     evaluatorRevision: s(row, 'evaluator_revision'),
     fencingEpoch: n(row, 'fencing_epoch'),
     sessionId: s(row, 'session_id'),
+  };
+}
+
+/** The selected build attestation and its principal's current state (TB-07); null: none. */
+function readBuildAttestation(row: Row | null | undefined): GateBuildAttestationState | null {
+  if (!row) return null;
+  return {
+    attestationId: s(row, 'attestation_id'),
+    attestationClass: s(row, 'attestation_class') as SubjectAttestationClass,
+    scope: s(row, 'scope'),
+    buildRevisionId: sn(row, 'build_revision_id'),
+    principalEnabled: n(row, 'principal_enabled') === 1,
+    principalRevocationEpochAtIssue: n(row, 'principal_revocation_epoch'),
+    principalCurrentRevocationEpoch: n(row, 'principal_current_revocation_epoch'),
+    principalPolicyDigestAtIssue: s(row, 'principal_policy_digest'),
+    principalCurrentPolicyDigest: s(row, 'principal_current_policy_digest'),
   };
 }
 
@@ -161,6 +177,7 @@ export function gateInputFromSnapshot(rows: GateSnapshotRows, runtime: RuntimeRe
   const enforcementMode: EnforcementMode = definition?.enforcementMode ?? 'LOCAL_ADVISORY';
   return {
     identity,
+    buildAttestation: readBuildAttestation(rows.buildAttestation),
     gateLifecycle: s(g, 'execution_lifecycle') as ExecutionLifecycle,
     enforcementMode,
     cases,
@@ -177,9 +194,18 @@ export function expectedStates(rows: GateSnapshotRows): {
     fencingEpoch: number;
     terminalResultDigest: string | null;
   }>;
+  buildAttester: { principalEnabled: number; revocationEpoch: number; policyDigest: string } | null;
 } {
+  const a = rows.buildAttestation ?? null;
   return {
     gateLifecycle: s(rows.gateRun, 'execution_lifecycle'),
+    buildAttester: a
+      ? {
+          principalEnabled: n(a, 'principal_enabled'),
+          revocationEpoch: n(a, 'principal_current_revocation_epoch'),
+          policyDigest: s(a, 'principal_current_policy_digest'),
+        }
+      : null,
     caseStates: rows.caseRuns.map((c) => ({
       caseRunId: s(c, 'case_run_id'),
       lifecycle: s(c, 'execution_lifecycle'),

@@ -65,6 +65,12 @@ Everything else binds OS-assigned loopback ports.
 | `pnpm run test:containment` | 0    | 4 files / 19 passed                                                                |
 | `pnpm run test:delivery`    | 0    | 2 files / 21 passed (M12 uncontained 14, M14 contained 7)                          |
 
+After a second `git merge main` (brought in the RS-04 fix, `packages/regressions` only; one
+`BUILD-STATUS.md` conflict resolved by keeping both sections), `pnpm run check` exited 0 again
+(83 files / 709 passed, 2 skipped; secret-scan clean, 517 files) and `pnpm run test:containment`
+exited 0 again (4 files / 19 passed). `test:delivery` was not rerun: the merged change does not
+touch the proxy, containment or delivery code.
+
 ## Residual
 
 - None for this finding. Cases still share one proxy process by design (one proxy per gate).

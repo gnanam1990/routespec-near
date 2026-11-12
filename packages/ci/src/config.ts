@@ -12,7 +12,12 @@
 import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { z } from 'zod';
-import { ENFORCEMENT_MODES, RouteSpecError, type EnforcementMode } from '@routespec/contracts';
+import {
+  ENFORCEMENT_MODES,
+  RouteSpecError,
+  stableIssueCode,
+  type EnforcementMode,
+} from '@routespec/contracts';
 import { DEFAULT_IMPORT_LIMITS, decodeUtf8, parseBoundedJson } from '@routespec/regressions';
 
 export const CI_CONFIG_SCHEMA = 'routespec.ci-config/1' as const;
@@ -80,11 +85,11 @@ const configSchema = z
         retentionDays: z.number().int().min(1).max(MAX_RETENTION_DAYS).default(DEFAULT_RETENTION_DAYS),
       })
       .strict()
-      .default({}),
+      .prefault({}),
     liveDry: z
       .object({ requested: z.boolean().default(false) })
       .strict()
-      .default({}),
+      .prefault({}),
     trustedRefs: z
       .array(z.string().regex(/^refs\/(?:heads|tags)\/[^\s]{1,200}$/))
       .max(16)
@@ -163,7 +168,7 @@ export function loadCiConfig(configPath: string, workspace: string): CiConfig {
       {
         details: {
           path: (issue?.path ?? []).join('.').slice(0, 120),
-          issue: (issue?.code ?? 'invalid').slice(0, 40),
+          issue: (issue === undefined ? 'invalid' : stableIssueCode(issue, parsed)).slice(0, 40),
         },
       },
     );

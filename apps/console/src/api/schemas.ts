@@ -107,7 +107,7 @@ export const STAGE_STATES = ['DONE', 'PENDING', 'BLOCKED'] as const;
 
 const id = z.string().min(1).max(160);
 const digest = z.string().regex(/^sha256:[0-9a-f]{64}$/, 'expected sha256 digest');
-const time = z.string().datetime({ offset: true });
+const time = z.iso.datetime({ offset: true });
 const count = z.number().int().nonnegative();
 const safeText = z.string().max(2000);
 
@@ -136,10 +136,10 @@ export const zEffectCoverage = z
   .superRefine((value, ctx) => {
     // Declared hooks only can never be presented as complete coverage (UI-SPEC 3.1, NFR-12).
     if (value.basis === 'DECLARED_HOOKS_ONLY' && value.finding === 'COMPLETE') {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'DECLARED_HOOKS_ONLY cannot be COMPLETE' });
+      ctx.addIssue({ code: 'custom', message: 'DECLARED_HOOKS_ONLY cannot be COMPLETE' });
     }
     if (value.basis === null && value.finding === 'COMPLETE') {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'coverage without basis cannot be COMPLETE' });
+      ctx.addIssue({ code: 'custom', message: 'coverage without basis cannot be COMPLETE' });
     }
   });
 
@@ -299,7 +299,7 @@ export const zCaseStart = z.object({
   caseRunId: id,
   sessionId: id,
   clientInstanceId: id,
-  proxyBaseUrl: z.string().url(),
+  proxyBaseUrl: z.url(),
   fencingEpoch: count,
   headers: z.object({
     session: id,
@@ -552,7 +552,7 @@ export const zValidateResult = z.object({
   findings: z.array(z.unknown()).max(200),
   gateRun: zGateRun,
 });
-export const zStartResult = z.object({ proxyBaseUrl: z.string().url(), gateRun: zGateRun });
+export const zStartResult = z.object({ proxyBaseUrl: z.url(), gateRun: zGateRun });
 export const zCaptureResult = z.object({ importId: id, state: zImportState, revision: count });
 export const zImportAck = z.object({ state: zImportState });
 export const zReviewResult = z.object({ reviewId: id, revision: count, state: zImportState });
@@ -643,7 +643,7 @@ export const zErrorEnvelope = z.object({
           .max(64)
           .optional(),
       })
-      .passthrough()
+      .loose()
       .optional(),
   }),
 });

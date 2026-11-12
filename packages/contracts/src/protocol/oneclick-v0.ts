@@ -18,6 +18,7 @@ import { digestValue, type Digest } from '../canonical/digest.ts';
 import { RAW_PROVIDER_STATUSES, type MaterialFieldClass, type OperationPhase } from '../enums.ts';
 import { RouteSpecError } from '../errors.ts';
 import { BaseUnitAmount, z } from '../schemas/common.ts';
+import { isMissingValueIssue } from '../schemas/issues.ts';
 import { ROUTESPEC_HEADERS } from './headers.ts';
 import { ONECLICK_SDK_PIN, ONECLICK_SDK_ROUTES } from './sdk-pin.ts';
 import { RAW_STATUS_NORMALIZATION, TERMINAL_RAW_STATUSES } from './status.ts';
@@ -335,7 +336,7 @@ export function validateQuoteFinalization(bound: ValidatedQuoteRequest, input: u
   }
   const parsed = QuoteResponseMaterial.safeParse(input);
   if (!parsed.success) {
-    const missing = parsed.error.issues.some((i) => i.code === 'invalid_type' && i.received === 'undefined');
+    const missing = parsed.error.issues.some((i) => isMissingValueIssue(i, input));
     if (missing) {
       throw new RouteSpecError(
         'RS_PARTIAL_FINALIZATION',

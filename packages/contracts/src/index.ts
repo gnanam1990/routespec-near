@@ -13,6 +13,7 @@ export * from './schemas/common.ts';
 export * from './schemas/records.ts';
 export * from './schemas/result.ts';
 export * from './schemas/registry.ts';
+export * from './schemas/issues.ts';
 export * from './protocol/headers.ts';
 export * from './protocol/sdk-pin.ts';
 export * from './protocol/status.ts';

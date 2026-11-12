@@ -23,7 +23,7 @@
     "@routespec/runner": "workspace:*",
     "@routespec/scenario": "workspace:*",
     "@routespec/store": "workspace:*",
-    "zod": "3.25.76"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@defuse-protocol/one-click-sdk-typescript": "0.1.26",

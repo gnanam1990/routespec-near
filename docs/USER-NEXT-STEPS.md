@@ -32,7 +32,7 @@ transfers are refused before any credential, DNS lookup, or socket.
    holds only the redacted shape, reason, HTTP status, timing, and token state. Add it to
    `docs/status/M07.md` and the RP-07 row of `BUILD-STATUS.md`.
 
-## 2. First remote CI run (RP-05 CI part, M10)
+## 2. First remote CI run (RP-05 CI part, M10) — now the main `WORKING_LOCAL` gap you can close
 
 1. Check the three pinned action SHAs against their upstream release tags:
    `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683` (v4.2.2),
@@ -48,12 +48,18 @@ transfers are refused before any credential, DNS lookup, or socket.
    a macOS machine and record the result in `docs/status/M12.md`.
 5. If you configure a required status check, RouteSpec still reports
    `REQUIRED_CHECK_UNVERIFIED`; it has no adapter that can verify repository settings.
+6. Hosted runners have no WSL; for the contained journey on a Linux runner set
+   `ROUTESPEC_CONTAINER_CLI='["docker"]'`, pull `node:22-bookworm-slim` in a setup step, and run
+   `pnpm run test:containment` and `pnpm run test:delivery`. Without an engine those tests report
+   NOT_RUN, which is not a pass.
 
 ## 3. Demo recording (only after the gates it shows)
 
-1. Record only the normal product path that has passed. Today that is the local, user-asserted,
-   declared-hooks-only diagnostic journey: say on screen that `WORKING_LOCAL` is not reached and
-   that INV-04 is REVIEW for lack of a sandbox and interceptor.
+1. Record only the normal product path that has passed. Today that is the contained local
+   journey (`pnpm run delivery:journey -- --work <dir> --out <file> --contained` with the engine
+   configured): confined subjects, attested launches, the corrected client's gate PASS. Say on
+   screen that `WORKING_LOCAL` is still not claimed (no real CI run yet, declared-hooks-only
+   captures are labelled rather than refused, the interceptor profile is not reviewed).
 2. A safe script: `pnpm run test:delivery`, then start
    `node packages/control-api/src/main.ts --data <dir> --console apps/console/dist` on a data
    directory produced by `pnpm run delivery:journey -- --work <dir> --out <file>` and walk the
@@ -79,20 +85,36 @@ blocked.
 
 ## 6. Dependency follow-ups
 
-- After 2026-11-18, upgrade `node-forge` to 1.4.3 in `packages/live-dry-adapter` (dev only) and
-  rerun `pnpm audit`.
-- Plan zod 4, react-router 7, and vitest 4 as separate changes (13 advisories are triaged in
-  `docs/status/M11.md`).
+- Done by M13: zod 4.6.7, react-router 7.18.5, vitest 4.1.12 (`docs/status/M13.md`).
+- On or after 2026-11-18, set `node-forge` to `1.4.3` in `packages/live-dry-adapter/package.json`
+  (dev only), run `pnpm install`, `pnpm run check`, and `pnpm audit` (expected afterwards: 1
+  moderate, minimatch through typescript-eslint).
+- Decide whether to move typescript-eslint to a release that drops minimatch 9.
 
-## 7. What `WORKING_LOCAL` still needs (engineering, not a user action)
+## 7. Container containment (M14)
 
-- A process-tree sandbox and an independent interceptor process that observes the required sink
-  through its private channel, launched and attested per case.
-- A trust-rooted launcher path for the standalone service (today local launcher attestation
-  exists only for a launcher the control host forks in-process), or a CI issuer that can bind the
-  challenge nonce.
-- Per-case effect-coverage policy selection for corpora with several scenarios
-  (ADR-0017 §12), and refusal of declared-hooks-only captures as release evidence (RP-08).
+- This machine is already set up: Docker Engine 29.1.3 in the WSL 2 distribution Ubuntu-24.04,
+  image `node:22-bookworm-slim` pulled. Keep the distribution's Docker service enabled. Before a
+  run, set `ROUTESPEC_CONTAINER_CLI='["wsl.exe","-d","Ubuntu-24.04","-u","root","--exec","docker"]'`.
+- On another machine follow `docs/runbooks/container-containment.md`. RouteSpec never installs
+  an engine, changes Windows features, or pulls images by itself.
+- When you update the image tag, rerun `pnpm run test:containment` and `pnpm run test:delivery`:
+  the image id is part of every contained build's toolchain identity, so builds registered with
+  the old id no longer attest.
 
-When these exist, rerun `pnpm run test:delivery`; the T-055 assertions about INV-04 must then be
-changed together with the new runtime evidence, never before it.
+## 8. What `WORKING_LOCAL` still needs
+
+Resolved by M14 on this host: process-tree containment, an independent interceptor launched and
+attested per case, trust-rooted launches through the standalone service, complete-effect INV-04
+PASS for the corrected client, one effect policy per scenario, and the export-boundary kill test.
+Still open:
+
+- **RP-05 (your action):** a clean-checkout run on a real CI service (section 2).
+- **RP-08 (engineering):** promotion must refuse declared-hooks-only or unconfined captures as
+  release evidence instead of labelling them; this changes the console's promotion flow
+  (an explicit diagnostic-only choice) and the uncontained M12 journey.
+- **RP-02/RP-06 (review):** a review workflow for interceptor profiles (they stay
+  `DECLARED_UNREVIEWED`) and the independent security review (section 5).
+
+When these exist, rerun `pnpm run test:delivery` with the engine configured; only then can the
+claim be reconsidered, with the runtime evidence.

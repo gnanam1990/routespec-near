@@ -17,6 +17,10 @@
  * that port (the RouteSpec proxy, the effect interceptor sink). A port without a target refuses
  * the connection. Nothing else can leave the container.
  *
+ * Only the shim writes frames to that channel (the subject's stdout goes to stderr), and every
+ * frame, including an unterminated partial line, is bounded by `MAX_FRAME_BYTES`. A channel that
+ * exceeds the bound stops the container and downgrades the verdict (RS-02).
+ *
  * After start the engine's own record (`docker inspect`) and the shim's self-observation are
  * checked by `verifyInspect`; only a clean result is `PROCESS_TREE_ENFORCED`. Teardown stops the
  * tree, waits for the engine to remove the container, and reports whether anything survived.
@@ -25,7 +29,6 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { connect, type Socket } from 'node:net';
 import { relative, resolve, sep } from 'node:path';
-import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { enginePath, runEngine, type ContainerCli } from './runtime.ts';
 import { verifyInspect, type ContainmentVerdict, type SelfObservation } from './verify.ts';
@@ -89,6 +92,12 @@ function closeAfterFlush(socket: Socket): void {
 }
 
 export const DEFAULT_MAX_PIDS = 128;
+/**
+ * Largest shim -> host frame (bytes, excluding the newline). The shim caps the frames it writes
+ * at 1 MiB, so anything larger did not come from a well-behaved shim (RS-02).
+ */
+export const MAX_FRAME_BYTES = 2 * 1024 * 1024;
+export const CONTROL_CHANNEL_FRAME_TOO_LARGE = 'CONTROL_CHANNEL_FRAME_TOO_LARGE';
 export const DEFAULT_MAX_MEMORY_BYTES = 512 * 1024 * 1024;
 
 function inside(root: string, path: string): boolean {
@@ -117,6 +126,8 @@ export class ContainedSubject {
   self: SelfObservation | null = null;
   containerId = '';
   subjectExit: { code: number | null; signal: string | null } | null = null;
+  /** Set when the control channel broke its framing bound; the container is then stopped. */
+  channelFault: string | null = null;
   readonly stats: Record<string, TunnelStats> = {};
   readonly #proc: ChildProcessWithoutNullStreams;
   readonly #targets = new Map<number, { hostPort: number | null; purpose: string }>();
@@ -132,6 +143,9 @@ export class ContainedSubject {
   #ready: ((self: SelfObservation) => void) | null = null;
   #failed: ((e: Error) => void) | null = null;
   #stopped = false;
+  /** Bytes of the current, not yet newline-terminated, frame. */
+  #partial: Buffer[] = [];
+  #partialBytes = 0;
 
   private constructor(options: LaunchOptions, name: string) {
     this.name = name;
@@ -206,8 +220,7 @@ export class ContainedSubject {
       stderr = (stderr + text).slice(-8000);
       options.onStderr?.(text);
     });
-    const rl = createInterface({ input: this.#proc.stdout, crlfDelay: Infinity });
-    rl.on('line', (line) => this.#onLine(line));
+    this.#proc.stdout.on('data', (chunk: Buffer) => this.#onChunk(chunk));
   }
 
   /** Start the subject tree in a new container and verify its confinement. */
@@ -253,6 +266,7 @@ export class ContainedSubject {
       inspect = null;
     }
     this.verdict = verifyInspect(inspect, this.expectations, this.self);
+    this.#applyChannelFault();
     const id = Array.isArray(inspect) ? (inspect[0] as { Id?: string } | undefined)?.Id : undefined;
     if (typeof id === 'string') this.containerId = id;
     return this.verdict;
@@ -370,6 +384,50 @@ export class ContainedSubject {
 
   #write(obj: Record<string, unknown>): void {
     if (this.#proc.stdin.writable) this.#proc.stdin.write(`${JSON.stringify(obj)}\n`);
+  }
+
+  /** Split the channel into newline-terminated frames without ever holding more than the bound. */
+  #onChunk(chunk: Buffer): void {
+    let start = 0;
+    while (this.channelFault === null) {
+      const nl = chunk.indexOf(0x0a, start);
+      const end = nl < 0 ? chunk.length : nl;
+      if (this.#partialBytes + (end - start) > MAX_FRAME_BYTES) {
+        this.#faultChannel(CONTROL_CHANNEL_FRAME_TOO_LARGE);
+        return;
+      }
+      if (nl < 0) {
+        if (end > start) {
+          this.#partial.push(chunk.subarray(start));
+          this.#partialBytes += end - start;
+        }
+        return;
+      }
+      const piece = chunk.subarray(start, nl);
+      const frame = this.#partialBytes === 0 ? piece : Buffer.concat([...this.#partial, piece]);
+      this.#partial = [];
+      this.#partialBytes = 0;
+      this.#onLine(frame.toString('utf8'));
+      start = nl + 1;
+    }
+  }
+
+  #faultChannel(reason: string): void {
+    this.channelFault = reason;
+    this.#partial = [];
+    this.#partialBytes = 0;
+    this.#applyChannelFault();
+    this.#failed?.(new Error(`control channel fault (${reason})`));
+    void this.stop().catch(() => undefined);
+  }
+
+  #applyChannelFault(): void {
+    if (this.channelFault === null) return;
+    this.verdict = {
+      ...this.verdict,
+      containment: 'DECLARED_HOOKS_ONLY',
+      findings: [...new Set([...this.verdict.findings, this.channelFault])].sort(),
+    };
   }
 
   #onLine(line: string): void {

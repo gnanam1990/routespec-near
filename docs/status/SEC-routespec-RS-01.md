@@ -64,14 +64,14 @@ Environment: `ROUTESPEC_TEST_PORT_BASE=9700`, `ROUTESPEC_DELIVERY_PORT=9705`, `F
 `ROUTESPEC_CONTAINER_CLI='["wsl.exe","-d","Ubuntu-24.04","-u","root","--exec","docker"]'` for the
 containment and delivery suites.
 
-| Command                     | Exit | Result                                                                                        |
-| --------------------------- | ---- | --------------------------------------------------------------------------------------------- |
-| `pnpm run check`            | 0    | typecheck, lint, format clean; 84 files, 717 passed, 2 skipped; secret scan clean (523 files) |
-| `pnpm run test:containment` | 0    | 4 files, 19 passed, none skipped (Docker 29.1.3 in WSL Ubuntu 24.04)                          |
-| `pnpm run test:delivery`    | 0    | 2 files, 21 passed (clean-clone uncontained journey and contained journey, none skipped)      |
+| Command                     | Exit | Result                                                                                                          |
+| --------------------------- | ---- | --------------------------------------------------------------------------------------------------------------- |
+| `pnpm run check`            | 0    | typecheck, lint, format clean; 84 files passed, 1 skipped; 717 passed, 6 skipped; secret scan clean (525 files) |
+| `pnpm run test:containment` | 0    | 4 files, 19 passed, none skipped (Docker 29.1.3 in WSL Ubuntu 24.04)                                            |
+| `pnpm run test:delivery`    | 0    | 2 files, 21 passed (clean-clone uncontained journey and contained journey, none skipped)                        |
 
 Note: earlier `pnpm run check` runs, made while sibling suites were loading the host, had
-timing failures in unrelated kill-timing and timeout-bound tests (T-025, T-044, T-046, T-057 (a 60 s timeout),
+timing failures in unrelated kill-timing and timeout-bound tests (T-025, including once after the RS-05 merge, T-044, T-046, T-057 (a 60 s timeout),
 M16, T-036, M14 export boundary kill). Each passed when rerun alone and the whole suite passed on
 the run above. One earlier `pnpm run test:delivery` (before `main` was merged) had a T-058 upload
 failure inside the clean clone that did not reproduce; the run above passed.

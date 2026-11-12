@@ -28,6 +28,8 @@ import {
   type ImportOrigin,
   type ImportState,
   type ProvenanceClass,
+  type CorpusEvidenceClass,
+  type EvidenceUse,
 } from '@routespec/contracts';
 import { assertNoSecrets } from './guards.ts';
 import type { RouteSpecStore } from './store.ts';
@@ -124,6 +126,20 @@ export interface PromotionInput {
   };
   /** Re-verification executed inside the promotion transaction (e.g. capture re-derivation). */
   readonly verifyInTransaction?: (db: DatabaseSync) => void;
+  /**
+   * Requested use of the promoted capture (M16, RP-08). RELEASE_EVIDENCE is refused with
+   * RS_CAPTURE_NOT_RELEASE_EVIDENCE when `classify` reports any refusal reason. DIAGNOSTIC_ONLY
+   * is always allowed but only as a non-required (ADVISORY) case.
+   */
+  readonly evidenceUse: EvidenceUse;
+  /** Release-evidence classification, evaluated inside the promotion transaction. */
+  readonly classify: () => ReleaseEvidenceClassification;
+}
+
+export interface ReleaseEvidenceClassification {
+  readonly refusalReasons: readonly string[];
+  readonly interceptorProfileDigest: string | null;
+  readonly interceptorReviewId: string | null;
 }
 
 export interface PromotionResult {
@@ -134,6 +150,8 @@ export interface PromotionResult {
   readonly corpusDigest: Digest;
   readonly baseCorpusRevisionId: string | null;
   readonly promotionDigest: Digest;
+  readonly evidenceUse: EvidenceUse;
+  readonly refusalReasons: readonly string[];
 }
 
 export interface CorpusCaseInput {
@@ -189,6 +207,45 @@ const FINDING_CATEGORY = /^[A-Z][A-Z0-9_]{1,63}$/;
 const FINDING_PATH = /^\$[A-Za-z0-9_.[\]-]{0,255}$/;
 
 export const CORPUS_DIGEST_DOMAIN = 'routespec.corpus-revision/1';
+
+/**
+ * How a scenario revision may be used in a corpus (M16, RP-08): an authored revision (not
+ * produced by a promotion), a promotion classified as release evidence or as diagnostic only,
+ * or a promotion recorded before classification existed (UNCLASSIFIED, never release evidence).
+ */
+export function corpusEvidenceClassIn(db: DatabaseSync, scenarioRevisionId: string): CorpusEvidenceClass {
+  const p = one(
+    db,
+    'SELECT promotion_id FROM import_promotions WHERE scenario_revision_id = ?',
+    scenarioRevisionId,
+  );
+  if (!p) return 'AUTHORED';
+  const c = one(
+    db,
+    'SELECT evidence_use FROM promotion_evidence_classes WHERE promotion_id = ?',
+    s(p, 'promotion_id'),
+  );
+  if (!c) return 'UNCLASSIFIED';
+  return s(c, 'evidence_use') === 'RELEASE_EVIDENCE' ? 'RELEASE_EVIDENCE' : 'DIAGNOSTIC_ONLY';
+}
+
+/** Refuse a REQUIRED corpus case whose scenario revision is not release evidence. */
+export function assertRequiredCasesAreReleaseEvidence(
+  db: DatabaseSync,
+  cases: ReadonlyArray<{ scenarioRevisionId: string; gatePolicy: string }>,
+): void {
+  cases.forEach((c, ordinal) => {
+    if (c.gatePolicy !== 'REQUIRED') return;
+    const cls = corpusEvidenceClassIn(db, c.scenarioRevisionId);
+    if (cls !== 'AUTHORED' && cls !== 'RELEASE_EVIDENCE') {
+      fail(
+        'RS_CAPTURE_NOT_RELEASE_EVIDENCE',
+        'A promoted capture that is not release evidence cannot be a required corpus case.',
+        { ordinal, evidenceClass: cls },
+      );
+    }
+  });
+}
 
 /** Corpus identity exactly as `RouteSpecStore.createCorpusRevision` computes it. */
 export function corpusRevisionDigest(input: { label: string; cases: readonly CorpusCaseInput[] }): Digest {
@@ -723,6 +780,7 @@ export class ImportJournal {
           reviewId: input.reviewId,
           scenarioDigest: input.scenario.revisionDigest,
           corpus: input.corpus,
+          evidenceUse: input.evidenceUse,
         },
         () => this.promoteIn(db, input),
       ),
@@ -773,6 +831,24 @@ export class ImportJournal {
       fail('RS_IMPORT_REVIEW_INVALID', 'Scenario provenance differs from the reviewed provenance.');
     }
     input.verifyInTransaction?.(db);
+
+    // Release evidence (M16, RP-08): refuse a capture that is not independently observed and
+    // confined through a reviewed interceptor profile, unless it is explicitly diagnostic only.
+    const classification = input.classify();
+    const refusalReasons = [...new Set(classification.refusalReasons)].sort();
+    if (input.evidenceUse === 'RELEASE_EVIDENCE' && refusalReasons.length > 0) {
+      throw new RouteSpecError(
+        'RS_CAPTURE_NOT_RELEASE_EVIDENCE',
+        'This capture cannot be release evidence. Promote it as diagnostic only, or capture a confined, independently observed case through a reviewed interceptor profile.',
+        { details: { reasons: refusalReasons } },
+      );
+    }
+    if (input.evidenceUse === 'DIAGNOSTIC_ONLY' && input.corpus.newCase.gatePolicy === 'REQUIRED') {
+      fail(
+        'RS_CAPTURE_NOT_RELEASE_EVIDENCE',
+        'A diagnostic-only promotion can only add an ADVISORY case, never a required one.',
+      );
+    }
 
     const ri = input.scenario.revisionInput;
     const recomputed = digestValue('routespec.scenario-revision/1', {
@@ -825,6 +901,7 @@ export class ImportJournal {
     if (one(db, 'SELECT 1 AS x FROM corpus_revisions WHERE corpus_digest = ?', corpusDigest)) {
       fail('RS_DUPLICATE', 'Promotion must create a new corpus identity.');
     }
+    assertRequiredCasesAreReleaseEvidence(db, baseCases);
     const corpusRevisionId = this.insertCorpus(db, input.corpus.label, corpusDigest, cases);
     this.insertLineage(
       db,
@@ -857,11 +934,34 @@ export class ImportJournal {
       promotionDigest,
       this.now(),
     );
+    run(
+      db,
+      `INSERT INTO promotion_evidence_classes(promotion_id, import_id, scenario_revision_id, evidence_use,
+         refusal_reasons_json, interceptor_profile_digest, interceptor_review_id, classification_digest, created_at_ms)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      promotionId,
+      input.importId,
+      scenarioRevisionId,
+      input.evidenceUse,
+      json(refusalReasons),
+      classification.interceptorProfileDigest,
+      classification.interceptorReviewId,
+      digestValue('routespec.promotion-evidence-class/1', {
+        promotionId,
+        promotionDigest,
+        evidenceUse: input.evidenceUse,
+        refusalReasons,
+        interceptorProfileDigest: classification.interceptorProfileDigest,
+        interceptorReviewId: classification.interceptorReviewId,
+      }),
+      this.now(),
+    );
     this.transition(db, input.importId, input.expectedRevision, 'PROMOTED');
     this.audit(db, 'IMPORT_PROMOTED', input.importId, {
       scenarioRevisionId,
       corpusRevisionId,
       baseCorpusRevisionId: input.corpus.baseCorpusRevisionId,
+      evidenceUse: input.evidenceUse,
     });
     return {
       promotionId,
@@ -871,6 +971,8 @@ export class ImportJournal {
       corpusDigest,
       baseCorpusRevisionId: input.corpus.baseCorpusRevisionId,
       promotionDigest,
+      evidenceUse: input.evidenceUse,
+      refusalReasons,
     };
   }
 
@@ -988,6 +1090,7 @@ export class ImportJournal {
         if (one(db, 'SELECT 1 AS x FROM corpus_revisions WHERE corpus_digest = ?', corpusDigest)) {
           fail('RS_DUPLICATE', 'A corpus revision with this exact identity already exists.');
         }
+        assertRequiredCasesAreReleaseEvidence(db, input.cases);
         const corpusRevisionId = this.insertCorpus(db, input.label, corpusDigest, input.cases);
         this.insertLineage(db, corpusRevisionId, input.baseCorpusRevisionId, 'REVISION_OF', null);
         return { corpusRevisionId, corpusDigest };
@@ -1014,6 +1117,15 @@ export class ImportJournal {
   getPromotion(importId: string): Row | undefined {
     return this.store.journal.read((db) =>
       one(db, 'SELECT * FROM import_promotions WHERE import_id = ?', importId),
+    );
+  }
+
+  /** The release-evidence class recorded with a promotion (M16); undefined: UNCLASSIFIED. */
+  getPromotionEvidenceClass(promotionId: string): Row | undefined {
+    return this.store.journal.read((db) =>
+      this.store.schemaVersion >= 9
+        ? one(db, 'SELECT * FROM promotion_evidence_classes WHERE promotion_id = ?', promotionId)
+        : undefined,
     );
   }
 

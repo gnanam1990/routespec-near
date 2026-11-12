@@ -118,6 +118,9 @@ export async function promoteUserTrace(
     corpusLabel: string;
     requiredInvariants: readonly string[];
     edit?: (m: Mapping) => Mapping;
+    /** M16: user files are never release evidence; tests may try the refused default. */
+    evidenceUse?: 'RELEASE_EVIDENCE' | 'DIAGNOSTIC_ONLY';
+    gatePolicy?: 'REQUIRED' | 'ADVISORY';
   },
 ): Promise<{ importId: string; mapping: Mapping; promotion: ReturnType<typeof promoteImport> }> {
   const out = await importUserFile(p.journal, {
@@ -167,8 +170,10 @@ export async function promoteUserTrace(
     baseCorpusRevisionId: input.baseCorpusRevisionId,
     corpusLabel: input.corpusLabel,
     severity: 'HIGH',
-    gatePolicy: 'REQUIRED',
+    gatePolicy: input.gatePolicy ?? 'ADVISORY',
     idempotencyKey: `${input.tag}-promote`,
+    // A user file is never independent release evidence (M16, RP-08).
+    evidenceUse: input.evidenceUse ?? 'DIAGNOSTIC_ONLY',
   });
   return { importId: out.importId, mapping, promotion };
 }

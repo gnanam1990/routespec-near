@@ -17,7 +17,8 @@
  *   process-tree escape or unsupported dynamic call findings, inventory missing/mismatched/
  *   unattested/dynamic (for the inventory basis), unresolved attempts, subject reports that the
  *   boundary did not observe, or a subject-reported early release (self-report never proves).
- * - PASS only with complete, attested, independent runtime boundary coverage.
+ * - PASS only with complete, attested, independent runtime boundary coverage through a reviewed
+ *   interceptor profile (M16): an unreviewed, rejected, or revoked profile review is a gap.
  */
 import { checkAttestation } from '../attestation.ts';
 import { judgeItem, proofPredicate } from '../evidence.ts';
@@ -28,9 +29,17 @@ import type {
   InvariantResult,
   KernelInput,
 } from '../types.ts';
-import type { EvidenceReason } from '@routespec/contracts';
+import { effectiveProfileReview, type EvidenceReason, type ProfileReviewState } from '@routespec/contracts';
 
 const ID = 'INV-04';
+
+/** The coverage gap for each non-reviewed profile state (M16). */
+export const PROFILE_REVIEW_GAP: Readonly<Record<Exclude<ProfileReviewState, 'REVIEWED'>, string>> =
+  Object.freeze({
+    DECLARED_UNREVIEWED: 'INTERCEPTOR_PROFILE_UNREVIEWED',
+    REVIEW_REJECTED: 'INTERCEPTOR_PROFILE_REVIEW_REJECTED',
+    REVIEW_REVOKED: 'INTERCEPTOR_PROFILE_REVIEW_REVOKED',
+  });
 
 /** Evidence subjects that can establish accepted completion for protected effects. */
 export const COMPLETION_SUBJECTS: readonly string[] = Object.freeze([
@@ -140,6 +149,18 @@ export function evaluateInv04(input: KernelInput): InvariantResult[] {
 
   // --- interceptors ---------------------------------------------------------------------------
   const pinnedProfile = policy?.interceptorProfileDigest ?? null;
+  // A complete-effect basis requires a reviewed interceptor profile (API-SPEC, RP-02): an
+  // effective signed review recorded before the case input closed, not revoked, by a reviewer
+  // that is neither revoked nor outside its validity window.
+  if (policy !== null && policy.basis !== 'DECLARED_HOOKS_ONLY' && pinnedProfile !== null) {
+    const review = effectiveProfileReview(
+      pinnedProfile,
+      input.interceptorProfileReviews ?? [],
+      input.caseState.asOfMs,
+    );
+    if (review.state !== 'REVIEWED') gaps.push(PROFILE_REVIEW_GAP[review.state]);
+    else facts.push(review.reviewId as string);
+  }
   const violationCapable = new Set<string>();
   if (policy !== null && policy.basis !== 'DECLARED_HOOKS_ONLY' && input.interceptors.length === 0) {
     gaps.push('INTERCEPTOR_MISSING');

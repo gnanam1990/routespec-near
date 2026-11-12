@@ -22,3 +22,4 @@ export * from './corpus.ts';
 export * from './incidents.ts';
 export * from './export-scan.ts';
 export * from './status.ts';
+export * from './release-evidence.ts';

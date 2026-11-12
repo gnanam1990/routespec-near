@@ -16,6 +16,7 @@ import { MIGRATION_005_SQL } from './005-import-regressions.ts';
 import { MIGRATION_006_SQL } from './006-gate-evaluation-export.ts';
 import { MIGRATION_007_SQL } from './007-control-plane.ts';
 import { MIGRATION_008_SQL } from './008-containment.ts';
+import { MIGRATION_009_SQL } from './009-review-evidence.ts';
 
 export interface Migration {
   readonly version: number;
@@ -32,6 +33,7 @@ export const MIGRATIONS: readonly Migration[] = Object.freeze([
   { version: 6, name: 'gate-evaluation-export', sql: MIGRATION_006_SQL },
   { version: 7, name: 'control-plane', sql: MIGRATION_007_SQL },
   { version: 8, name: 'containment', sql: MIGRATION_008_SQL },
+  { version: 9, name: 'review-evidence', sql: MIGRATION_009_SQL },
 ]);
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS.length;

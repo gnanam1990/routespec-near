@@ -8,8 +8,13 @@
  * lease owners never appear.
  */
 import type { DatabaseSync } from 'node:sqlite';
-import { EVIDENCE_CLASSES, type EvidenceClass } from '@routespec/contracts';
-import type { ControlJournal, RouteSpecStore } from '@routespec/store';
+import { EVIDENCE_CLASSES, effectiveProfileReview, type EvidenceClass } from '@routespec/contracts';
+import {
+  profileReviewFactRows,
+  reviewFactFromRow,
+  type ControlJournal,
+  type RouteSpecStore,
+} from '@routespec/store';
 
 type Row = Record<string, unknown>;
 
@@ -208,6 +213,18 @@ export function coverageFor(
     interceptorProfileId: profile ? str(profile, 'profile_id') : null,
     interceptorFreshness: freshness,
     processTreeScope: profile ? str(profile, 'process_tree_scope') : null,
+    // M16: the effective signed review state of the pinned profile now (never caller-supplied).
+    interceptorReviewState: profile
+      ? effectiveProfileReview(
+          str(profile, 'profile_digest'),
+          store.journal
+            .read((db) =>
+              profileReviewFactRows(db, str(profile, 'project_id'), str(profile, 'profile_digest')),
+            )
+            .map(reviewFactFromRow),
+          scope?.nowMs ?? Date.now(),
+        ).state
+      : null,
   };
 }
 

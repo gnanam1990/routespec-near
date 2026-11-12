@@ -123,6 +123,11 @@ export const ERROR_CODES = Object.freeze([
   'RS_DELETION_PLAN_MISMATCH',
   // container containment launcher (M14)
   'RS_CONTAINMENT_UNAVAILABLE',
+  // release-evidence refusal and interceptor profile review (M16)
+  'RS_CAPTURE_NOT_RELEASE_EVIDENCE',
+  'RS_PROFILE_REVIEW_INVALID',
+  'RS_REVIEW_SIGNATURE_INVALID',
+  'RS_REVIEWER_NOT_INDEPENDENT',
   'RS_INTERNAL',
 ] as const);
 export type ErrorCode = (typeof ERROR_CODES)[number];

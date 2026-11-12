@@ -17,6 +17,7 @@ import type {
   Verdict,
 } from '@routespec/contracts/enums';
 import type { IconName } from '../components/Icon.tsx';
+import { PROFILE_REVIEW_STATE_TEXT } from './evidence-content.ts';
 import type { AttestationRef, CompatibilityRef, EffectCoverage, EvidenceSummary } from '../api/schemas.ts';
 
 export type Tone = 'pass' | 'fail' | 'review' | 'private' | 'neutral';
@@ -383,9 +384,15 @@ export function coverageContent(coverage: EffectCoverage): StatusContent {
   }
   const base = COVERAGE_BASIS_CONTENT[coverage.basis];
   if (coverage.basis !== 'DECLARED_HOOKS_ONLY' && coverage.finding === 'INCOMPLETE') {
+    const review =
+      coverage.interceptorReviewState && coverage.interceptorReviewState !== 'REVIEWED'
+        ? [
+            `Interceptor profile: ${PROFILE_REVIEW_STATE_TEXT[coverage.interceptorReviewState] ?? coverage.interceptorReviewState}`,
+          ]
+        : [];
     return {
       label: `${base.label} — incomplete, REVIEW`,
-      description: ['Coverage is incomplete', ...coverage.missing].join('. '),
+      description: ['Coverage is incomplete', ...review, ...coverage.missing].join('. '),
       icon: 'pause',
       tone: 'review',
     };

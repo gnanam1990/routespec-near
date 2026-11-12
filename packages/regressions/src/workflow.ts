@@ -11,10 +11,17 @@
  *   re-derivation of an installed capture from its journal — and atomically creates a new
  *   immutable scenario revision and a new corpus revision. The base corpus is never touched.
  */
-import { RouteSpecError, digestValue, type Digest, type ProvenanceClass } from '@routespec/contracts';
+import {
+  RouteSpecError,
+  digestValue,
+  type Digest,
+  type EvidenceUse,
+  type ProvenanceClass,
+} from '@routespec/contracts';
 import type { ImportJournal, PromotionResult } from '@routespec/store';
 import { compileMapping, validateMapping, type Mapping, type MappingIssue } from './mapping.ts';
 import { verifyInstalledCapture } from './pipeline.ts';
+import { classifyCaptureEvidence } from './release-evidence.ts';
 import type { TraceDocument } from './trace.ts';
 
 export const REVIEW_DECISIONS = Object.freeze([
@@ -163,6 +170,12 @@ export function promoteImport(
     severity: string;
     gatePolicy: string;
     idempotencyKey: string;
+    /**
+     * RELEASE_EVIDENCE (default) refuses any capture that is not confined, independently
+     * observed, and covered through a reviewed interceptor profile (RS_CAPTURE_NOT_RELEASE_EVIDENCE).
+     * DIAGNOSTIC_ONLY is the explicit choice to keep such a capture as an ADVISORY case.
+     */
+    evidenceUse?: EvidenceUse;
   },
 ): PromotionResult {
   const { trace, view } = traceOf(journal, input.importId);
@@ -214,5 +227,7 @@ export function promoteImport(
       },
     },
     verifyInTransaction: () => verifyInstalledCapture(journal, input.importId),
+    evidenceUse: input.evidenceUse ?? 'RELEASE_EVIDENCE',
+    classify: () => classifyCaptureEvidence(journal, input.importId),
   });
 }

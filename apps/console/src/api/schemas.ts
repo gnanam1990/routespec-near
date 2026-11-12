@@ -38,6 +38,14 @@ const asTuple = <T extends readonly string[]>(values: T) =>
   values as unknown as readonly [T[number], ...T[number][]];
 
 export const zLifecycle = zEnum(asTuple(EXECUTION_LIFECYCLES));
+/** M16: effective interceptor profile review state and declared bundle/promotion use. */
+export const zProfileReviewState = z.enum([
+  'DECLARED_UNREVIEWED',
+  'REVIEWED',
+  'REVIEW_REJECTED',
+  'REVIEW_REVOKED',
+]);
+export const zEvidenceUse = z.enum(['RELEASE_EVIDENCE', 'DIAGNOSTIC_ONLY']);
 export const zVerdict = zEnum(asTuple(VERDICTS));
 export const zEvidenceClass = zEnum(asTuple(EVIDENCE_CLASSES));
 export const zEvidenceScope = zEnum(asTuple(EVIDENCE_SCOPES));
@@ -132,6 +140,7 @@ export const zEffectCoverage = z
     interceptorProfileId: id.nullable(),
     interceptorFreshness: zFreshness,
     processTreeScope: safeText.nullable(),
+    interceptorReviewState: zProfileReviewState.nullable().optional(),
   })
   .superRefine((value, ctx) => {
     // Declared hooks only can never be presented as complete coverage (UI-SPEC 3.1, NFR-12).
@@ -512,7 +521,22 @@ export const zImportDetail = zImportRow.extend({
     ])
     .optional(),
   promotion: z
-    .object({ scenarioRevisionId: id, corpusRevisionId: id, baseCorpusRevisionId: id.nullable() })
+    .object({
+      scenarioRevisionId: id,
+      corpusRevisionId: id,
+      baseCorpusRevisionId: id.nullable(),
+      evidenceUse: z.enum(['RELEASE_EVIDENCE', 'DIAGNOSTIC_ONLY', 'UNCLASSIFIED']).optional(),
+      refusalReasons: z.array(safeText).max(16).optional(),
+    })
+    .nullable()
+    .optional(),
+  /** Server-derived (M16): whether this capture may be promoted as release evidence. */
+  releaseEvidence: z
+    .object({
+      releaseEvidence: z.boolean(),
+      refusalReasons: z.array(safeText).max(16),
+      promotableAs: z.array(zEvidenceUse).min(1).max(2),
+    })
     .nullable()
     .optional(),
   correctedRuns: z
@@ -560,6 +584,7 @@ export const zPromoteResult = z.object({
   scenarioRevisionId: id,
   corpusRevisionId: id,
   baseCorpusMutated: z.literal(false),
+  evidenceUse: zEvidenceUse.optional(),
 });
 export const zProposedMapping = z.object({
   importId: id,
@@ -587,6 +612,7 @@ export const zExportPlan = z.object({
   exclusions: z.array(safeText).max(64),
   entries: z.array(z.object({ path: safeText, digest, bytes: count, kind: safeText })).max(500),
   written: z.literal(false),
+  evidenceUse: zEvidenceUse.optional(),
 });
 
 export const zSettings = z.object({

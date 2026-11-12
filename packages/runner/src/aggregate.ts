@@ -6,7 +6,8 @@
  * 2. NOT_RUN if zero required cases started and zero required results completed.
  * 3. REVIEW if any required case is missing, queued while others ran, running, recovery-pending,
  *    cancelled/aborted, errored, interrupted, teardown-incomplete, identity-mismatched, stale,
- *    tampered, REVIEW/UNSUPPORTED/NOT_RUN, or if a gate-level gap exists (stale evaluator/proxy,
+ *    tampered, REVIEW/UNSUPPORTED/NOT_RUN, a promoted capture that is not release evidence
+ *    (diagnostic-only or unclassified, M16), or if a gate-level gap exists (stale evaluator/proxy,
  *    unattested build under a policy that requires trusted attestation, no required cases).
  * 4. PASS only when every exact required case run is a complete PASS under the same immutable
  *    gate-run snapshot.
@@ -15,15 +16,17 @@
  * never depends on artifact readiness or enforcement mode.
  */
 import {
+  corpusClassAllowedAsRequired,
   digestValue,
   type CanonicalCaseResult,
+  type CorpusEvidenceClass,
   type EnforcementMode,
   type ExecutionLifecycle,
   type SubjectAttestationClass,
   type Verdict,
 } from '@routespec/contracts';
 
-export const AGGREGATOR_REVISION = 'routespec-gate@1.0.0' as const;
+export const AGGREGATOR_REVISION = 'routespec-gate@1.1.0' as const;
 export const GATE_IDENTITY_DOMAIN = 'routespec.gate-identity/1';
 export const GATE_DECISION_DOMAIN = 'routespec.gate-decision/1';
 export const GATE_ENFORCEMENT_DOMAIN = 'routespec.gate-enforcement/1';
@@ -101,6 +104,12 @@ export interface GateCaseInput {
     readonly scenarioRevisionId: string;
     readonly requiredInvariants: readonly string[];
     readonly gatePolicy: string;
+    /**
+     * How the case's scenario revision may be used (M16, RP-08). A required case whose revision
+     * is a promoted capture that is not release evidence can never contribute PASS. Absent in
+     * pure inputs that do not model promotions: treated as AUTHORED.
+     */
+    readonly evidenceClass?: CorpusEvidenceClass;
   } | null;
   /** The case run at this ordinal (null: missing). */
   readonly caseRun: GateCaseRunInput | null;
@@ -237,6 +246,8 @@ function caseOutcome(
   const findings: string[] = [];
   if (c.corpusCase === null) findings.push('CASE_NOT_IN_CORPUS');
   else {
+    const cls = c.corpusCase.evidenceClass ?? 'AUTHORED';
+    if (required && !corpusClassAllowedAsRequired(cls)) findings.push(`CAPTURE_NOT_RELEASE_EVIDENCE:${cls}`);
     if (c.corpusCase.scenarioRevisionId !== run.scenarioRevisionId) {
       findings.push('IDENTITY_MISMATCH:scenarioRevisionId');
     }

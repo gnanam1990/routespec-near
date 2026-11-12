@@ -407,6 +407,8 @@ export const exportPlan = z
     gateEvaluationId: uuid,
     includeAddresses: z.boolean().optional(),
     acknowledgeAddresses: z.boolean().optional(),
+    /** M16: default RELEASE_EVIDENCE; a gate with non-release-evidence captures needs DIAGNOSTIC_ONLY. */
+    evidenceUse: z.enum(['RELEASE_EVIDENCE', 'DIAGNOSTIC_ONLY']).optional(),
   })
   .strict();
 
@@ -450,6 +452,46 @@ export const importPromote = z
     corpusLabel: label,
     severity: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']),
     gatePolicy: z.enum(['REQUIRED', 'ADVISORY']),
+    /** M16: default RELEASE_EVIDENCE (refused for an ineligible capture); DIAGNOSTIC_ONLY is explicit. */
+    evidenceUse: z.enum(['RELEASE_EVIDENCE', 'DIAGNOSTIC_ONLY']).optional(),
+  })
+  .strict();
+
+// --- interceptor profile review (M16) --------------------------------------------------------
+export const reviewerEnroll = z
+  .object({
+    projectId: uuid,
+    label,
+    publicKeyJwk: ed25519Jwk,
+    validFromMs: ms,
+    validUntilMs: ms,
+    confirmation: confirmation.optional(),
+  })
+  .strict();
+
+export const reviewerRevoke = z
+  .object({
+    reasonCode: z.enum(['KEY_COMPROMISED', 'REVIEWER_RETIRED', 'OPERATOR_REQUEST']),
+    confirmation: confirmation.optional(),
+  })
+  .strict();
+
+export const reviewChallengeCreate = z
+  .object({
+    reviewerId: uuid,
+    decision: z.enum(['APPROVED', 'REJECTED']),
+    checklist: z.record(z.string().regex(/^[A-Z][A-Z0-9_]{1,63}$/), z.boolean()),
+  })
+  .strict();
+
+export const reviewComplete = z
+  .object({ signature: z.string().regex(/^[A-Za-z0-9_-]{86}$/, 'expected an Ed25519 signature (base64url)') })
+  .strict();
+
+export const reviewRevoke = z
+  .object({
+    reasonCode: z.enum(['PROFILE_DEFECT_FOUND', 'REVIEW_IN_ERROR', 'OPERATOR_REQUEST']),
+    confirmation: confirmation.optional(),
   })
   .strict();
 

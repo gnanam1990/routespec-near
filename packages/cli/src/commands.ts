@@ -38,6 +38,7 @@ import { GateJournal, RouteSpecStore } from '@routespec/store';
 import { checkLocalPathSyntax } from '@routespec/hardening';
 import { intFlag, usage, type CommandSpec, type ParsedArgs } from './args.ts';
 import { EXIT, exitCodeForError, type ExitCode } from './exit.ts';
+import { REVIEW_COMMANDS } from './review.ts';
 
 export interface CommandContext {
   readonly env: Readonly<Record<string, string | undefined>>;
@@ -610,12 +611,17 @@ export const COMMANDS: Readonly<Record<string, Command>> = Object.freeze({
         attach: { kind: 'multi' },
         'include-addresses': { kind: 'boolean' },
         'acknowledge-addresses': { kind: 'boolean' },
+        'evidence-use': { kind: 'string' },
         'idempotency-key': { kind: 'string' },
       },
     },
     run: (args, ctx) =>
       withStore(ctx.dataDir, (store) => {
         const gateEvaluationId = idArg(args, 'gate-evaluation');
+        const use = (args.strings['evidence-use'] ?? 'release-evidence').toUpperCase().replace(/-/g, '_');
+        if (use !== 'RELEASE_EVIDENCE' && use !== 'DIAGNOSTIC_ONLY') {
+          usage('Evidence use must be release-evidence or diagnostic-only.');
+        }
         const attachments = (args.multi['attach'] ?? []).map((file) => ({
           name: file,
           content: readSource(file, 256 * 1024),
@@ -625,6 +631,7 @@ export const COMMANDS: Readonly<Record<string, Command>> = Object.freeze({
           attachments: attachments.map((a) => digestValue('routespec.cli-attachment/1', a.content)),
           include: args.booleans.has('include-addresses'),
           ack: args.booleans.has('acknowledge-addresses'),
+          use,
         };
         const plan = planExport(store, gateEvaluationId, {
           idempotencyKey: args.strings['idempotency-key'] ?? keyFor('export-plan', request),
@@ -632,6 +639,7 @@ export const COMMANDS: Readonly<Record<string, Command>> = Object.freeze({
           includeAddresses: request.include,
           acknowledgeAddresses: request.ack,
           localPathMarkers: ctx.dataDir === null ? [] : [resolve(ctx.dataDir)],
+          evidenceUse: use,
         });
         const result = {
           ...plan,
@@ -705,6 +713,22 @@ export const COMMANDS: Readonly<Record<string, Command>> = Object.freeze({
       return { exitCode: EXIT.PASS, result: { ...v } };
     },
   },
+  ...Object.fromEntries(
+    Object.entries(REVIEW_COMMANDS).map(([name, c]): [string, Command] => [
+      name,
+      {
+        spec: c.spec,
+        needsData: c.needsData,
+        run: (args, ctx) =>
+          c.run(args, {
+            dataDir: ctx.dataDir,
+            stderr: ctx.stderr,
+            readSource,
+            withStore: (fn) => withStore(ctx.dataDir, fn),
+          }),
+      },
+    ]),
+  ),
 });
 
 export const COMMAND_NAMES = Object.freeze(Object.keys(COMMANDS).sort());

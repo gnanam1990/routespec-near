@@ -18,6 +18,7 @@ import {
   LINEAGE_RELATIONS,
   NORMALIZED_FACTS,
   OPERATION_PHASES,
+  PROFILE_REVIEW_DECISIONS,
   RouteSpecError,
   SUBJECT_ATTESTATION_CLASSES,
   TOKEN_PURPOSES,
@@ -57,6 +58,8 @@ export interface JournalSnapshotRows {
   readonly evidence: readonly Row[];
   readonly consumptions: readonly Row[];
   readonly allocations: readonly Row[];
+  /** Reviews of the pinned interceptor profile (M16); absent for older callers: unreviewed. */
+  readonly profileReviews?: readonly Row[];
 }
 
 function bad(field: string): never {
@@ -487,6 +490,17 @@ export function snapshotFromJournal(rows: JournalSnapshotRows): KernelInput {
       principalCurrentPolicyDigest: s(a, 'principal_current_policy_digest'),
     })),
     probeResults: [],
+    interceptorProfileReviews: (rows.profileReviews ?? []).map((r) => ({
+      reviewId: s(r, 'review_id'),
+      profileDigest: s(r, 'profile_digest'),
+      decision: member(PROFILE_REVIEW_DECISIONS, r, 'decision'),
+      reviewedAtMs: n(r, 'reviewed_at_ms'),
+      reviewDigest: s(r, 'review_digest'),
+      reviewRevoked: n(r, 'review_revoked') === 1,
+      reviewerRevoked: n(r, 'reviewer_revoked') === 1,
+      reviewerValidFromMs: n(r, 'reviewer_valid_from_ms'),
+      reviewerValidUntilMs: n(r, 'reviewer_valid_until_ms'),
+    })),
   };
   return deepFreeze(input);
 }

@@ -10,11 +10,11 @@
 import { digestValue } from '@routespec/contracts';
 import { CASE_EXPLANATIONS, EXPLANATIONS, REMEDIATIONS } from './codes.ts';
 import { DISQUALIFYING_REASONS, PREDICATE_SUBJECTS, PROOF_SCOPES } from './evidence.ts';
-import { COMPLETION_SUBJECTS } from './invariants/inv04.ts';
+import { COMPLETION_SUBJECTS, PROFILE_REVIEW_GAP } from './invariants/inv04.ts';
 import { VALUE_SUBJECTS } from './invariants/inv05.ts';
 import { STATUS_MAPPING_REVISION } from './provider-facts.ts';
 
-export const EVALUATOR_REVISION = 'routespec-kernel@1.0.0' as const;
+export const EVALUATOR_REVISION = 'routespec-kernel@1.1.0' as const;
 
 /** Invariants this revision evaluates. Others are reported NOT_RUN when a case requires them. */
 export const IMPLEMENTED_INVARIANTS = Object.freeze([
@@ -38,6 +38,7 @@ export const KERNEL_SEMANTICS = Object.freeze({
   disqualifyingReasons: DISQUALIFYING_REASONS,
   predicateSubjects: PREDICATE_SUBJECTS,
   completionSubjects: COMPLETION_SUBJECTS,
+  interceptorProfileReviewGaps: PROFILE_REVIEW_GAP,
   valueSubjects: VALUE_SUBJECTS,
   statusMappingRevision: STATUS_MAPPING_REVISION,
   verdictCombination: 'FAIL>REVIEW|UNSUPPORTED|MIXED_NOT_RUN>ALL_NOT_RUN>PASS',

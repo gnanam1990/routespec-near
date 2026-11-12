@@ -22,7 +22,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { InterceptorHost, CANARY_INTERCEPTOR_PROFILE } from '@routespec/proxy';
 import { evaluateCase, evaluateInv04 } from '../src/index.ts';
-import { mutate } from './support/pure.ts';
+import type { KernelInput } from '../src/index.ts';
+import { mutate, type Mutable } from './support/pure.ts';
 import { Harness, openStore, tempDir } from './support/journal.ts';
 import { SINK, runLiveEffectCase } from './support/effects.ts';
 
@@ -61,10 +62,16 @@ describe('T-004 — Protected side effect requires configured terminal evidence'
       ['ATTEMPTED', 'SUBJECT_REPORTED'],
       ['RELEASED', 'SUBJECT_REPORTED'],
     ]);
-    // Honest host boundary: no process-tree sandbox, no enrolled attester -> REVIEW, not FAIL.
+    // Honest host boundary: no process-tree sandbox, no enrolled attester, and no signed review
+    // of the pinned interceptor profile in this harness -> REVIEW, not FAIL.
     expect(c.inv04).toMatchObject({ verdict: 'REVIEW', explanationCode: 'INV04_COVERAGE_INCOMPLETE' });
     expect([...c.inv04.missingPredicates]).toEqual(
-      ['BUILD_UNATTESTED', 'INTERCEPTOR_UNATTESTED', 'PROCESS_TREE_NOT_ENFORCED'].sort(),
+      [
+        'BUILD_UNATTESTED',
+        'INTERCEPTOR_PROFILE_UNREVIEWED',
+        'INTERCEPTOR_UNATTESTED',
+        'PROCESS_TREE_NOT_ENFORCED',
+      ].sort(),
     );
     expect(c.evaluation.verdict).toBe('REVIEW');
 
@@ -89,6 +96,20 @@ describe('T-004 — Protected side effect requires configured terminal evidence'
       const inst = dr.interceptors[0]!;
       inst.attestationId = '00000000-0000-4000-8000-0000000000b2';
       inst.containment = 'PROCESS_TREE_ENFORCED';
+      // A signed review of the pinned profile, recorded before the case input closed (M16).
+      dr.interceptorProfileReviews = [
+        {
+          reviewId: '00000000-0000-4000-8000-0000000000b3',
+          profileDigest: inst.interceptorProfileDigest,
+          decision: 'APPROVED',
+          reviewedAtMs: (dr.caseState.asOfMs ?? 0) - 1,
+          reviewDigest: 'sha256:' + '2'.repeat(64),
+          reviewRevoked: false,
+          reviewerRevoked: false,
+          reviewerValidFromMs: 0,
+          reviewerValidUntilMs: (dr.caseState.asOfMs ?? 0) + 60_000,
+        },
+      ];
       dr.attestations = [
         att(
           dr.identity.buildAttestationId,
@@ -113,6 +134,27 @@ describe('T-004 — Protected side effect requires configured terminal evidence'
     expect(evaluateInv04(revoked)[0]!.missingPredicates).toContain('INTERCEPTOR_ATTESTER_REVOKED');
     const expired = mutate(attested, (dr) => void (dr.attestations[0]!.expiresAtMs = 0));
     expect(evaluateInv04(expired)[0]!.missingPredicates).toContain('BUILD_ATTESTATION_STALE');
+    // ...and so does a revoked review, a revoked reviewer, a rejection, or a review recorded
+    // after the case input closed (M16).
+    const reviewGap = (fn: (r: Mutable<KernelInput>) => void) =>
+      evaluateInv04(mutate(attested, fn))[0]!.missingPredicates;
+    expect(reviewGap((dr) => void (dr.interceptorProfileReviews![0]!.reviewRevoked = true))).toContain(
+      'INTERCEPTOR_PROFILE_REVIEW_REVOKED',
+    );
+    expect(reviewGap((dr) => void (dr.interceptorProfileReviews![0]!.reviewerRevoked = true))).toContain(
+      'INTERCEPTOR_PROFILE_REVIEW_REVOKED',
+    );
+    expect(reviewGap((dr) => void (dr.interceptorProfileReviews![0]!.decision = 'REJECTED'))).toContain(
+      'INTERCEPTOR_PROFILE_REVIEW_REJECTED',
+    );
+    expect(
+      reviewGap(
+        (dr) => void (dr.interceptorProfileReviews![0]!.reviewedAtMs = (dr.caseState.asOfMs ?? 0) + 1),
+      ),
+    ).toContain('INTERCEPTOR_PROFILE_UNREVIEWED');
+    expect(
+      reviewGap((dr) => void (dr.interceptorProfileReviews![0]!.profileDigest = 'sha256:' + '3'.repeat(64))),
+    ).toContain('INTERCEPTOR_PROFILE_UNREVIEWED');
   });
 
   it('live: a release before accepted completion is an independently observed forbidden release (FAIL)', async () => {

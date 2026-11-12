@@ -118,6 +118,7 @@ describe('M14 subject containment on a real container engine', () => {
         capEff: '0000000000000000',
         capPrm: '0000000000000000',
         noNewPrivs: '1',
+        seccomp: '2',
         interfaces: ['lo'],
       });
       expect(s.verdict.scope).toMatchObject({

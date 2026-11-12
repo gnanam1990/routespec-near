@@ -9,7 +9,9 @@
  * every non-loopback interface address this host has. Wildcard, LAN, and look-alike bind
  * requests must be refused before any socket opens, including through the service entry point.
  *
- * Not run here: access from a separate container host (no container runtime on this machine).
+ * The container-host part (attempts from containers on a real engine, including the confined
+ * subject) is `runtime-test/t036-container-host-access.runtime.test.ts` (M17,
+ * `pnpm run test:containment`); it reports NOT_RUN when no engine is configured.
  */
 import { fork } from 'node:child_process';
 import { connect } from 'node:net';

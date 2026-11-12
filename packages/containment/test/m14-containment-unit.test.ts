@@ -238,9 +238,14 @@ describe('M14 containment verification fails closed', () => {
     // On WSL 2 the Windows interop interpreter is registered with binfmt flag F, so it also runs
     // inside containers; what stops it there (observed in T-036, M17) is the seccomp filter
     // refusing AF_VSOCK. An engine started without seccomp does not say so in SecurityOpt.
-    for (const seccomp of ['0', '1', null, undefined]) {
-      const v = verifyInspect([cleanInspect()], expectations, { ...self, seccomp });
-      expect(v.findings, String(seccomp)).toEqual(['SELF_SECCOMP_NOT_FILTERED']);
+    const { seccomp: _seccomp, ...withoutSeccomp } = self;
+    const observations: SelfObservation[] = [
+      ...(['0', '1', null] as const).map((seccomp) => ({ ...self, seccomp })),
+      withoutSeccomp,
+    ];
+    for (const observed of observations) {
+      const v = verifyInspect([cleanInspect()], expectations, observed);
+      expect(v.findings, String(observed.seccomp)).toEqual(['SELF_SECCOMP_NOT_FILTERED']);
       expect(v.containment).toBe('DECLARED_HOOKS_ONLY');
     }
     expect(verifyInspect([cleanInspect()], expectations, self).findings).toEqual([]);

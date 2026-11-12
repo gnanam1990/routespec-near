@@ -92,6 +92,8 @@ export interface PromoteInput {
   readonly corpusLabel: string;
   readonly severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   readonly gatePolicy: 'REQUIRED' | 'ADVISORY';
+  /** M16: the service refuses RELEASE_EVIDENCE for a capture that is not release evidence. */
+  readonly evidenceUse?: 'RELEASE_EVIDENCE' | 'DIAGNOSTIC_ONLY';
 }
 
 export interface ImportCreateInput {
@@ -255,8 +257,12 @@ export class ControlClient {
     return this.#mutate('POST', `/gates/${enc(gateId)}/evaluate`, { gateRunId }, zGateEvaluation, options);
   }
 
-  planExport(gateEvaluationId: string, options: MutationOptions = {}) {
-    return this.#mutate('POST', '/exports', { gateEvaluationId }, zExportPlan, options);
+  planExport(
+    gateEvaluationId: string,
+    evidenceUse: 'RELEASE_EVIDENCE' | 'DIAGNOSTIC_ONLY' = 'RELEASE_EVIDENCE',
+    options: MutationOptions = {},
+  ) {
+    return this.#mutate('POST', '/exports', { gateEvaluationId, evidenceUse }, zExportPlan, options);
   }
 
   createImport(input: ImportCreateInput, options: MutationOptions = {}) {

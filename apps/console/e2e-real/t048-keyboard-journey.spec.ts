@@ -215,10 +215,16 @@ for (const vp of VIEWPORTS) {
         await tabAndType(page, form.getByLabel('Confirmation'), 'confirmation', phrase);
         await tabAndEnter(page, form.getByRole('button', { name: 'Record review' }), 'record review');
         await expect(page.locator('.badge[data-code="REVIEWED"]')).toBeVisible();
+        // M16 (RP-08): this uncontained capture is not release evidence; the service says why.
+        await expect(page.locator('.release-evidence[data-release-evidence="false"]')).toBeVisible();
         const promote = page.getByRole('button', { name: 'Promote regression' });
         await tabAndEnter(page, promote, 'promote');
         const dialog = page.getByRole('dialog', { name: 'Promote to a new immutable scenario?' });
         await expect(dialog).toBeVisible();
+        await expect(dialog.getByRole('radio', { name: 'Release evidence (required case)' })).toBeDisabled();
+        await expect(
+          dialog.getByRole('radio', { name: 'Diagnostic only (advisory case, never required)' }),
+        ).toBeChecked();
         await tabAndType(page, dialog.getByLabel('New corpus label'), 'corpus label', `promoted-${vp.crash}`);
         await tabAndEnter(
           page,
@@ -226,6 +232,7 @@ for (const vp of VIEWPORTS) {
           'confirm promote',
         );
         await expect(page.locator('.badge[data-code="PROMOTED"]')).toBeVisible();
+        await expect(page.locator('[data-evidence-use="DIAGNOSTIC_ONLY"]')).toBeVisible();
         await expect(page.getByText('Replay-only PASS is insufficient')).toBeVisible();
         await expect(page.locator('.lineage-node', { hasText: 'New corpus' })).toContainText('Done');
         await expect(

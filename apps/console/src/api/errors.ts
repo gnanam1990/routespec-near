@@ -90,6 +90,9 @@ const CODE_KINDS: Readonly<Record<string, ApiErrorKind>> = {
   RS_REVISION_CONFLICT: 'CONFLICT',
   RS_IDEMPOTENCY_CONFLICT: 'CONFLICT',
   RS_UNSUPPORTED_PROFILE: 'UNSUPPORTED_SCHEMA',
+  RS_CAPTURE_NOT_RELEASE_EVIDENCE: 'POLICY_DENIED',
+  RS_REVIEW_SIGNATURE_INVALID: 'POLICY_DENIED',
+  RS_REVIEWER_NOT_INDEPENDENT: 'POLICY_DENIED',
 };
 
 export function classifyStatus(status: number, code: string | null, hasEnvelope: boolean): ApiErrorKind {

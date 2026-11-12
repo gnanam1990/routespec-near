@@ -20,6 +20,7 @@ import {
 } from '../components/ui.tsx';
 import { IMPORT_STATE_CONTENT, VERDICT_CONTENT } from '../content/status-content.ts';
 import { LINEAGE_ROLE_TEXT } from '../content/case-content.ts';
+import { EVIDENCE_USE_TEXT, refusalText } from '../content/evidence-content.ts';
 
 const STAGE_TEXT: Readonly<Record<ImportDetail['lineage'][number]['stage'], string>> = {
   CAPTURE: 'Capture',
@@ -77,6 +78,7 @@ export function ImportPage() {
   const [promoteOpen, setPromoteOpen] = useState(false);
   const [corpusLabel, setCorpusLabel] = useState('');
   const [severity, setSeverity] = useState<'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'>('HIGH');
+  const [evidenceUse, setEvidenceUse] = useState<'RELEASE_EVIDENCE' | 'DIAGNOSTIC_ONLY' | null>(null);
   const promoteButton = useRef<HTMLButtonElement>(null);
   const summary = useRef<HTMLDivElement>(null);
   const base = `/projects/${encodeURIComponent(projectId)}`;
@@ -187,6 +189,12 @@ export function ImportPage() {
                       items={[
                         ['Promoted scenario', <span className="mono">{promotion.scenarioRevisionId}</span>],
                         ['New corpus', <span className="mono">{promotion.corpusRevisionId}</span>],
+                        [
+                          'Evidence use',
+                          <span data-evidence-use={promotion.evidenceUse ?? 'UNCLASSIFIED'}>
+                            {EVIDENCE_USE_TEXT[promotion.evidenceUse ?? 'UNCLASSIFIED']}
+                          </span>,
+                        ],
                       ]}
                     />
                     <p>
@@ -361,6 +369,35 @@ export function ImportPage() {
                   <ReviewForm imp={imp} onDone={reload} />
                 ) : null}
 
+                {imp.releaseEvidence && !promotion ? (
+                  <div
+                    className="release-evidence"
+                    data-release-evidence={String(imp.releaseEvidence.releaseEvidence)}
+                  >
+                    <h3 className="h3">Release evidence</h3>
+                    {imp.releaseEvidence.releaseEvidence ? (
+                      <p>
+                        This capture is confined, independently observed, and covered through a reviewed
+                        interceptor profile. It can be promoted as a required release case.
+                      </p>
+                    ) : (
+                      <Notice tone="review" icon="shield" title="Not release evidence">
+                        <p>
+                          The service refuses to promote this capture as release evidence. It can only be kept
+                          as a diagnostic-only, advisory case that never becomes required.
+                        </p>
+                        <ul aria-label="Release-evidence refusal reasons">
+                          {imp.releaseEvidence.refusalReasons.map((r) => (
+                            <li key={r}>
+                              <span className="mono small">{r}</span> — {refusalText(r)}
+                            </li>
+                          ))}
+                        </ul>
+                      </Notice>
+                    )}
+                  </div>
+                ) : null}
+
                 <div className="action-row">
                   {imp.promotable ? (
                     <button
@@ -403,6 +440,41 @@ export function ImportPage() {
                   value={corpusLabel}
                   onChange={(e) => setCorpusLabel(e.target.value)}
                 />
+                {(() => {
+                  const allowed = imp.releaseEvidence?.promotableAs ?? [
+                    'RELEASE_EVIDENCE',
+                    'DIAGNOSTIC_ONLY',
+                  ];
+                  const chosen =
+                    evidenceUse ??
+                    (allowed.includes('RELEASE_EVIDENCE') ? 'RELEASE_EVIDENCE' : 'DIAGNOSTIC_ONLY');
+                  return (
+                    <fieldset className="fieldset">
+                      <legend className="field-label">Evidence use</legend>
+                      {(['RELEASE_EVIDENCE', 'DIAGNOSTIC_ONLY'] as const).map((use) => (
+                        <label key={use} className="choice">
+                          <input
+                            type="radio"
+                            name="promote-evidence-use"
+                            value={use}
+                            checked={chosen === use}
+                            disabled={!allowed.includes(use)}
+                            onChange={() => setEvidenceUse(use)}
+                          />{' '}
+                          {use === 'RELEASE_EVIDENCE'
+                            ? 'Release evidence (required case)'
+                            : 'Diagnostic only (advisory case, never required)'}
+                        </label>
+                      ))}
+                      {!allowed.includes('RELEASE_EVIDENCE') ? (
+                        <p className="muted small">
+                          Release evidence is unavailable: the service reports this capture is not release
+                          evidence.
+                        </p>
+                      ) : null}
+                    </fieldset>
+                  );
+                })()}
                 <label className="field-label" htmlFor="promote-severity">
                   Severity
                 </label>
@@ -427,20 +499,29 @@ export function ImportPage() {
                       !/^[A-Za-z0-9][A-Za-z0-9 ._-]{0,79}$/.test(corpusLabel.trim()) ||
                       !imp.review?.latestReviewId
                     }
-                    onClick={() =>
+                    onClick={() => {
+                      const allowed = imp.releaseEvidence?.promotableAs ?? [
+                        'RELEASE_EVIDENCE',
+                        'DIAGNOSTIC_ONLY',
+                      ];
+                      const use =
+                        evidenceUse ??
+                        (allowed.includes('RELEASE_EVIDENCE') ? 'RELEASE_EVIDENCE' : 'DIAGNOSTIC_ONLY');
                       void promote
                         .submit(imp.importId, imp.revision, {
                           reviewId: imp.review?.latestReviewId as string,
                           baseCorpusRevisionId: null,
                           corpusLabel: corpusLabel.trim(),
                           severity,
-                          gatePolicy: 'REQUIRED',
+                          // A diagnostic-only capture is never a required case (M16, RP-08).
+                          gatePolicy: use === 'RELEASE_EVIDENCE' ? 'REQUIRED' : 'ADVISORY',
+                          evidenceUse: use,
                         })
                         .then(() => {
                           setPromoteOpen(false);
                           reload();
-                        })
-                    }
+                        });
+                    }}
                   >
                     Promote regression
                   </button>

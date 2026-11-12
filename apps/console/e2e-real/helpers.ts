@@ -33,6 +33,7 @@ export interface Seed {
   hundred: { gateRunId: string; gateId: string; events: number; decision: string };
   queued: { gateRunId: string };
   capture: { importId: string; sourceCaseRunId: string };
+  diagnostic: { importId: string; gateRunId: string; gateEvaluationId: string };
   crashes: Array<{ gateRunId: string; caseRunId: string }>;
   timings: Record<string, number>;
 }

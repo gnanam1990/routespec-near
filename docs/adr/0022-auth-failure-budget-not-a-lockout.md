@@ -42,3 +42,28 @@ genuine token presented during the window is not a guess.
 - Tests: `packages/control-api/test/sec-vuln-0003-auth-failure-budget.test.ts` (new); T-037 and
   T-042 assertions that the genuine token is refused during the window now assert it is served.
 - Evidence: `docs/status/SEC-routespec-vuln-0003.md`.
+
+## Amendment — budgets charged only after authentication (SEC RS-03)
+
+- Date: 2026-11-12
+- Source: external security audit, finding RS-03 (low, availability only).
+
+Decision 3 left the read/mutation budgets charged before authentication, so a credential-less
+local flood with a valid Host header (just over 500 POSTs or 2000 GETs in one 10 s window) made
+every genuine-token mutation or read answer `429 RS_RATE_LIMITED` until the window ended. The
+"cannot be keyed per client" residual above overlooked that clients can be keyed by
+authentication outcome. Decision 3 is replaced by:
+
+3. The read and mutation budgets stay global (ADR-0013, SECURITY.md "Rate-limit endpoints") but
+   are charged only after a credential is accepted: the control bearer token, or on the subject
+   route (`POST /effects/observe`) the case token checked by `caseAuthFromHeaders`. A request that
+   fails authentication (missing, wrong or malformed credential, control or case) counts only in
+   the authentication-failure window. Console static assets carry no credential and are charged
+   to their own counter (same limit as reads), so asset traffic cannot spend the API read budget.
+   `OPTIONS` is refused before any budget is charged.
+
+Consequences: an unauthenticated local process can no longer exhaust the operator's read or
+mutation allocation; it can only fill the failure window (its own further failures get 429) or
+the static-asset counter (the console shell, not the API). A holder of the genuine token is still
+limited by the global budgets. Tests: `packages/control-api/test/sec-rs-03-preauth-rate-budget.test.ts`.
+Evidence: `docs/status/SEC-routespec-RS-03.md`.

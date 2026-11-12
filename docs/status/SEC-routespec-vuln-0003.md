@@ -70,3 +70,5 @@ this change; T-057 passed alone (2 passed) and the whole suite passed on the rer
 
 - The global read/mutation budget can still be spent by a local valid-Host flood; this is the
   generic T-042 limit and cannot be keyed per client because every client is `127.0.0.1`.
+  Superseded by RS-03 (`docs/status/SEC-routespec-RS-03.md`): the budgets are now charged only
+  after authentication, so only credential holders can spend them.

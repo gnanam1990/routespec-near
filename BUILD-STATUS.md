@@ -173,6 +173,16 @@ crash and restart.
   (`docs/status/SEC-routespec-RS-07.md`). Expiry is still enforced at gate-run creation and per
   case at input close, not at gate level.
 
+## Security fix: RS-05 (external security audit)
+
+- The CLI created the journal data directory without a mode (0755 under umask 0022) and SQLite
+  created `journal.db` as 0644, so other local accounts could read the journal; the service's
+  `mode: 0o700` applied only to a directory it created itself. Fixed: the store's
+  `ensurePrivateDataDir` creates or tightens the directory to 0700 for both the CLI and the
+  service, and `JournalDb.open` creates the journal as 0600 and tightens it and its `-wal`,
+  `-shm`, `-journal` and writer-lock files to 0600 on every writable open
+  (`docs/status/SEC-routespec-RS-05.md`). POSIX only; Windows relies on the profile ACLs.
+
 ## Security fix: RS-01 (external security audit)
 
 - The canary interceptor's loopback sink accepted effect attempts from any local process, so an

@@ -7,7 +7,7 @@
  * started it; without one it can only plan (`--plan-only`, which runs zero cases: NOT_RUN).
  */
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
   ADAPTER_HEADERS,
@@ -34,7 +34,7 @@ import {
   type RunnerMode,
 } from '@routespec/runner';
 import { compileScenario } from '@routespec/scenario';
-import { GateJournal, RouteSpecStore } from '@routespec/store';
+import { GateJournal, RouteSpecStore, ensurePrivateDataDir } from '@routespec/store';
 import { checkLocalPathSyntax } from '@routespec/hardening';
 import { intFlag, usage, type CommandSpec, type ParsedArgs } from './args.ts';
 import { EXIT, exitCodeForError, type ExitCode } from './exit.ts';
@@ -81,7 +81,7 @@ function keyFor(scope: string, value: unknown): string {
 
 function openStore(dataDir: string | null): RouteSpecStore {
   if (dataDir === null) usage('A data directory is required (--data or ROUTESPEC_DATA_DIR).');
-  mkdirSync(dataDir, { recursive: true });
+  ensurePrivateDataDir(dataDir);
   return RouteSpecStore.open({ path: resolve(dataDir, 'journal.db') });
 }
 

@@ -13,7 +13,17 @@
  *   `resumeAfterStorageFault()` (in the store) verifies integrity and fences active work.
  * - Unknown newer schema → read-only recovery mode; checksum drift → refuse to open.
  */
-import { closeSync, existsSync, openSync, readFileSync, unlinkSync, writeFileSync, writeSync } from 'node:fs';
+import {
+  chmodSync,
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+  writeSync,
+} from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { RouteSpecError, isRouteSpecError, type ErrorCode } from '@routespec/contracts';
@@ -120,6 +130,62 @@ export function mapSqliteError(error: unknown): RouteSpecError {
   });
 }
 
+/** POSIX mode bits are enforced where the platform has them; Windows relies on profile ACLs. */
+const POSIX_MODES = process.platform !== 'win32';
+
+/** The journal file and every companion file SQLite or the writer lock creates beside it. */
+const JOURNAL_FILE_SUFFIXES = ['', '-wal', '-shm', '-journal', '.writer.lock'] as const;
+
+function isFileJournalPath(path: string): boolean {
+  return path !== '' && path !== ':memory:' && !path.startsWith('file:');
+}
+
+function storageUnavailable(error: unknown, what: string): RouteSpecError {
+  return new RouteSpecError('RS_STORAGE_UNAVAILABLE', `Could not make the ${what} owner-only.`, {
+    details: { errno: (error as NodeJS.ErrnoException).code ?? 'unknown' },
+  });
+}
+
+/**
+ * Create or reuse a journal data directory with owner-only permissions (SECURITY.md section 9).
+ * `mkdirSync`'s mode applies only to a directory it creates, so an existing directory is
+ * tightened explicitly. Every entry point that owns a data directory (CLI, control service)
+ * calls this before opening the journal in it.
+ */
+export function ensurePrivateDataDir(dir: string): void {
+  try {
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    if (POSIX_MODES) chmodSync(dir, 0o700);
+  } catch (error) {
+    throw storageUnavailable(error, 'data directory');
+  }
+}
+
+/** Tighten the journal file and its companions to 0600; files that do not exist are skipped. */
+function restrictJournalFiles(dbPath: string): void {
+  if (!POSIX_MODES || !isFileJournalPath(dbPath)) return;
+  for (const suffix of JOURNAL_FILE_SUFFIXES) {
+    try {
+      chmodSync(`${dbPath}${suffix}`, 0o600);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw storageUnavailable(error, 'journal');
+    }
+  }
+}
+
+/**
+ * Create a missing journal file as 0600 before SQLite opens it, so the database never exists
+ * with the default 0644 mode. SQLite gives its -wal/-shm files the main file's mode.
+ */
+function precreatePrivateJournal(dbPath: string): void {
+  if (!POSIX_MODES || !isFileJournalPath(dbPath)) return;
+  try {
+    closeSync(openSync(dbPath, 'a', 0o600));
+  } catch (error) {
+    throw storageUnavailable(error, 'journal');
+  }
+}
+
 function processAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
@@ -141,7 +207,7 @@ class WriterLock {
   acquire(): void {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const fd = openSync(this.path, 'wx');
+        const fd = openSync(this.path, 'wx', 0o600);
         writeSync(fd, JSON.stringify({ pid: process.pid, token: this.token }));
         closeSync(fd);
         this.held = true;
@@ -267,6 +333,8 @@ export class JournalDb {
     lock.acquire();
     let db: DatabaseSync | null = null;
     try {
+      precreatePrivateJournal(options.path);
+      restrictJournalFiles(options.path);
       db = new DatabaseSync(options.path);
       db.exec(`PRAGMA busy_timeout = ${Math.trunc(options.busyTimeoutMs ?? DEFAULT_BUSY_TIMEOUT_MS)}`);
       const appId = (db.prepare('PRAGMA application_id').get() as { application_id: number }).application_id;
@@ -305,6 +373,7 @@ export class JournalDb {
         });
       }
       db.exec('PRAGMA journal_mode = WAL');
+      restrictJournalFiles(options.path);
       db.exec('PRAGMA synchronous = FULL');
       db.exec('PRAGMA foreign_keys = ON');
       if (options.maxPageCount !== undefined)

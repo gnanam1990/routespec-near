@@ -66,7 +66,7 @@ containment and delivery suites.
 
 | Command                     | Exit | Result                                                                                        |
 | --------------------------- | ---- | --------------------------------------------------------------------------------------------- |
-| `pnpm run check`            | 0    | typecheck, lint, format clean; 83 files, 711 passed, 2 skipped; secret scan clean (519 files) |
+| `pnpm run check`            | 0    | typecheck, lint, format clean; 84 files, 716 passed, 2 skipped; secret scan clean (522 files) |
 | `pnpm run test:containment` | 0    | 4 files, 19 passed, none skipped (Docker 29.1.3 in WSL Ubuntu 24.04)                          |
 | `pnpm run test:delivery`    | 0    | 2 files, 21 passed (clean-clone uncontained journey and contained journey, none skipped)      |
 

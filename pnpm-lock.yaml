@@ -370,6 +370,9 @@ importers:
       '@routespec/client-adapter':
         specifier: workspace:*
         version: link:../client-adapter
+      '@routespec/containment':
+        specifier: workspace:*
+        version: link:../containment
       '@routespec/contracts':
         specifier: workspace:*
         version: link:../contracts

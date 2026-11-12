@@ -13,14 +13,17 @@
  *
  * A target is {id, kind, ...}: `tcp` {host, port} connects once and closes (no byte is sent);
  * `dns` {name} resolves a name; `unix` {path} connects to a Unix socket; `path` {path} checks
- * whether a filesystem path exists. Each result is a code: CONNECTED, TIMEOUT, an errno code
- * (ENETUNREACH, ECONNREFUSED, ...), RESOLVED:<addresses>, PRESENT or ABSENT. The tests decide
- * what the results prove.
+ * whether a filesystem path exists; `exec` {path, args} runs a program once (used for a Windows
+ * executable in the mounted checkout, which WSL's binfmt registration would hand to the Windows
+ * interop interpreter). Each result is a code: CONNECTED, TIMEOUT, an errno code (ENETUNREACH,
+ * ECONNREFUSED, ...), RESOLVED:<addresses>, PRESENT or ABSENT; `exec` answers {result, stdout,
+ * stderr}. The tests decide what the results prove.
  *
  * `listen` binds the first port of `ports` that is free on every address in `hosts` and prints
  * {"listening": port}; each connection gets one line and is closed. It is the positive control
  * that proves an ordinary container does have a path to the engine host's network.
  */
+import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { promises as dns } from 'node:dns';
 import { connect, createServer } from 'node:net';
@@ -75,6 +78,26 @@ async function lookup(name) {
   }
 }
 
+function run(path, args) {
+  return new Promise((resolve) => {
+    let stdout = '';
+    let stderr = '';
+    let child;
+    try {
+      child = spawn(path, args ?? [], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 20_000 });
+    } catch (e) {
+      resolve({ result: code(e), stdout, stderr });
+      return;
+    }
+    child.stdout.on('data', (c) => (stdout = (stdout + c.toString('utf8')).slice(0, 1000)));
+    child.stderr.on('data', (c) => (stderr = (stderr + c.toString('utf8')).slice(0, 2000)));
+    child.once('error', (e) => resolve({ result: code(e), stdout, stderr }));
+    child.once('close', (exitCode, signal) =>
+      resolve({ result: signal ? `SIGNAL_${signal}` : `EXIT_${String(exitCode)}`, stdout, stderr }),
+    );
+  });
+}
+
 async function reach(targets) {
   const results = {};
   await Promise.all(
@@ -83,6 +106,7 @@ async function reach(targets) {
       else if (t.kind === 'dns') results[t.id] = await lookup(t.name);
       else if (t.kind === 'unix') results[t.id] = await unix(t.path);
       else if (t.kind === 'path') results[t.id] = existsSync(t.path) ? 'PRESENT' : 'ABSENT';
+      else if (t.kind === 'exec') results[t.id] = await run(t.path, t.args);
       else results[t.id] = 'UNKNOWN_KIND';
     }),
   );
@@ -149,7 +173,11 @@ async function listen(hosts, ports) {
     const servers = [];
     try {
       for (const host of hosts) {
-        const srv = createServer((s) => s.end(line));
+        const srv = createServer((s) => {
+          // Probes connect and close at once; a reset must not end the control listener.
+          s.on('error', () => s.destroy());
+          s.end(line);
+        });
         await new Promise((resolve, reject) => {
           srv.once('error', reject);
           srv.listen({ host, port, exclusive: true }, resolve);

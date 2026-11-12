@@ -66,9 +66,20 @@ Environment: `ROUTESPEC_TEST_PORT_BASE=9740`, `ROUTESPEC_DELIVERY_PORT=9745`, `F
 
 | Command                     | Exit | Result                                                                                                |
 | --------------------------- | ---- | ----------------------------------------------------------------------------------------------------- |
-| `pnpm run check`            | 0    | typecheck, lint, format, 81 files passed / 1 skipped, 703 tests passed / 6 skipped; secret-scan clean |
+| `pnpm run check`            | 0    | typecheck, lint, format, 84 files passed / 1 skipped, 715 tests passed / 6 skipped; secret-scan clean |
 | `pnpm run test:containment` | 0    | 4 files, 19 passed                                                                                    |
 | `pnpm run test:delivery`    | 0    | 2 files, 21 passed (M12 uncontained 14, M14 contained journey 7)                                      |
+
+Note: `main` (RS-04, then RS-06, then RS-02 and RS-07) was merged three times while this branch
+was open; the table is the run on the final merge. Two earlier `pnpm run check` runs, taken while other suites kept the host CPU at
+90-99%, had timing failures in `packages/cli` T-057 (60 s timeout) and T-025 (child killed
+before its fault point); T-057 also timed out alone under that load. In a single Linux container
+the fixed `database.ts` gave the same T-025 timings as the `main` baseline, and the final run
+above passed. One intermediate `pnpm run test:delivery` (after the RS-06 merge, host under load)
+had the M14 contained journey fail on a missing interceptor attestation; the same file passed on
+the `main` commit and then on this branch when rerun, and the final full run above passed. On Linux, T-053 (`LOCAL_PATH` in the bundle manifest for
+`/home/...` temp paths) and M14 export-kill fail on `main` as well; they are unrelated to this
+change and are not part of the Windows suite result.
 
 ## Residual
 

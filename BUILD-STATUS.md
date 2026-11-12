@@ -156,6 +156,13 @@ crash and restart.
   list stays within the journal limit (`docs/status/SEC-routespec-RS-04.md`). No ADR: no
   protocol or format change.
 
+## Security fix: RS-06 (external security audit)
+
+- The shared scenario proxy kept held connection-barrier responses keyed by step id only, so two
+  parallel cases running the same scenario released or overwrote each other's held response.
+  Fixed: held barriers are keyed by the authenticated case run and step id, and an abandoned
+  entry is dropped (`docs/status/SEC-routespec-RS-06.md`).
+
 ## Security fix: RS-01 (external security audit)
 
 - The canary interceptor's loopback sink accepted effect attempts from any local process, so an

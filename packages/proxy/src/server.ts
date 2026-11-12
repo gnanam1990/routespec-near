@@ -121,6 +121,11 @@ function short(id: string | null): string | null {
   return id === null ? null : id.slice(0, 8);
 }
 
+/** Case-scoped key of a held barrier: case run ids are UUIDs, so the separator cannot collide. */
+function barrierKey(caseRunId: string, stepId: string): string {
+  return `${caseRunId}\u0000${stepId}`;
+}
+
 function headerError(name: string): never {
   throw new RouteSpecError(
     'RS_HEADER_INVALID',
@@ -151,6 +156,11 @@ export class ScenarioProxy {
   private readonly log: (entry: ProxyLogEntry) => void;
   private readonly server: Server;
   private readonly sockets = new Set<Socket>();
+  /**
+   * Held connection-barrier responses, keyed by case run and step id (`barrierKey`). One proxy
+   * serves every case of a gate and step ids are unique only within a scenario, so a held
+   * response is reachable only by its own case's release decisions (RS-06).
+   */
   private readonly barriers = new Map<string, () => void>();
   private allowedHosts: ReadonlySet<string> = new Set();
   #port = 0;
@@ -436,7 +446,7 @@ export class ScenarioProxy {
     }
     if (decision.kind === 'RESET_BEFORE_ACCEPT') {
       runtime.commit(plan);
-      this.releaseBarriers(decision);
+      this.releaseBarriers(parsed.auth.caseRunId, decision);
       res.socket?.destroy();
       return;
     }
@@ -459,7 +469,7 @@ export class ScenarioProxy {
       caseRun: short(parsed.auth.caseRunId),
       sequence: ack.sequence,
     });
-    this.releaseBarriers(decision);
+    this.releaseBarriers(parsed.auth.caseRunId, decision);
     const planned = args.build(decision, ack.runOperationId, runtime);
     let delivered = false;
     let lostReported = false;
@@ -496,7 +506,11 @@ export class ScenarioProxy {
         // The case may have been fenced meanwhile; the attempt then honestly stays unknown.
       }
     });
+    const heldKey =
+      decision.kind === 'HOLD_BARRIER' ? barrierKey(parsed.auth.caseRunId, decision.stepId as string) : null;
     res.on('close', () => {
+      // A held response whose client is gone is never delivered: drop it so the map stays bounded.
+      if (heldKey !== null && this.barriers.get(heldKey) === write) this.barriers.delete(heldKey);
       if (!delivered) lost(decision.kind === 'HOLD_BARRIER' ? 'BARRIER_ABANDONED' : 'CLIENT_DISCONNECTED');
     });
     if (decision.kind === 'DROP_AFTER_ACCEPT') {
@@ -505,16 +519,18 @@ export class ScenarioProxy {
       return;
     }
     if (decision.kind === 'HOLD_BARRIER') {
-      this.barriers.set(decision.stepId as string, write);
+      this.barriers.set(heldKey as string, write);
       return;
     }
     write();
   }
 
-  private releaseBarriers(decision: Decision): void {
+  /** Deliver the held responses the releasing case's own runtime released, and no other case's. */
+  private releaseBarriers(caseRunId: string, decision: Decision): void {
     for (const stepId of decision.releasedBarriers) {
-      const deliver = this.barriers.get(stepId);
-      this.barriers.delete(stepId);
+      const key = barrierKey(caseRunId, stepId);
+      const deliver = this.barriers.get(key);
+      this.barriers.delete(key);
       deliver?.();
     }
   }

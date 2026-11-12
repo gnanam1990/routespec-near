@@ -334,9 +334,10 @@ describe('T-037 — Host, Origin, CORS, and token checks block browser attacks',
       expect(replies.slice(5).every((r) => r.status === 429 && errorCode(r) === 'RS_RATE_LIMITED')).toBe(
         true,
       );
-      // Even the genuine token is held back while the failure window is exhausted.
+      // The failure budget throttles failing credentials only; the genuine token keeps working
+      // (a global lockout would let any local process deny the operator; SEC vuln-0003).
       const genuine = await limited.api('GET', '/projects');
-      expect(genuine.status).toBe(429);
+      expect(genuine.status).toBe(200);
       expect(limited.tableCounts()).toEqual(before);
     } finally {
       await limited.close();

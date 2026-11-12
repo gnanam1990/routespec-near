@@ -92,6 +92,12 @@ export interface GateSnapshotRows {
   readonly interruptions: readonly Row[];
   /** Per-case effect-coverage policies (M14, schema 8); absent or empty means none. */
   readonly casePolicies?: readonly Row[];
+  /**
+   * The gate run's selected build attestation joined with its principal's current enabled flag,
+   * revocation epoch, and policy digest (TB-07), read in the same transaction as the cases.
+   * Null: the gate run selects none, or the record is missing.
+   */
+  readonly buildAttestation?: Row | null;
 }
 
 export interface GateEvaluationCaseInput {
@@ -129,6 +135,15 @@ export interface PersistGateEvaluationInput {
       fencingEpoch: number;
       terminalResultDigest: string | null;
     }>;
+    /**
+     * The selected build attester's state the decision saw (TB-07); a principal disabled,
+     * revoked, or changed before the write fails closed. Absent: not checked.
+     */
+    readonly buildAttester?: {
+      readonly principalEnabled: number;
+      readonly revocationEpoch: number;
+      readonly policyDigest: string;
+    } | null;
   };
   /** Close a RUNNING gate run (RUNNING -> EVALUATING -> COMPLETED) with the decision as verdict. */
   readonly closeGateRun: boolean;
@@ -501,6 +516,20 @@ export class GateJournal {
           this.store.schemaVersion >= 8
             ? all(db, 'SELECT * FROM gate_run_case_policies WHERE gate_run_id = ? ORDER BY rowid', gateRunId)
             : [],
+        buildAttestation:
+          sn(gateRun, 'build_attestation_id') === null
+            ? null
+            : (one(
+                db,
+                `SELECT a.attestation_id, a.attestation_class, a.scope, a.build_revision_id,
+                        a.principal_revocation_epoch, a.principal_policy_digest,
+                        p.enabled AS principal_enabled,
+                        p.revocation_epoch AS principal_current_revocation_epoch,
+                        p.policy_digest AS principal_current_policy_digest
+                   FROM subject_attestations a JOIN attester_principals p USING (principal_id)
+                  WHERE a.attestation_id = ?`,
+                sn(gateRun, 'build_attestation_id'),
+              ) ?? null),
       };
     });
   }
@@ -538,6 +567,29 @@ export class GateJournal {
           fail('RS_REVISION_CONFLICT', 'A case run changed while the gate was being evaluated.');
         }
       });
+      if (input.expected.buildAttester !== undefined) {
+        const attestationId = sn(gate, 'build_attestation_id');
+        const p =
+          attestationId === null
+            ? undefined
+            : one(
+                db,
+                `SELECT p.enabled, p.revocation_epoch, p.policy_digest
+                   FROM subject_attestations a JOIN attester_principals p USING (principal_id)
+                  WHERE a.attestation_id = ?`,
+                attestationId,
+              );
+        const e = input.expected.buildAttester;
+        const same =
+          e === null
+            ? p === undefined
+            : p !== undefined &&
+              p['enabled'] === e.principalEnabled &&
+              p['revocation_epoch'] === e.revocationEpoch &&
+              p['policy_digest'] === e.policyDigest;
+        if (!same)
+          fail('RS_REVISION_CONFLICT', 'The build attester changed while the gate was being evaluated.');
+      }
       const gateEvaluationId = randomUUID();
       const now = this.now();
       run(

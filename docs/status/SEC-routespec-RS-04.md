@@ -60,9 +60,9 @@ Environment: `ROUTESPEC_TEST_PORT_BASE=9730` (ports 9730-9739); everything else 
 loopback ports. Containment, control-api, proxy and runner sources are not touched, so
 `test:containment` and `test:delivery` were not required.
 
-| Command          | Exit | Result            |
-| ---------------- | ---- | ----------------- |
-| `pnpm run check` | 0    | FULL_CHECK_RESULT |
+| Command          | Exit | Result                                                                                                            |
+| ---------------- | ---- | ----------------------------------------------------------------------------------------------------------------- |
+| `pnpm run check` | 0    | typecheck, lint, format clean; 82 test files, 707 passed, 2 skipped (709); secret-scan clean (515 files, 8 rules) |
 
 During a first full run before the merge, `packages/cli/test/t025-interrupted-evaluation.test.ts`
 failed once under load (an evaluation-ordering comparison, unrelated to imports); it passed 5/5

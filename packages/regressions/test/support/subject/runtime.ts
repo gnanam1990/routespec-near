@@ -70,9 +70,17 @@ export interface JobRequest {
   /**
    * Where this integration performs its protected effect (order fulfilment). When the launcher
    * runs the build under containment (M14) this is the loopback tunnel to RouteSpec's effect
-   * interceptor; absent, the build performs no effect.
+   * interceptor, with the per-instance sink token only this subject is given; absent, the
+   * build performs no effect.
    */
-  readonly effectSink?: { readonly origin: string; readonly sinkClass: string } | null;
+  readonly effectSink?: EffectSink | null;
+}
+
+export interface EffectSink {
+  readonly origin: string;
+  readonly sinkClass: string;
+  /** Per-instance interceptor sink token, sent as `x-routespec-sink-token`. */
+  readonly token: string;
 }
 
 export interface EffectAttempt {
@@ -81,14 +89,11 @@ export interface EffectAttempt {
 }
 
 /** One protected-effect delivery attempt at the configured sink (plain HTTP, no SDK). */
-export async function deliverEffect(
-  sink: { readonly origin: string; readonly sinkClass: string },
-  effectId: string,
-): Promise<EffectAttempt> {
+export async function deliverEffect(sink: EffectSink, effectId: string): Promise<EffectAttempt> {
   try {
     const res = await fetch(`${sink.origin}/sink/${sink.sinkClass}`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-routespec-sink-token': sink.token },
       body: JSON.stringify({ effectId }),
     });
     const body = (await res.json().catch(() => ({}))) as { denied?: boolean };

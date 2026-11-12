@@ -170,7 +170,7 @@ crash and restart.
   `REQUIRED_SINK_UNOBSERVED` gap, and (contained mode) use up the one-shot release decision.
   Fixed: a random per-instance sink token is bound over the interceptor's private pipe and handed
   only to the subject; requests without it get 401 `SINK_UNAUTHENTICATED` before anything is
-  framed. The reviewed interceptor artifact digest pin is updated (ADR-0023,
+  framed. The reviewed interceptor artifact digest pin is updated (ADR-0024,
   `docs/status/SEC-routespec-RS-01.md`).
 
 ## External action ledger

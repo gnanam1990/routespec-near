@@ -1,4 +1,4 @@
-# ADR-0023 — The interceptor sink requires a per-instance token (SEC RS-01)
+# ADR-0024 — The interceptor sink requires a per-instance token (SEC RS-01)
 
 - Status: accepted
 - Date: 2026-11-12

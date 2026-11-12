@@ -4,7 +4,7 @@
   with a failing test before any change.
 - State: **FIXED** on `feat/routespec-m23-interceptor-sink-auth` (base `c588307`; `main` merged in
   before the final runs).
-- ADR: `docs/adr/0023-interceptor-sink-token.md`.
+- ADR: `docs/adr/0024-interceptor-sink-token.md`.
 
 ## Finding (verified)
 

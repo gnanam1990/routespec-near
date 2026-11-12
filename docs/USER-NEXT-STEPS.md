@@ -22,6 +22,14 @@ these remain:
 
 RP-07 (section 3) and the independent security review (section 5) are outside `WORKING_LOCAL`.
 
+Reviewer kits (M19): hand these to the people doing the reviews; each is self-contained
+(`docs/review-kits/README.md`):
+
+- [interceptor profile review](review-kits/interceptor-profile-review.md) (section 2);
+- [security review](review-kits/security-review.md) (section 5);
+- [console accessibility review](review-kits/accessibility-review.md) (screen readers and
+  200 percent zoom, the NOT_RUN manual parts of T-047 to T-052).
+
 ## 1. Remote CI run (RP-05, M10, M15)
 
 1. Check the three pinned action SHAs against their upstream release tags:
@@ -46,8 +54,10 @@ RP-07 (section 3) and the independent security review (section 5) are outside `W
 
 ## 2. Independent interceptor profile review (RP-02, RP-06)
 
-RouteSpec cannot tell whether a reviewer is a different person; you must arrange one. The full
-procedure is `docs/runbooks/interceptor-profile-review.md`. In short:
+RouteSpec cannot tell whether a reviewer is a different person; you must arrange one. Give the
+reviewer `docs/review-kits/interceptor-profile-review.md` (verified commands for both sides,
+checklist, findings template). The runbook is `docs/runbooks/interceptor-profile-review.md`. In
+short:
 
 1. Prepare a data directory with the contained setup: either keep the work directory of
    `node --no-warnings packages/delivery/src/journey.ts --work <dir> --out <file> --contained`
@@ -66,7 +76,8 @@ procedure is `docs/runbooks/interceptor-profile-review.md`. In short:
 5. Request a challenge for the canary interceptor profile, give `challenge.json` to the
    reviewer, who checks the artifact digest and the checklist and signs offline with
    `node packages/cli/src/main.ts profile review-sign --challenge challenge.json --key reviewer.pem`.
-   Complete the challenge with the signature; `profile review-status` must report `REVIEWED`.
+   Complete the challenge with the signature; `GET /interceptor-profiles/{profileId}` (or
+   `profile review-status` with the service stopped) must report `REVIEWED`.
 6. Run a new contained gate run in that data directory **after** the review (a review recorded
    after a case's input closed does not count for that case). Check that every case's INV-04 is
    PASS, the capture classification has no refusal reasons, and the exported
@@ -123,6 +134,9 @@ transfers are refused before any credential, DNS lookup, or socket.
    dry quote as a deposit, swap, delivery, or settlement.
 
 ## 5. Independent security review
+
+Give the reviewer `docs/review-kits/security-review.md` (scope, questions per requirement, how
+to run the suites, findings template).
 
 Arrange a reviewer outside this team for the areas listed in `docs/spec/SECURITY.md` section 15,
 ADR-0016, ADR-0019, ADR-0020 (container-host access, seccomp), and ADR-0021 (review signatures,

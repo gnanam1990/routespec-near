@@ -7,7 +7,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Icon, type IconName } from './Icon.tsx';
 import { Timestamp } from './Timestamp.tsx';
 import type { ApiError, FieldError } from '../api/errors.ts';

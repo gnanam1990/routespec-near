@@ -18,6 +18,7 @@ import {
   RAW_PROVIDER_STATUSES,
   StatusQueryMaterial,
   VERDICTS,
+  singleValueEnum,
   z,
 } from '@routespec/contracts';
 import { BUDGET_KEYS, HARD_CAPS } from './budget.ts';
@@ -59,14 +60,14 @@ export const RequestMatch = z
     for (const key of Object.keys(m.fields ?? {})) {
       if (!ROUTE_FIELDS[m.route].includes(key)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           path: ['fields', key],
           message: `field is not a ${m.route} profile field`,
         });
       }
     }
     if (Object.keys(m.fields ?? {}).length > 16) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['fields'], message: 'at most 16 field matchers' });
+      ctx.addIssue({ code: 'custom', path: ['fields'], message: 'at most 16 field matchers' });
     }
   });
 export type RequestMatch = z.infer<typeof RequestMatch>;
@@ -100,7 +101,7 @@ export const Step = z.discriminatedUnion('type', [
       ...base,
       type: z.literal('transport_error'),
       match: RequestMatch,
-      error: z.enum(['CONNECTION_RESET']).optional(),
+      error: singleValueEnum('CONNECTION_RESET').optional(),
     })
     .strict(),
   z.object({ ...base, type: z.literal('delay_virtual'), ms: Ms }).strict(),

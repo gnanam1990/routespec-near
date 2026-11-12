@@ -183,7 +183,7 @@ docs/spec                       sealed specification pack (never edited)
   only after a different build passes the promoted case through the normal path.
 - **Release-evidence refusal and profile review (M16).** One journal-derived classification
   (`GET /imports/{id}/release-evidence`, `routespec regression evidence`) decides whether a
-  capture is release evidence; promotion, corpora, gate aggregation (`routespec-gate@1.1.0`),
+  capture is release evidence; promotion, corpora, gate aggregation (`routespec-gate@1.2.0`),
   and export all apply it. Reviewers are separate principals (migration 009) enrolled with a
   local confirmation; a review is an Ed25519 signature over a server-built statement
   (`routespec profile review-sign` signs offline), immutable, and revocable only by an

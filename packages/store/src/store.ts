@@ -131,6 +131,8 @@ export interface CaseSpec {
   readonly scenarioRevisionId: string;
   readonly lineageRole: CaseLineageRole;
   readonly requiredInvariants: readonly string[];
+  /** Per-case effect-coverage policy (M14); the gate run's policy when absent. */
+  readonly effectCoveragePolicyDigest?: string;
 }
 
 export interface RecoveryResult {
@@ -795,6 +797,28 @@ export class RouteSpecStore {
           json(c.requiredInvariants),
           input.adapterRevision,
         );
+        if (c.effectCoveragePolicyDigest !== undefined) {
+          if (this.journal.schemaVersion < 8)
+            fail('RS_SCHEMA_VERSION_UNSUPPORTED', 'Per-case policies need schema 8.');
+          if (
+            !one(
+              db,
+              'SELECT 1 AS x FROM effect_coverage_policies WHERE policy_digest = ?',
+              c.effectCoveragePolicyDigest,
+            )
+          )
+            fail('RS_NOT_FOUND', 'Effect coverage policy not found.');
+          run(
+            db,
+            `INSERT INTO gate_run_case_policies(case_run_id, gate_run_id, scenario_revision_id, effect_coverage_policy_digest,
+               created_at_ms) VALUES (?,?,?,?,?)`,
+            caseRunId,
+            gateRunId,
+            c.scenarioRevisionId,
+            c.effectCoveragePolicyDigest,
+            this.now(),
+          );
+        }
         return caseRunId;
       });
       return { gateRunId, caseRunIds, identityDigest };
@@ -1007,6 +1031,14 @@ export class RouteSpecStore {
       }
       const sessionId = randomUUID();
       const epoch = num(c, 'fencing_epoch') + 1;
+      const casePolicy =
+        this.journal.schemaVersion >= 8
+          ? one(
+              db,
+              'SELECT effect_coverage_policy_digest FROM gate_run_case_policies WHERE case_run_id = ?',
+              input.caseRunId,
+            )
+          : undefined;
       run(
         db,
         `INSERT INTO sessions(session_id, integration_revision_id, build_revision_id, artifact_digest, subject_attestation_class,
@@ -1026,7 +1058,9 @@ export class RouteSpecStore {
         str(g, 'corpus_revision_id'),
         str(c, 'adapter_revision'),
         str(g, 'effect_manifest_digest'),
-        str(g, 'effect_coverage_policy_digest'),
+        casePolicy
+          ? str(casePolicy, 'effect_coverage_policy_digest')
+          : str(g, 'effect_coverage_policy_digest'),
         strOrNull(g, 'callsite_inventory_digest'),
         input.mode,
         str(g, 'evaluator_revision'),
@@ -3262,6 +3296,124 @@ export class RouteSpecStore {
       );
       return { authorizationId, sequence, decisionDigest };
     });
+  }
+
+  /**
+   * Persist the engine-verified containment record of one contained subject launch (M14), once,
+   * at teardown. The record cites the case's session and, when present, its interceptor
+   * instance and the case-launch and interceptor-launch attestations; it is immutable.
+   */
+  recordSubjectContainment(input: {
+    caseRunId: string;
+    interceptorInstanceId: string | null;
+    engine: string;
+    engineVersion: string;
+    imageId: string;
+    containerId: string;
+    containment: 'PROCESS_TREE_ENFORCED' | 'DECLARED_HOOKS_ONLY';
+    findings: readonly string[];
+    sandboxScopeDigest: string | null;
+    scope: unknown;
+    selfObservation: unknown;
+    caseLaunchAttestationId: string | null;
+    interceptorAttestationId: string | null;
+    containerRemoved: boolean;
+    teardown: unknown;
+    startedAtMs: number;
+  }): { containmentId: string; recordDigest: Digest } {
+    if (this.journal.schemaVersion < 8)
+      fail('RS_SCHEMA_VERSION_UNSUPPORTED', 'Containment records need schema 8.');
+    return this.tx('containment.record', (db) => {
+      const c = one(db, 'SELECT * FROM case_runs WHERE case_run_id = ?', input.caseRunId);
+      if (!c || c['session_id'] === null) fail('RS_NOT_FOUND', 'Case run has no session.');
+      if (input.interceptorInstanceId !== null) {
+        const inst = one(
+          db,
+          'SELECT case_run_id FROM effect_interceptor_instances WHERE interceptor_instance_id = ?',
+          input.interceptorInstanceId,
+        );
+        if (!inst || inst['case_run_id'] !== input.caseRunId)
+          fail('RS_IDENTITY_MISMATCH', 'Containment names an interceptor of a different case.');
+      }
+      const containmentId = randomUUID();
+      const tornDownAtMs = this.now();
+      const record = {
+        caseRunId: input.caseRunId,
+        sessionId: str(c, 'session_id'),
+        interceptorInstanceId: input.interceptorInstanceId,
+        engine: input.engine,
+        engineVersion: input.engineVersion,
+        imageId: input.imageId,
+        containerId: input.containerId,
+        containment: input.containment,
+        findings: [...input.findings].sort(),
+        sandboxScopeDigest: input.sandboxScopeDigest,
+        caseLaunchAttestationId: input.caseLaunchAttestationId,
+        interceptorAttestationId: input.interceptorAttestationId,
+        containerRemoved: input.containerRemoved,
+      };
+      const recordDigest = digestValue('routespec.subject-containment/1', record);
+      run(
+        db,
+        `INSERT INTO subject_containments(containment_id, case_run_id, session_id, interceptor_instance_id, engine, engine_version,
+           image_id, container_id, containment, findings_json, sandbox_scope_digest, scope_json, self_observation_json,
+           case_launch_attestation_id, interceptor_attestation_id, container_removed, teardown_json, started_at_ms,
+           torn_down_at_ms, record_digest) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        containmentId,
+        input.caseRunId,
+        str(c, 'session_id'),
+        input.interceptorInstanceId,
+        input.engine,
+        input.engineVersion,
+        input.imageId,
+        input.containerId,
+        input.containment,
+        json(record.findings),
+        input.sandboxScopeDigest,
+        json(input.scope ?? null),
+        json(input.selfObservation ?? null),
+        input.caseLaunchAttestationId,
+        input.interceptorAttestationId,
+        input.containerRemoved ? 1 : 0,
+        json(input.teardown ?? null),
+        input.startedAtMs,
+        tornDownAtMs,
+        recordDigest,
+      );
+      return { containmentId, recordDigest };
+    });
+  }
+
+  /** Containment records of one case (M14), oldest first. */
+  listSubjectContainments(caseRunId: string): Row[] {
+    if (this.journal.schemaVersion < 8) return [];
+    return this.journal.read(
+      (db) =>
+        db
+          .prepare('SELECT * FROM subject_containments WHERE case_run_id = ? ORDER BY started_at_ms, rowid')
+          .all(caseRunId) as Row[],
+    );
+  }
+
+  /** Evidence items journaled for one case, in commit order (M14 effect release decision). */
+  listCaseEvidence(caseRunId: string): Row[] {
+    return this.journal.read(
+      (db) =>
+        db
+          .prepare('SELECT * FROM evidence_items WHERE case_run_id = ? ORDER BY rowid')
+          .all(caseRunId) as Row[],
+    );
+  }
+
+  /** Per-case effect-coverage policies of a gate run (M14). */
+  listCasePolicies(gateRunId: string): Row[] {
+    if (this.journal.schemaVersion < 8) return [];
+    return this.journal.read(
+      (db) =>
+        db
+          .prepare('SELECT * FROM gate_run_case_policies WHERE gate_run_id = ? ORDER BY rowid')
+          .all(gateRunId) as Row[],
+    );
   }
 
   /**

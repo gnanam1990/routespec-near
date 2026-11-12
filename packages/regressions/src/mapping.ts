@@ -357,7 +357,13 @@ function limitationsFor(
   }
   if (notVisibleSubjects(trace).size > 0) out.add('PRIVATE_LEG_NOT_VISIBLE');
   if (disputed) out.add('DISPUTED_GROUND_TRUTH');
-  out.add('PROCESS_TREE_NOT_CONFINED');
+  // Only an installed capture whose journal shows every interceptor instance confining the
+  // subject's process tree (M14) drops this limitation; imported files never do.
+  if (
+    trace.origin !== 'INSTALLED_ARTIFACT_CAPTURE' ||
+    trace.identity?.processTreeContainment !== 'PROCESS_TREE_ENFORCED'
+  )
+    out.add('PROCESS_TREE_NOT_CONFINED');
   return [...out].sort();
 }
 

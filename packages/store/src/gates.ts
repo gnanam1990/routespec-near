@@ -89,6 +89,8 @@ export interface GateSnapshotRows {
   readonly caseRuns: readonly Row[];
   readonly caseResults: readonly Row[];
   readonly interruptions: readonly Row[];
+  /** Per-case effect-coverage policies (M14, schema 8); absent or empty means none. */
+  readonly casePolicies?: readonly Row[];
 }
 
 export interface GateEvaluationCaseInput {
@@ -489,6 +491,10 @@ export class GateJournal {
             ORDER BY i.created_at_ms, i.interruption_id`,
           gateRunId,
         ),
+        casePolicies:
+          this.store.schemaVersion >= 8
+            ? all(db, 'SELECT * FROM gate_run_case_policies WHERE gate_run_id = ? ORDER BY rowid', gateRunId)
+            : [],
       };
     });
   }

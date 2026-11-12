@@ -29,7 +29,9 @@ import {
   registerConfiguredSecrets,
   type RouteSpecStore,
 } from '@routespec/store';
+import { launcherArtifactDigest } from '@routespec/containment';
 import { AttesterChannel } from './attestation.ts';
+import { ContainmentHost, type ContainmentConfig } from './containment-host.ts';
 import { CursorCodec } from './cursor.ts';
 import { BASE_HEADERS, readJsonBody, safeError, writeError, writeJson, assertNoBody } from './http.ts';
 import { buildRoutes, caseAuthFromHeaders, type LocalConfirmationNotice, type RouteDef } from './routes.ts';
@@ -83,6 +85,17 @@ export interface ControlServerOptions {
    * it as a finding, exports block on it, and logs redact it. Each needs >= 8 characters.
    */
   readonly configuredSecrets?: readonly string[];
+  /**
+   * Container containment for subject cases (M14). Absent: `contained-start` answers
+   * RS_CONTAINMENT_UNAVAILABLE with reason CONTAINER_RUNTIME_ABSENT.
+   */
+  readonly containment?: ContainmentConfig | null;
+  /**
+   * Reviewed launcher the host may fork for an enrolled LOCAL_LAUNCHER_KEY principal whose
+   * enrolled launcher digest equals this script's measured digest (M14). The arguments name the
+   * operator's key file and similar non-secret paths; the service never reads the key.
+   */
+  readonly launcher?: { readonly script: string; readonly args: readonly string[] } | null;
 }
 
 export interface ConnectionLimits {
@@ -219,6 +232,8 @@ export class ControlServer {
   readonly #server: Server;
   readonly #routes: CompiledRoute[];
   readonly #launchers = new Map<string, AttesterChannel>();
+  readonly #launcherConfig: { readonly script: string; readonly args: readonly string[] } | null;
+  readonly containment: ContainmentHost;
   readonly #pending = new Map<string, LaunchCredentials>();
   readonly #limits: Windows;
   readonly #consoleDir: string | null;
@@ -246,8 +261,19 @@ export class ControlServer {
       ...(options.tokenTtlMs !== undefined ? { tokenTtlMs: options.tokenTtlMs } : {}),
       ...(options.dataDirectory !== undefined ? { dataDirectory: options.dataDirectory } : {}),
       onCredentials: (caseRunId, credentials) => {
+        // A contained subject receives re-issued authority over its private channel only.
+        if (this.containment?.deliverCredentials(caseRunId, credentials)) return;
         if (credentials.purpose === 'RECONCILIATION_ONLY') this.#pending.set(caseRunId, credentials);
       },
+    });
+    this.#launcherConfig = options.launcher ?? null;
+    this.containment = new ContainmentHost({
+      store: this.store,
+      control: this.control,
+      service: this.service,
+      config: options.containment ?? null,
+      launcherFor: (principalId) => this.launcherFor(principalId),
+      challengeTtlMs: options.challengeTtlMs ?? 300_000,
     });
     this.#limits = new Windows(
       {
@@ -276,6 +302,8 @@ export class ControlServer {
       nowMs: () => this.store.clock.nowMs(),
       bind: { host, port: () => this.port },
       launchers: this.#launchers,
+      launcherFor: (principalId: string) => this.launcherFor(principalId),
+      containment: this.containment,
       pendingCredentials: this.#pending,
       onLocalConfirmation: notify,
       confirmationTtlMs: options.confirmationTtlMs ?? 120_000,
@@ -374,7 +402,25 @@ export class ControlServer {
     return channel;
   }
 
+  /**
+   * The launcher channel of a principal: an attached one, or the configured reviewed launcher
+   * forked on demand when its measured digest equals the principal's enrolled launcher digest.
+   */
+  launcherFor(principalId: string): AttesterChannel | undefined {
+    const existing = this.#launchers.get(principalId);
+    if (existing && existing.child.exitCode === null && existing.child.connected) return existing;
+    const cfg = this.#launcherConfig;
+    if (cfg === null) return existing;
+    const p = this.control.getPrincipal(principalId);
+    if (!p || p.principal['kind'] !== 'LOCAL_LAUNCHER_KEY' || p.principal['enabled'] !== 1) return undefined;
+    if (p.policy['launcherArtifactDigest'] !== launcherArtifactDigest(cfg.script)) return undefined;
+    const channel = AttesterChannel.launch(this.control, cfg.script, cfg.args, launcherArtifactDigest);
+    this.#launchers.set(principalId, channel);
+    return channel;
+  }
+
   async close(): Promise<void> {
+    await this.containment.closeAll().catch(() => undefined);
     this.#unregisterSecrets();
     for (const l of this.#launchers.values()) await l.close().catch(() => undefined);
     this.#launchers.clear();

@@ -9,33 +9,48 @@ case can be captured, reviewed, and promoted into a regression that the correcte
 pass.
 
 The authoritative specification is the sealed pack in [`docs/spec/`](docs/spec/START-HERE.md).
-This repository implements it module by module (M00–M12).
+This repository implements it module by module (M00–M14).
 
-## Status (2026-11-12, verified on win32/x64 only)
+## Status (2026-11-12, verified on win32/x64; containment on Docker Engine in WSL 2)
 
-- All modules M00–M12 are implemented and merged locally. Exactly what passed, what is partial,
+- All modules M00–M14 are implemented and merged locally. Exactly what passed, what is partial,
   and what is blocked is in [`BUILD-STATUS.md`](BUILD-STATUS.md), with one record per module in
   [`docs/status/`](docs/status/).
 - From a clean clone, the installed product runs the whole local journey with the pinned
   official SDK: the baseline client fails the lost-response case, the failure is captured and
-  promoted to a regression, and a genuinely corrected client passes every predicate this host
-  can prove (`pnpm run test:delivery`).
-- **No `WORKING_*` gate level is claimed.** `WORKING_LOCAL` needs trust-rooted subject and
-  interceptor identity and complete independent effect coverage (INV-04); this host has no
-  process-tree sandbox or independent interceptor, so those results stay REVIEW. The official
-  live dry probe (RP-07) has not been run; it needs your own provider JWT.
+  promoted to a regression, and a genuinely corrected client passes (`pnpm run test:delivery`).
+- **Containment (M14).** With a Linux container engine configured, every subject case runs
+  confined (no network but a loopback tunnel to RouteSpec, read-only root, no capabilities,
+  non-root), launches are attested by an enrolled launcher key, and an independent interceptor
+  observes the protected effect. On this host the corrected client then passes every required
+  predicate, INV-04 complete-effect coverage included, and its gate decision is PASS. Real escape
+  attempts (direct egress, DNS, gateway, daemons, process floods, writes) are blocked
+  (`pnpm run test:containment`). Without an engine those tests report NOT_RUN.
+- **No `WORKING_*` gate level is claimed.** `WORKING_LOCAL` still needs a clean-checkout run on a
+  real CI service (RP-05), refusal of declared-hooks-only or unconfined captures as release
+  evidence (RP-08), and a review of the interceptor profile. The official live dry probe (RP-07)
+  has not been run; it needs your own provider JWT.
 - Enforcement is advisory: `LOCAL_ADVISORY`, `CI_CHECK`, or `REQUIRED_CHECK_UNVERIFIED`.
   RouteSpec never says it blocks a merge or a release.
-- Not run: Linux and macOS, Firefox and WebKit, screen readers, remote CI, an independent
+- Not run: Linux and macOS hosts, Firefox and WebKit, screen readers, remote CI, an independent
   security review. What you can do next: [`docs/USER-NEXT-STEPS.md`](docs/USER-NEXT-STEPS.md).
+
+### Dependencies (M13)
+
+- zod 4.6.7, react-router 7.18.5, vitest 4.1.12 (tinypool no longer in the tree).
+- `pnpm audit`: 5 advisories left (node-forge, dev only, held by the two-week cool-down until
+  2026-11-18; minimatch through typescript-eslint).
 
 ## Requirements
 
 - Node.js `>= 22.18` (built-in type stripping and `node:sqlite`; verified on 22.23.1)
 - pnpm 10 (`corepack enable` or a global install)
 - git
-- Windows, Linux, or macOS. No Docker, WSL, or C toolchain is needed. The console acceptance
-  suites need Playwright's Chromium (`pnpm --filter @routespec/console exec playwright install chromium`).
+- Windows, Linux, or macOS. No C toolchain is needed. The console acceptance suites need
+  Playwright's Chromium (`pnpm --filter @routespec/console exec playwright install chromium`).
+- Optional, for subject containment: a Linux container engine (Docker Engine on Linux, or Docker
+  Engine inside WSL 2 on Windows; Docker Desktop is not needed) and the image
+  `node:22-bookworm-slim` pulled once. Setup: [`docs/runbooks/container-containment.md`](docs/runbooks/container-containment.md).
 
 ## Install and build
 
@@ -67,18 +82,25 @@ RouteSpec never runs your commands.
 
 The end-to-end journey (`pnpm run delivery:journey -- --work <empty dir> --out <file.json>`)
 drives a fresh data directory through the control API, console, and CLI with the two reference
-client builds, and writes the evidence record to the JSON file.
+client builds, and writes the evidence record to the JSON file. Add `--contained` (with
+`ROUTESPEC_CONTAINER_CLI` set) to run every subject case confined, with attested launches.
+
+Containment in the service: start it with `--subject-root <checkout> --container-cli '<json>'
+--launcher packages/containment/src/attesting-launcher.ts --launcher-key <key file>` and start
+cases with `POST /__routespec/v1/case-runs/{id}/contained-start`; the case token goes only to the
+confined subject. Details in the runbook.
 
 ## Verify
 
-| Command                       | What it does                                                                                                                                              |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm run check`              | typecheck (all projects), ESLint, Prettier check, the Vitest suite, repository secret scan                                                                |
-| `pnpm test`                   | Vitest suite for every package (`packages/*/test`, `apps/*/test`)                                                                                         |
-| `pnpm run test:e2e:real`      | builds the console, starts a real control service seeded through the API by official-SDK subjects, runs Playwright + axe (T-047..T-052)                   |
-| `pnpm run test:delivery`      | clones HEAD into an empty directory, installs offline, builds, runs the full journey, regressions, uninstall and reinstall (T-054, T-055; about a minute) |
-| `pnpm run test:e2e`           | console fixture suite (simulated API; development only)                                                                                                   |
-| `pnpm run audit:supply-chain` | offline lockfile, license, and install-script audit                                                                                                       |
+| Command                       | What it does                                                                                                                                                                                                            |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm run check`              | typecheck (all projects), ESLint, Prettier check, the Vitest suite, repository secret scan                                                                                                                              |
+| `pnpm test`                   | Vitest suite for every package (`packages/*/test`, `apps/*/test`)                                                                                                                                                       |
+| `pnpm run test:e2e:real`      | builds the console, starts a real control service seeded through the API by official-SDK subjects, runs Playwright + axe (T-047..T-052)                                                                                 |
+| `pnpm run test:delivery`      | clones HEAD into an empty directory, installs offline, builds, runs the full journey, regressions, uninstall and reinstall (T-054, T-055), and the contained journey when an engine is configured (about three minutes) |
+| `pnpm run test:containment`   | container runtime tests: real escape attempts and contained cases through the control service (NOT_RUN with a reason when no engine is reachable)                                                                       |
+| `pnpm run test:e2e`           | console fixture suite (simulated API; development only)                                                                                                                                                                 |
+| `pnpm run audit:supply-chain` | offline lockfile, license, and install-script audit                                                                                                                                                                     |
 
 Node prints an `ExperimentalWarning` for `node:sqlite`; it is expected.
 
@@ -113,7 +135,7 @@ a separate process with its own compatibility ledger; its result never changes a
 
 ```text
 packages/contracts         M00  closed versioned schemas, enums, rs-canon/1 digests, oneclick-v0 protocol profile
-packages/store             M01  single-writer node:sqlite WAL journal, migrations 001-007, fenced tokens and recovery
+packages/store             M01  single-writer node:sqlite WAL journal, migrations 001-008, fenced tokens and recovery
 packages/proxy             M02  networkless loopback proxy, case supervisor, redaction, interceptor channel
 packages/client-adapter    M02  attaches the pinned official SDK to the proxy
 packages/scenario          M03  data-only scenario DSL, compiler, virtual clock, deterministic faults, core scenarios
@@ -127,8 +149,10 @@ apps/console               M09  accessible React console over the control API
 packages/ci                M10  `routespec-ci` (trust classification, redacted uploads, SBOM); .github/
 packages/hardening         M11  path policy, canary scanner, OS views, supply-chain audit
 packages/security-suite    M11  security acceptance tests against the assembled product
-packages/delivery          M12  clean install, end-to-end journey, delivery tests
-docs/adr                        architecture decision records 0001-0017
+packages/delivery          M12  clean install, end-to-end journey (uncontained and contained), delivery tests
+packages/containment       M14  container launcher, loopback tunnel, containment verification, attesting launcher
+docs/adr                        architecture decision records 0001-0019
+docs/runbooks                   container-containment.md (WSL 2 + Docker Engine setup and use)
 docs/status                     per-module evidence
 docs/spec                       sealed specification pack (never edited)
 ```
@@ -156,6 +180,12 @@ docs/spec                       sealed specification pack (never edited)
 - **CI (M10).** `routespec-ci run --config routespec.ci.json` through the reviewed launcher;
   pull-request and fork jobs get no provider secrets and upload only redacted reports; CI builds
   stay `USER_ASSERTED_LOCAL`. Remote runs have not happened yet.
+- **Containment (M14).** `@routespec/containment` detects the engine, starts the subject's process
+  tree in a container whose only channel is a stdio tunnel to the proxy and the interceptor sink,
+  verifies the engine's record and the container's self-observation (fail closed), and supplies
+  the attesting launcher. The service binds the interceptor at the case's current epoch, releases
+  protected effects only after ground truth proves accepted completion, and journals an immutable
+  containment record per case. Gate runs may select one effect policy per scenario.
 - **Hardening (M11).** `ROUTESPEC_CONFIGURED_SECRETS` (one value per line, read once) are refused
   or redacted at every boundary; `--handoff stderr|ipc|none`; local logs in
   `<data>/logs/control.jsonl`; `GET /__routespec/v1/metrics` (no telemetry); retention purge with

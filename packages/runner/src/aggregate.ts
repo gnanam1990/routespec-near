@@ -8,7 +8,9 @@
  *    cancelled/aborted, errored, interrupted, teardown-incomplete, identity-mismatched, stale,
  *    tampered, REVIEW/UNSUPPORTED/NOT_RUN, a promoted capture that is not release evidence
  *    (diagnostic-only or unclassified, M16), or if a gate-level gap exists (stale evaluator/proxy,
- *    unattested build under a policy that requires trusted attestation, no required cases).
+ *    unattested build under a policy that requires trusted attestation, a selected trusted build
+ *    attestation that is missing or whose principal is now disabled, revoked, or policy-changed
+ *    (TB-07), no required cases).
  * 4. PASS only when every exact required case run is a complete PASS under the same immutable
  *    gate-run snapshot.
  *
@@ -26,7 +28,7 @@ import {
   type Verdict,
 } from '@routespec/contracts';
 
-export const AGGREGATOR_REVISION = 'routespec-gate@1.1.0' as const;
+export const AGGREGATOR_REVISION = 'routespec-gate@1.2.0' as const;
 export const GATE_IDENTITY_DOMAIN = 'routespec.gate-identity/1';
 export const GATE_DECISION_DOMAIN = 'routespec.gate-decision/1';
 export const GATE_ENFORCEMENT_DOMAIN = 'routespec.gate-enforcement/1';
@@ -117,8 +119,30 @@ export interface GateCaseInput {
   readonly interrupted: boolean;
 }
 
+/**
+ * The selected trusted build attestation and its principal's state as read in the same snapshot
+ * as the cases (TB-07). Null: no such record. Re-read at every evaluation, so a principal disabled
+ * or revoked after gate-run creation makes every later evaluation REVIEW.
+ */
+export interface GateBuildAttestationState {
+  readonly attestationId: string;
+  readonly attestationClass: SubjectAttestationClass;
+  readonly scope: string;
+  readonly buildRevisionId: string | null;
+  readonly principalEnabled: boolean;
+  readonly principalRevocationEpochAtIssue: number;
+  readonly principalCurrentRevocationEpoch: number;
+  readonly principalPolicyDigestAtIssue: string;
+  readonly principalCurrentPolicyDigest: string;
+}
+
 export interface GateInput {
   readonly identity: GateIdentity;
+  /**
+   * Required for a trusted build attestation class; absent or null fails closed
+   * (BUILD_ATTESTATION_NOT_FOUND). Ignored for USER_ASSERTED_LOCAL.
+   */
+  readonly buildAttestation?: GateBuildAttestationState | null;
   readonly gateLifecycle: ExecutionLifecycle;
   readonly enforcementMode: EnforcementMode;
   readonly cases: readonly GateCaseInput[];
@@ -313,6 +337,30 @@ function caseOutcome(
   return out('REVIEW', findings);
 }
 
+/**
+ * Re-check a selected trusted build attestation against its principal's current state (TB-07).
+ * Same rules as the kernel's attestation check and the gate-run creation route, minus expiry:
+ * freshness is bound at gate-run creation and per case at input close, and this function has no
+ * clock. Every finding blocks PASS whatever the build attestation policy.
+ */
+function buildAttestationFindings(id: GateIdentity, a: GateBuildAttestationState | null): string[] {
+  if (id.buildAttestationId === null || a === null || a.attestationId !== id.buildAttestationId) {
+    return ['BUILD_ATTESTATION_NOT_FOUND'];
+  }
+  const findings: string[] = [];
+  if (a.attestationClass !== id.buildAttestationClass) findings.push('BUILD_ATTESTATION_CLASS_MISMATCH');
+  if (a.scope !== 'BUILD_REGISTRATION') findings.push('BUILD_ATTESTATION_SCOPE_MISMATCH');
+  if (a.buildRevisionId !== id.buildRevisionId) findings.push('BUILD_ATTESTATION_BUILD_MISMATCH');
+  if (!a.principalEnabled) findings.push('BUILD_ATTESTER_DISABLED');
+  if (a.principalCurrentRevocationEpoch !== a.principalRevocationEpochAtIssue) {
+    findings.push('BUILD_ATTESTER_REVOKED');
+  }
+  if (a.principalCurrentPolicyDigest !== a.principalPolicyDigestAtIssue) {
+    findings.push('BUILD_ATTESTER_POLICY_CHANGED');
+  }
+  return findings;
+}
+
 /** Pure gate aggregation over one consistent snapshot. */
 export function aggregateGate(input: GateInput): GateDecision {
   const id = input.identity;
@@ -333,6 +381,9 @@ export function aggregateGate(input: GateInput): GateDecision {
     gateFindings.push(
       id.buildAttestationPolicy === 'REQUIRE_TRUSTED' ? 'BUILD_UNATTESTED' : 'BUILD_USER_ASSERTED_LOCAL',
     );
+  }
+  if (id.buildAttestationClass !== 'USER_ASSERTED_LOCAL') {
+    gateFindings.push(...buildAttestationFindings(id, input.buildAttestation ?? null));
   }
   if (input.gateLifecycle === 'ABORTED') gateFindings.push('GATE_RUN_ABORTED');
   if (input.gateLifecycle === 'ERROR') gateFindings.push('GATE_RUN_ERROR');

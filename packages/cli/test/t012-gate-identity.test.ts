@@ -18,6 +18,7 @@
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { RouteSpecError, computeCanonicalResultDigest } from '@routespec/contracts';
+import { EVALUATOR_REVISION } from '@routespec/kernel';
 import { GateService, aggregateGate, buildGateReport } from '@routespec/runner';
 import { GateJournal, RouteSpecStore } from '@routespec/store';
 import { canonical, gateInput, identity } from './support/gate-fixture.ts';
@@ -195,7 +196,7 @@ describe('T-012 — Gate identity changes invalidate prior decision', () => {
     withStore((store) => {
       for (const runtime of [
         { evaluatorRevision: 'routespec-kernel@2.0.0', proxyRevision: 'routespec-proxy@1.0.0' },
-        { evaluatorRevision: 'routespec-kernel@1.0.0', proxyRevision: 'routespec-proxy@2.0.0' },
+        { evaluatorRevision: EVALUATOR_REVISION, proxyRevision: 'routespec-proxy@2.0.0' },
       ]) {
         const service = new GateService(store, { runtime });
         const { decision } = service.evaluateGate(prior.gateRunId);

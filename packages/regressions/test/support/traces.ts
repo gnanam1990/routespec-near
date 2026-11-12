@@ -167,8 +167,10 @@ export async function promoteUserTrace(
     baseCorpusRevisionId: input.baseCorpusRevisionId,
     corpusLabel: input.corpusLabel,
     severity: 'HIGH',
-    gatePolicy: 'REQUIRED',
+    gatePolicy: 'ADVISORY',
     idempotencyKey: `${input.tag}-promote`,
+    // A user file is never independent release evidence (M16, RP-08).
+    evidenceUse: 'DIAGNOSTIC_ONLY',
   });
   return { importId: out.importId, mapping, promotion };
 }

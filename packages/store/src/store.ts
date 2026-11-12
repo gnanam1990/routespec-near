@@ -54,6 +54,8 @@ import {
 } from '@routespec/contracts';
 import { JournalDb, systemClock, type Clock, type OpenOptions } from './database.ts';
 import { assertNoSecrets } from './guards.ts';
+import { assertRequiredCasesAreReleaseEvidence } from './imports.ts';
+import { profileReviewFactRows } from './reviews.ts';
 
 type Row = Record<string, unknown>;
 
@@ -120,6 +122,8 @@ export interface EvaluationSnapshotRows {
   readonly evidence: readonly Record<string, unknown>[];
   readonly consumptions: readonly Record<string, unknown>[];
   readonly allocations: readonly Record<string, unknown>[];
+  /** Reviews of the policy's pinned interceptor profile with current revocation state (M16). */
+  readonly profileReviews: readonly Record<string, unknown>[];
 }
 
 export interface InterceptorChannelAuth {
@@ -616,6 +620,7 @@ export class RouteSpecStore {
         corpusDigest,
       );
       if (existing) return { corpusRevisionId: str(existing, 'corpus_revision_id'), corpusDigest };
+      if (this.journal.schemaVersion >= 9) assertRequiredCasesAreReleaseEvidence(db, input.cases);
       const corpusRevisionId = randomUUID();
       run(
         db,
@@ -3577,6 +3582,11 @@ export class RouteSpecStore {
         );
         return a ? [a] : [];
       });
+      const pinnedProfile = policy ? strOrNull(policy, 'interceptor_profile_digest') : null;
+      const profileReviews =
+        pinnedProfile !== null && this.journal.schemaVersion >= 9
+          ? profileReviewFactRows(db, str(gateRun, 'project_id'), pinnedProfile)
+          : [];
       const runOperations = all(
         db,
         'SELECT * FROM run_operations WHERE case_run_id = ? ORDER BY created_sequence',
@@ -3661,6 +3671,7 @@ export class RouteSpecStore {
             WHERE e.case_run_id = ? ORDER BY a.allocation_id, p.run_operation_id`,
           caseRunId,
         ),
+        profileReviews,
       };
     });
   }

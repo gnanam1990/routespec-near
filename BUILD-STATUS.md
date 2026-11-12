@@ -147,6 +147,16 @@ crash and restart.
   checked against its published SHA-256 list, plus a frozen-lockfile `pnpm install` from the npm
   registry in a temporary clone. No system setting was changed.
 
+## Security fix: RS-05 (external security audit)
+
+- The CLI created the journal data directory without a mode (0755 under umask 0022) and SQLite
+  created `journal.db` as 0644, so other local accounts could read the journal; the service's
+  `mode: 0o700` applied only to a directory it created itself. Fixed: the store's
+  `ensurePrivateDataDir` creates or tightens the directory to 0700 for both the CLI and the
+  service, and `JournalDb.open` creates the journal as 0600 and tightens it and its `-wal`,
+  `-shm`, `-journal` and writer-lock files to 0600 on every writable open
+  (`docs/status/SEC-routespec-RS-05.md`). POSIX only; Windows relies on the profile ACLs.
+
 ## External action ledger
 
 All NOT_AUTHORIZED and NOT_RUN by this build: push, fetch, remote creation, PR creation, remote

@@ -15,10 +15,17 @@
  *           identity/decision parity across report formats, a fresh secret scan, declared
  *           exclusions, and the absence of author-machine paths, using only the bundle itself.
  *
+ * Release evidence (M16, RP-08): every bundle declares its `evidenceUse`. A RELEASE_EVIDENCE
+ * plan is refused (RS_CAPTURE_NOT_RELEASE_EVIDENCE) when any corpus case of the gate is a
+ * promoted capture that is not release evidence (diagnostic only or unclassified); such a gate
+ * exports only as an explicit DIAGNOSTIC_ONLY bundle. The bundle carries the per-case evidence
+ * classes and every signed review of the gate's interceptor profile (statement, signature,
+ * reviewer public key), so `verify` checks the declared use and the review signatures offline.
+ *
  * Checksums identify content; they are not signatures. No signature is claimed (no signing
  * ADR exists).
  */
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, createPublicKey, randomBytes, verify as verifySignature } from 'node:crypto';
 import {
   closeSync,
   fsyncSync,
@@ -36,11 +43,25 @@ import {
 } from 'node:fs';
 import { homedir, hostname, tmpdir, userInfo } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import { RouteSpecError, digestValue } from '@routespec/contracts';
+import {
+  EVIDENCE_USES,
+  RouteSpecError,
+  corpusClassAllowedAsRequired,
+  digestValue,
+  effectiveProfileReview,
+  profileReviewSigningBytes,
+  profileReviewStatementDigest,
+  reviewerKeyDigest,
+  type CorpusEvidenceClass,
+  type EvidenceUse,
+  type ProfileReviewStatement,
+} from '@routespec/contracts';
 import { isWithin, resolveExtractionDir, resolveInputFile, resolveOutputFile } from '@routespec/hardening';
 import { scanForExport, type ExportFindingCategory } from '@routespec/regressions';
 import {
   GateJournal,
+  profileReviewFactRows,
+  reviewFactFromRow,
   type ExportFindingRecord,
   type GateEvaluationView,
   type RouteSpecStore,
@@ -48,7 +69,8 @@ import {
 import { buildGateReport, renderJUnit, renderJson, renderSarif, type GateReport } from './reports.ts';
 import { MAX_BUNDLE_BYTES, isSafeEntryName, readTar, writeTar, type TarEntry } from './tar.ts';
 
-export const BUNDLE_FORMAT = 'routespec.bundle/1' as const;
+export const BUNDLE_FORMAT = 'routespec.bundle/2' as const;
+export const RELEASE_EVIDENCE_ENTRY = 'evidence/release-evidence.json' as const;
 export const BUNDLE_SCANNER_REVISION = 'routespec-bundle-scan@1.0.0' as const;
 export const MAX_ATTACHMENTS = 8;
 export const MAX_ATTACHMENT_BYTES = 256 * 1024;
@@ -79,6 +101,8 @@ export interface PlanExportOptions {
   readonly configuredSecrets?: readonly string[];
   /** Extra author-machine path markers (for example the data directory). */
   readonly localPathMarkers?: readonly string[];
+  /** Declared use of the bundle (default RELEASE_EVIDENCE; M16, RP-08). */
+  readonly evidenceUse?: EvidenceUse;
 }
 
 export interface BundleFinding extends ExportFindingRecord {
@@ -202,6 +226,84 @@ function scanEntries(
   );
 }
 
+interface ReleaseEvidenceContent {
+  readonly evidenceUse: EvidenceUse;
+  readonly refusals: string[];
+  readonly cases: Array<{
+    ordinal: number;
+    scenarioRevisionId: string;
+    gatePolicy: string;
+    evidenceClass: CorpusEvidenceClass;
+  }>;
+  readonly interceptorProfile: {
+    readonly profileDigest: string;
+    readonly reviewState: string;
+    readonly reviews: Array<Record<string, Json>>;
+  } | null;
+}
+
+/**
+ * The release-evidence classification of a gate evaluation (M16). Deterministic for a given
+ * journal; a review revoked between plan and write changes it, so the write then fails closed.
+ */
+function releaseEvidenceContent(
+  store: RouteSpecStore,
+  view: GateEvaluationView,
+  evidenceUse: EvidenceUse,
+): ReleaseEvidenceContent {
+  const gates = new GateJournal(store);
+  const snapshot = gates.readGateSnapshot(view.gateRunId);
+  const cases = snapshot.corpusCases.map((c) => ({
+    ordinal: Number(c['case_ordinal']),
+    scenarioRevisionId: String(c['scenario_revision_id']),
+    gatePolicy: String(c['gate_policy']),
+    evidenceClass: (typeof c['evidence_class'] === 'string'
+      ? c['evidence_class']
+      : 'UNCLASSIFIED') as CorpusEvidenceClass,
+  }));
+  const refusals = [
+    ...new Set(
+      cases
+        .filter((c) => !corpusClassAllowedAsRequired(c.evidenceClass))
+        .map((c) => `CAPTURE_NOT_RELEASE_EVIDENCE:${c.evidenceClass}`),
+    ),
+  ].sort();
+  const projectId = String(view.identity['projectId']);
+  const profileDigest =
+    typeof view.identity['interceptorProfileDigest'] === 'string'
+      ? view.identity['interceptorProfileDigest']
+      : null;
+  let interceptorProfile: ReleaseEvidenceContent['interceptorProfile'] = null;
+  if (profileDigest !== null && store.schemaVersion >= 9) {
+    const rows = store.journal.read((db) => profileReviewFactRows(db, projectId, profileDigest));
+    const state = effectiveProfileReview(profileDigest, rows.map(reviewFactFromRow), view.createdAtMs);
+    const reviews = rows.map((r) => {
+      const full = store.journal.read(
+        (db) =>
+          db
+            .prepare(
+              `SELECT r.statement_json, r.statement_digest, r.signature, r.review_digest, p.public_key_x
+                 FROM interceptor_profile_reviews r JOIN profile_reviewers p USING (reviewer_id) WHERE r.review_id = ?`,
+            )
+            .get(String(r['review_id'])) as Record<string, unknown>,
+      );
+      return {
+        reviewId: String(r['review_id']),
+        decision: String(r['decision']),
+        reviewDigest: String(full['review_digest']),
+        statementDigest: String(full['statement_digest']),
+        statement: JSON.parse(String(full['statement_json'])) as Json,
+        reviewerSignature: String(full['signature']),
+        reviewerPublicKeyX: String(full['public_key_x']),
+        revoked: Number(r['review_revoked']) === 1,
+        reviewerRevoked: Number(r['reviewer_revoked']) === 1,
+      };
+    });
+    interceptorProfile = { profileDigest, reviewState: state.state, reviews };
+  }
+  return { evidenceUse, refusals, cases, interceptorProfile };
+}
+
 function bundleReport(view: GateEvaluationView): GateReport {
   // Artifact readiness is recorded outside the bundle: the bundle cannot depend on itself.
   return { ...buildGateReport(view), artifact: { ready: false, exportIds: [] } };
@@ -241,12 +343,17 @@ function validateAttachments(attachments: readonly ExportAttachment[]): ExportAt
 function buildContent(
   store: RouteSpecStore,
   view: GateEvaluationView,
-  options: { includeAddresses: boolean; attachments: readonly ExportAttachment[] },
+  options: {
+    includeAddresses: boolean;
+    attachments: readonly ExportAttachment[];
+    evidence: ReleaseEvidenceContent;
+  },
 ): BuiltEntry[] {
   const entries: BuiltEntry[] = [];
   const add = (path: string, kind: string, value: Json | null, content?: Buffer) => {
     entries.push({ path, kind, value, content: content ?? json(value) });
   };
+  add(RELEASE_EVIDENCE_ENTRY, 'RELEASE_EVIDENCE_CLASSIFICATION', options.evidence as unknown as Json);
   const report = bundleReport(view);
   add('reports/gate-report.json', 'GATE_REPORT_JSON', report as unknown as Json);
   add('reports/junit.xml', 'GATE_REPORT_JUNIT', null, Buffer.from(renderJUnit(report), 'utf8'));
@@ -358,7 +465,7 @@ function buildContent(
 function finalizeBundle(
   view: GateEvaluationView,
   content: readonly BuiltEntry[],
-  options: { includeAddresses: boolean; acknowledgeAddresses: boolean },
+  options: { includeAddresses: boolean; acknowledgeAddresses: boolean; evidence: ReleaseEvidenceContent },
   journalSchemaVersion: number,
 ): { tar: Buffer; entries: Array<{ path: string; digest: string; bytes: number; kind: string }> } {
   const entries = content.map((e) => ({
@@ -370,7 +477,7 @@ function finalizeBundle(
   const manifest = {
     format: BUNDLE_FORMAT,
     schemaVersions: {
-      bundle: '1',
+      bundle: '2',
       gateReport: 'routespec.gate-report/1',
       canonicalCaseResult: '1.0',
       journal: journalSchemaVersion,
@@ -391,6 +498,11 @@ function finalizeBundle(
       blocking: false,
     },
     artifactReadiness: 'RECORDED_OUTSIDE_BUNDLE',
+    evidenceUse: options.evidence.evidenceUse,
+    releaseEvidence: {
+      refusals: options.evidence.refusals,
+      interceptorProfileReviewState: options.evidence.interceptorProfile?.reviewState ?? null,
+    },
     provenance: [
       'Networkless SIMULATE/REPLAY scenario evidence: proven within scenario only.',
       'No official-endpoint, live, or fund-moving behavior is represented.',
@@ -447,7 +559,16 @@ export function planExport(
   const includeAddresses = options.includeAddresses === true;
   const acknowledgeAddresses = options.acknowledgeAddresses === true;
   const attachments = validateAttachments(options.attachments ?? []);
-  const content = buildContent(store, view, { includeAddresses, attachments });
+  const evidenceUse = options.evidenceUse ?? 'RELEASE_EVIDENCE';
+  const evidence = releaseEvidenceContent(store, view, evidenceUse);
+  if (evidenceUse === 'RELEASE_EVIDENCE' && evidence.refusals.length > 0) {
+    throw new RouteSpecError(
+      'RS_CAPTURE_NOT_RELEASE_EVIDENCE',
+      'This gate uses a promoted capture that is not release evidence; export it as diagnostic only.',
+      { details: { reasons: evidence.refusals } },
+    );
+  }
+  const content = buildContent(store, view, { includeAddresses, attachments, evidence });
   const findings = scanEntries(content, {
     configuredSecrets: options.configuredSecrets ?? [],
     acknowledgeAddresses,
@@ -456,13 +577,19 @@ export function planExport(
   const blocked = findings.some((f) => f.blocking);
   const built = blocked
     ? null
-    : finalizeBundle(view, content, { includeAddresses, acknowledgeAddresses }, store.schemaVersion);
+    : finalizeBundle(
+        view,
+        content,
+        { includeAddresses, acknowledgeAddresses, evidence },
+        store.schemaVersion,
+      );
   const bundleDigest = built ? sha256(built.tar) : null;
   const opts = {
     includeAddresses,
     acknowledgeAddresses,
     attachments: attachments.map((a) => ({ name: a.name, digest: sha256(a.content) })),
     scanner: BUNDLE_SCANNER_REVISION,
+    evidenceUse,
   };
   const planDigest = digestValue('routespec.export-plan/1', {
     gateEvaluationId,
@@ -511,11 +638,25 @@ function rebuild(
   const view = gates.getGateEvaluation(plan.gateEvaluationId);
   const includeAddresses = plan.options['includeAddresses'] === true;
   const acknowledgeAddresses = plan.options['acknowledgeAddresses'] === true;
-  const content = buildContent(store, view, { includeAddresses, attachments: plan.attachments ?? [] });
+  const evidenceUse: EvidenceUse =
+    plan.options['evidenceUse'] === 'DIAGNOSTIC_ONLY' ? 'DIAGNOSTIC_ONLY' : 'RELEASE_EVIDENCE';
+  const evidence = releaseEvidenceContent(store, view, evidenceUse);
+  if (evidenceUse === 'RELEASE_EVIDENCE' && evidence.refusals.length > 0) {
+    throw new RouteSpecError(
+      'RS_CAPTURE_NOT_RELEASE_EVIDENCE',
+      'This gate uses a promoted capture that is not release evidence; export it as diagnostic only.',
+      { details: { reasons: evidence.refusals } },
+    );
+  }
+  const content = buildContent(store, view, {
+    includeAddresses,
+    attachments: plan.attachments ?? [],
+    evidence,
+  });
   const built = finalizeBundle(
     view,
     content,
-    { includeAddresses, acknowledgeAddresses },
+    { includeAddresses, acknowledgeAddresses, evidence },
     store.schemaVersion,
   );
   if (sha256(built.tar) !== plan.bundleDigest) {
@@ -752,6 +893,39 @@ function junitProperty(xmlText: string, name: string): string | null {
   return m ? (m[1] as string) : null;
 }
 
+/** Every bundled review verifies against its bundled reviewer key and binds the gate's profile. */
+function verifyBundledReviews(
+  profile: { profileDigest?: unknown; reviewState?: unknown; reviews?: unknown } | null,
+  manifest: Record<string, unknown> | null,
+): boolean {
+  const identity = (manifest?.['identity'] ?? {}) as Record<string, unknown>;
+  const pinned = identity['interceptorProfileDigest'] ?? null;
+  if (profile === null) return pinned === null;
+  if (profile.profileDigest !== pinned || !Array.isArray(profile.reviews)) return false;
+  const stated = (manifest?.['releaseEvidence'] as Record<string, unknown> | undefined)?.[
+    'interceptorProfileReviewState'
+  ];
+  if (stated !== profile.reviewState) return false;
+  return (profile.reviews as Array<Record<string, unknown>>).every((r) => {
+    try {
+      const statement = r['statement'] as ProfileReviewStatement;
+      const x = String(r['reviewerPublicKeyX']);
+      if (statement.profileDigest !== pinned || statement.reviewerKeyDigest !== reviewerKeyDigest(x))
+        return false;
+      if (profileReviewStatementDigest(statement) !== r['statementDigest']) return false;
+      const key = createPublicKey({ key: { kty: 'OKP', crv: 'Ed25519', x }, format: 'jwk' });
+      return verifySignature(
+        null,
+        profileReviewSigningBytes(statement),
+        key,
+        Buffer.from(String(r['reviewerSignature']), 'base64url'),
+      );
+    } catch {
+      return false;
+    }
+  });
+}
+
 export function verifyBundle(
   bundlePath: string,
   extractDir: string,
@@ -926,6 +1100,45 @@ export function verifyBundle(
     ![...files.keys()].some((p) => p.endsWith('.json') && hasKey(read(p), ENVELOPE_KEYS)),
   );
   check('no-signature-claim', manifest !== null && manifest['signature'] === null);
+  // Release evidence (M16): the declared use matches the classification inside the bundle.
+  const evidence = read(RELEASE_EVIDENCE_ENTRY) as {
+    evidenceUse?: unknown;
+    refusals?: unknown;
+    cases?: Array<{ evidenceClass?: unknown }>;
+    interceptorProfile?: { profileDigest?: unknown; reviewState?: unknown; reviews?: unknown } | null;
+  } | null;
+  const declaredUse = manifest?.['evidenceUse'];
+  const caseClasses = Array.isArray(evidence?.cases) ? evidence.cases.map((c) => c.evidenceClass) : null;
+  const refusals = Array.isArray(evidence?.refusals) ? (evidence.refusals as unknown[]) : null;
+  const recomputed =
+    caseClasses === null
+      ? null
+      : [
+          ...new Set(
+            caseClasses
+              .filter((c) => !corpusClassAllowedAsRequired(c as CorpusEvidenceClass))
+              .map((c) => `CAPTURE_NOT_RELEASE_EVIDENCE:${String(c)}`),
+          ),
+        ].sort();
+  check(
+    'evidence-use-declared',
+    evidence !== null &&
+      (EVIDENCE_USES as readonly unknown[]).includes(declaredUse) &&
+      evidence.evidenceUse === declaredUse &&
+      refusals !== null &&
+      recomputed !== null &&
+      JSON.stringify(recomputed) === JSON.stringify(refusals) &&
+      JSON.stringify((manifest?.['releaseEvidence'] as Record<string, unknown> | undefined)?.['refusals']) ===
+        JSON.stringify(refusals),
+  );
+  check(
+    'release-evidence-consistent',
+    declaredUse !== 'RELEASE_EVIDENCE' || (refusals !== null && refusals.length === 0),
+    declaredUse === 'RELEASE_EVIDENCE' && refusals !== null && refusals.length > 0
+      ? refusals.join(',')
+      : null,
+  );
+  check('profile-review-signatures', verifyBundledReviews(evidence?.interceptorProfile ?? null, manifest));
   check('extraction-contained', isAbsolute(root) && [...files.keys()].every((p) => isSafeEntryName(p)));
   return {
     verified: checks.every((c) => c.ok),

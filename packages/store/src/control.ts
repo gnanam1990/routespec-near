@@ -536,7 +536,8 @@ export class ControlJournal {
     return { confirmationId, code, expiresAtMs };
   }
 
-  private consumeConfirmation(
+  /** Consume a confirmation inside the caller's transaction (also used by profile reviews). */
+  consumeConfirmation(
     db: DatabaseSync,
     input: { confirmationId: string; code: string; actionCode: string; planDigest: string },
   ): void {
@@ -596,6 +597,15 @@ export class ControlJournal {
         fail('RS_NOT_FOUND', 'Project not found.');
       }
       this.consumeConfirmation(db, { ...input.confirmation, actionCode: 'ATTESTER_ENROLL' });
+      // A launcher key is the operator's key: it can never also be an enrolled reviewer key.
+      const x =
+        input.kind === 'LOCAL_LAUNCHER_KEY' ? (input.policy['publicKeyJwk'] as { x?: unknown })?.x : null;
+      if (
+        typeof x === 'string' &&
+        one(db, 'SELECT 1 AS x FROM profile_reviewers WHERE public_key_x = ?', x)
+      ) {
+        fail('RS_REVIEWER_NOT_INDEPENDENT', 'This key is enrolled as a profile reviewer key.');
+      }
       const principalId = randomUUID();
       const now = this.now();
       run(
@@ -1030,7 +1040,8 @@ export class ControlJournal {
   // -------------------------------------------------------------------------------------------
   // Audit and deletion planning.
 
-  private auditIn(
+  /** Append an audit event inside the caller's transaction. */
+  auditIn(
     db: DatabaseSync,
     actionCode: string,
     subjectKind: string,

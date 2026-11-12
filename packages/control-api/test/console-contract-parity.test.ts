@@ -199,7 +199,9 @@ describe('console contract parity with the real control API', () => {
           baseCorpusRevisionId: null,
           corpusLabel: 'parity-promoted',
           severity: 'HIGH',
-          gatePolicy: 'REQUIRED',
+          // An unconfined capture is never release evidence (M16): diagnostic only, ADVISORY.
+          gatePolicy: 'ADVISORY',
+          evidenceUse: 'DIAGNOSTIC_ONLY',
         },
         { ifMatch: Number(afterReview['revision']) },
       ),

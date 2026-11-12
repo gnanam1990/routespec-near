@@ -187,6 +187,8 @@ describe('T-029 — Installed capture remains quarantined until safe review', ()
             baseCorpusRevisionId: baseline.corpusRevisionId,
             newCase: { requiredInvariants: LIVE_INVARIANTS, severity: 'HIGH', gatePolicy: 'REQUIRED' },
           },
+          evidenceUse: 'RELEASE_EVIDENCE',
+          classify: () => ({ refusalReasons: [], interceptorProfileDigest: null, interceptorReviewId: null }),
         }),
       ),
     ).toBe('RS_IMPORT_STATE_INVALID');

@@ -29,6 +29,9 @@ export interface RegressionLineage {
     readonly scenarioRevisionId: string;
     readonly corpusRevisionId: string;
     readonly baseCorpusRevisionId: string | null;
+    /** M16: RELEASE_EVIDENCE, DIAGNOSTIC_ONLY, or UNCLASSIFIED (promoted before M16). */
+    readonly evidenceUse: 'RELEASE_EVIDENCE' | 'DIAGNOSTIC_ONLY' | 'UNCLASSIFIED';
+    readonly refusalReasons: readonly string[];
   } | null;
   readonly correctedRuns: ReadonlyArray<{
     readonly gateRunId: string;
@@ -51,12 +54,18 @@ export function regressionLineage(journal: ImportJournal, importId: string): Reg
     scenarioRevisionId: b ? String(b['scenario_revision_id']) : null,
   };
   const p = journal.getPromotion(importId);
+  const cls = p ? journal.getPromotionEvidenceClass(String(p['promotion_id'])) : undefined;
   const promotion = p
     ? {
         scenarioRevisionId: String(p['scenario_revision_id']),
         corpusRevisionId: String(p['corpus_revision_id']),
         baseCorpusRevisionId:
           typeof p['base_corpus_revision_id'] === 'string' ? p['base_corpus_revision_id'] : null,
+        evidenceUse: (cls ? String(cls['evidence_use']) : 'UNCLASSIFIED') as
+          | 'RELEASE_EVIDENCE'
+          | 'DIAGNOSTIC_ONLY'
+          | 'UNCLASSIFIED',
+        refusalReasons: cls ? (JSON.parse(String(cls['refusal_reasons_json'])) as string[]) : [],
       }
     : null;
   const correctedRuns = promotion

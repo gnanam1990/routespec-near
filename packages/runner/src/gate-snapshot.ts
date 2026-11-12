@@ -12,9 +12,11 @@ import {
   normalizeCanonicalResult,
   type CanonicalCaseResult,
   type EnforcementMode,
+  type CorpusEvidenceClass,
   type ExecutionLifecycle,
   type SubjectAttestationClass,
   type Verdict,
+  CORPUS_EVIDENCE_CLASSES,
 } from '@routespec/contracts';
 import type { GateSnapshotRows } from '@routespec/store';
 import type { GateCaseInput, GateIdentity, GateInput } from './aggregate.ts';
@@ -37,6 +39,15 @@ function sn(row: Row, key: string): string | null {
 function n(row: Row, key: string): number {
   const v = row[key];
   return typeof v === 'number' && Number.isSafeInteger(v) ? v : bad(key);
+}
+
+/** A row without the column comes from a journal older than schema 9: never release evidence. */
+function evidenceClassOf(row: Row): CorpusEvidenceClass {
+  const v = row['evidence_class'];
+  if (v === undefined) return 'UNCLASSIFIED';
+  return (CORPUS_EVIDENCE_CLASSES as readonly unknown[]).includes(v)
+    ? (v as CorpusEvidenceClass)
+    : bad('evidence_class');
 }
 
 export interface RuntimeRevisions {
@@ -88,6 +99,7 @@ export function gateInputFromSnapshot(rows: GateSnapshotRows, runtime: RuntimeRe
             scenarioRevisionId: s(k, 'scenario_revision_id'),
             requiredInvariants: JSON.parse(s(k, 'required_invariants_json')) as string[],
             gatePolicy: s(k, 'gate_policy'),
+            evidenceClass: evidenceClassOf(k),
           }
         : null,
       caseRun: c

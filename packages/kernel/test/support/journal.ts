@@ -17,6 +17,7 @@ import { CaseSupervisor, ScenarioProxy, type LaunchCredentials } from '@routespe
 import { CORE_SCENARIO_SOURCES, compileScenario, type CompiledScenario } from '@routespec/scenario';
 import { RouteSpecStore, type StoreOptions } from '@routespec/store';
 import {
+  EVALUATOR_REVISION,
   evaluateCase,
   snapshotFromJournal,
   toPersistableEvaluation,
@@ -169,7 +170,7 @@ export function createGate(
     corpusRevisionId,
     protocolProfileId: profileId,
     adapterRevision: ADAPTER_REVISION,
-    evaluatorRevision: 'routespec-kernel@1.0.0',
+    evaluatorRevision: EVALUATOR_REVISION,
     proxyRevision: 'routespec-proxy@1.0.0',
     configurationDigest: d('config'),
     effectManifestDigest: manifestDigest,

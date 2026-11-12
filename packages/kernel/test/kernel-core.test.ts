@@ -104,9 +104,9 @@ describe('M04 kernel core', () => {
 
   it('pins the semantics digest of this evaluator revision', () => {
     // Changing any rule table requires a new evaluator revision; update both together.
-    expect(EVALUATOR_REVISION).toBe('routespec-kernel@1.0.0');
+    expect(EVALUATOR_REVISION).toBe('routespec-kernel@1.1.0');
     expect(KERNEL_SEMANTICS_DIGEST).toBe(
-      'sha256:a4487ccaf1c84252f738f7b26a7fcb988c0a8ba368ab5ebc08214fc03794605c',
+      'sha256:c5048816325061b75ab59a517a54efa28abc3cd228918b84fdbc2093fca79529',
     );
   });
 

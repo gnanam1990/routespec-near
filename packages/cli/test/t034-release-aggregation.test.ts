@@ -14,6 +14,7 @@
  * among them, and a plan-only gate that starts nothing.
  */
 import { describe, expect, it } from 'vitest';
+import { EVALUATOR_REVISION } from '@routespec/kernel';
 import { aggregateGate } from '@routespec/runner';
 import { CASE_KINDS, UNSTARTED, expectedDecision, gateInput, type CaseKind } from './support/gate-fixture.ts';
 import { runCliProcess, runGateWithSubjects, setupJournal, tempDir, gateRunArgs } from './support/product.ts';
@@ -111,7 +112,7 @@ describe('T-034 — Release aggregation follows fail-closed precedence', () => {
     expect(stale.findings).toContain('GATE_EVALUATOR_STALE');
     const staleProxy = aggregateGate(
       gateInput(allPass, {
-        runtime: { evaluatorRevision: 'routespec-kernel@1.0.0', proxyRevision: 'routespec-proxy@2.0.0' },
+        runtime: { evaluatorRevision: EVALUATOR_REVISION, proxyRevision: 'routespec-proxy@2.0.0' },
       }),
     );
     expect(staleProxy.findings).toContain('GATE_PROXY_STALE');

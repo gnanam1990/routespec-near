@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ADAPTER_REVISION, digestValue, type CaseLineageRole } from '@routespec/contracts';
 import {
+  EVALUATOR_REVISION,
   evaluateCase,
   snapshotFromJournal,
   toPersistableEvaluation,
@@ -237,7 +238,7 @@ export class Product {
       corpusRevisionId,
       protocolProfileId: this.profileId,
       adapterRevision: ADAPTER_REVISION,
-      evaluatorRevision: 'routespec-kernel@1.0.0',
+      evaluatorRevision: EVALUATOR_REVISION,
       proxyRevision: 'routespec-proxy@1.0.0',
       configurationDigest: d('config'),
       effectManifestDigest: build.manifestDigest,

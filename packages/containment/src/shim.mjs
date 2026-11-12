@@ -7,7 +7,12 @@
  * whole subject process tree and the engine kills all of it when this process exits.
  *
  * It has no network: the container has only a loopback interface. Its one channel to the host is
- * its own stdin/stdout, owned by the launcher. Over that channel (one JSON object per line):
+ * its own stdin/stdout, owned by the launcher. Only this file writes to that stdout: the subject's
+ * stdout and stderr both go to the shim's stderr. Frames are bounded in both directions: the shim
+ * ignores host lines over MAX_LINE, and an IPC message from the subject whose frame would exceed
+ * MAX_LINE bytes is not relayed and ends the subject. The host stops the container on any frame
+ * (or unterminated partial line) over its own bound, `MAX_FRAME_BYTES` in sandbox.ts.
+ * Over that channel (one JSON object per line):
  *
  *   host -> shim  {t:'start', entry, execArgv, ports}   once, first line
  *                 {t:'ipc', m}                          message for the subject (credentials, job)
@@ -91,12 +96,16 @@ async function start(msg) {
   for (const port of msg.ports) await listen(port);
   child = fork(msg.entry, [], {
     execArgv: msg.execArgv,
-    stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+    // The subject's stdout must never mix with the tunnel channel: route it to stderr (fd 2).
+    stdio: ['ignore', 2, 2, 'ipc'],
     env: { PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin', HOME: '/tmp', NODE_ENV: 'production' },
     serialization: 'json',
   });
-  // The subject's stdout must never mix with the tunnel channel: route it to stderr.
-  child.on('message', (m) => out({ t: 'ipc', m }));
+  child.on('message', (m) => {
+    const line = JSON.stringify({ t: 'ipc', m });
+    if (Buffer.byteLength(line) <= MAX_LINE) process.stdout.write(`${line}\n`);
+    else if (child.exitCode === null) child.kill('SIGKILL');
+  });
   child.on('exit', (code, signal) => {
     out({ t: 'exit', code, signal });
     setTimeout(() => process.exit(0), 50);

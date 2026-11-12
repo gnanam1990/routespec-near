@@ -17,12 +17,13 @@ import { FindingSet, safePath, type FindingCategory } from './findings.ts';
 import type { JsonValue } from './ingest.ts';
 
 const VALUE_RULES: ReadonlyArray<readonly [FindingCategory, RegExp]> = [
-  ['SECRET_JWT', /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/],
+  // JWT and case-token shapes carry no leading word boundary (security fix vuln-0002).
+  ['SECRET_JWT', /eyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/],
   ['SECRET_BEARER', /\bBearer\s+[A-Za-z0-9._~+/=-]{12,}/i],
   ['SECRET_PRIVATE_KEY', /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
   // NEAR-style ed25519 secret keys are base58 of 64 bytes (public keys are ~44 characters).
   ['SECRET_PRIVATE_KEY', /\bed25519:[1-9A-HJ-NP-Za-km-z]{80,}/],
-  ['SECRET_CASE_TOKEN', /\brsct_[A-Za-z0-9_-]{20,}/],
+  ['SECRET_CASE_TOKEN', /rsct_[A-Za-z0-9_-]{20,}/],
   ['SECRET_PROVIDER_KEY', /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/],
   ['SECRET_PROVIDER_KEY', /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36,}\b/],
   ['SECRET_PROVIDER_KEY', /\bxox[abprs]-[A-Za-z0-9-]{10,}\b/],

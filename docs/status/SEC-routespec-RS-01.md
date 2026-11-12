@@ -66,7 +66,7 @@ containment and delivery suites.
 
 | Command                     | Exit | Result                                                                                        |
 | --------------------------- | ---- | --------------------------------------------------------------------------------------------- |
-| `pnpm run check`            | 0    | typecheck, lint, format clean; 84 files, 716 passed, 2 skipped; secret scan clean (522 files) |
+| `pnpm run check`            | 0    | typecheck, lint, format clean; 84 files, 717 passed, 2 skipped; secret scan clean (523 files) |
 | `pnpm run test:containment` | 0    | 4 files, 19 passed, none skipped (Docker 29.1.3 in WSL Ubuntu 24.04)                          |
 | `pnpm run test:delivery`    | 0    | 2 files, 21 passed (clean-clone uncontained journey and contained journey, none skipped)      |
 
@@ -75,6 +75,11 @@ timing failures in unrelated kill-timing and timeout-bound tests (T-025, T-044, 
 M16, T-036, M14 export boundary kill). Each passed when rerun alone and the whole suite passed on
 the run above. One earlier `pnpm run test:delivery` (before `main` was merged) had a T-058 upload
 failure inside the clean clone that did not reproduce; the run above passed.
+
+One `pnpm run test:containment` run after merging RS-07 failed a single T-036 probe. A
+host-network container connected to the WSL VM address on the OS-assigned port of the test's
+loopback-only live-dry adapter, which another process inside the VM was using at the time. The
+interceptor sink was not involved, and the rerun above passed (19 of 19).
 
 ## Residual
 

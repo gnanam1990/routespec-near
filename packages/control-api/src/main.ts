@@ -37,7 +37,7 @@
  */
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { RouteSpecStore } from '@routespec/store';
+import { RouteSpecStore, ensurePrivateDataDir } from '@routespec/store';
 import { DEFAULT_CONTAINER_IMAGE, parseContainerCli } from '@routespec/containment';
 import { ControlServer } from './server.ts';
 import type { LocalConfirmationNotice } from './routes.ts';
@@ -73,7 +73,7 @@ if (handoff === 'ipc' && typeof process.send !== 'function') {
 }
 
 const data = resolve(arg('data') ?? '.data');
-mkdirSync(data, { recursive: true, mode: 0o700 });
+ensurePrivateDataDir(data);
 const logFile = process.argv.includes('--no-log')
   ? null
   : resolve(arg('log-file') ?? join(data, 'logs', 'control.jsonl'));

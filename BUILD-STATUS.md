@@ -2,7 +2,7 @@
 
 Record kind: implementation evidence log (from `docs/spec/templates/BUILD-STATUS.md`),
 consolidated by M18 on 2026-11-12 from `docs/status/*.md` and a full regression run on the
-consolidation branch (`main` at `bd66faf` plus test-port configuration only; `docs/status/M18.md`).
+consolidation branch (`main` at `bd66faf` plus a test-port configuration and the T-051 console focus fix; `docs/status/M18.md`).
 
 | Axis                                           | State                                                                                                                                                                                                                                      |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -125,16 +125,16 @@ NOT_RUN`); enrolling the launcher key as a reviewer was refused (409
 `RS_PROFILE_REVIEW_INVALID`). Both decisions were identical before and after export and after a
 crash and restart.
 
-## Test totals (this host, M18 consolidation branch)
+## Test totals (this host, M18 consolidation branch, final run on the merge candidate)
 
-| Suite                                                       | Command                       | Result      |
-| ----------------------------------------------------------- | ----------------------------- | ----------- |
-| Typecheck, lint, format, unit/integration, secret scan      | `pnpm run check`              | @@CHECK@@   |
-| Container runtime tests (escape attempts, T-036, cases)     | `pnpm run test:containment`   | @@CONT@@    |
-| Clean-clone delivery (T-054, T-055, contained journey)      | `pnpm run test:delivery`      | @@DELIV@@   |
-| Console against the real control service (Playwright + axe) | `pnpm run test:e2e:real`      | @@E2EREAL@@ |
-| Console fixture suite (simulated, development only)         | `pnpm run test:e2e`           | @@E2E@@     |
-| Offline lockfile, license, install-script audit             | `pnpm run audit:supply-chain` | @@AUDIT@@   |
+| Suite                                                       | Command                       | Result                                                                                                |
+| ----------------------------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Typecheck, lint, format, unit/integration, secret scan      | `pnpm run check`              | 78 files / 619 tests (618 passed, 1 skipped: T-040 file symlink), secret scan clean (500 files)       |
+| Container runtime tests (escape attempts, T-036, cases)     | `pnpm run test:containment`   | 4 files / 19 passed, none skipped (M14 11, M16 2, M17 6) — NOT_RUN with reason when no engine         |
+| Clean-clone delivery (T-054, T-055, contained journey)      | `pnpm run test:delivery`      | 2 files / 21 passed (M12 uncontained 14, M14 contained 7; clean clone containment suite fully passed) |
+| Console against the real control service (Playwright + axe) | `pnpm run test:e2e:real`      | 63 passed (includes the new T-051 slow-page focus test)                                               |
+| Console fixture suite (simulated, development only)         | `pnpm run test:e2e`           | 25 passed                                                                                             |
+| Offline lockfile, license, install-script audit             | `pnpm run audit:supply-chain` | verdict CLEAN                                                                                         |
 
 ## External action ledger
 

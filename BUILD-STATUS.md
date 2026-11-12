@@ -136,6 +136,17 @@ crash and restart.
 | Console fixture suite (simulated, development only)         | `pnpm run test:e2e`           | 25 passed                                                                                             |
 | Offline lockfile, license, install-script audit             | `pnpm run audit:supply-chain` | verdict CLEAN                                                                                         |
 
+## Security fix: vuln-0001 (external automated scan)
+
+- Withheld CI credentials were still readable through `/proc/<pid>/environ` on Linux by the
+  client module and the subject. Fixed: the gate step removes them before the entry point starts
+  and hands the values over a pipe for the leak scan (ADR-0022,
+  `docs/status/SEC-routespec-vuln-0001.md`). Remaining limit: hostile code inside the action
+  process (the client module) is not contained.
+- Verified on Linux (Ubuntu 24.04 in WSL 2) with Node v22.23.1 downloaded from nodejs.org and
+  checked against its published SHA-256 list, plus a frozen-lockfile `pnpm install` from the npm
+  registry in a temporary clone. No system setting was changed.
+
 ## External action ledger
 
 All NOT_AUTHORIZED and NOT_RUN by this build: push, fetch, remote creation, PR creation, remote

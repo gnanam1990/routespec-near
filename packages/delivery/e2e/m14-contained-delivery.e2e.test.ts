@@ -141,7 +141,7 @@ describe('M14 contained delivery from a clean clone', () => {
     expect(install?.cleanTreeAfterBuild).toBe(true);
     expect(install?.authorPathHits).toEqual([]);
     expect(containmentSuite?.exitCode).toBe(0);
-    expect(containmentSuite?.stdoutTail).toMatch(/Tests\s+11 passed \(11\)/);
+    expect(containmentSuite?.stdoutTail).toMatch(/Tests\s+13 passed \(13\)/);
   });
 
   it('RP-01: trust-rooted identity - every build registration attested by the enrolled launcher', (ctx) => {
@@ -152,6 +152,26 @@ describe('M14 contained delivery from a clean clone', () => {
     expect(id['toolchainDigest']).toBe(containerToolchainDigest(String(c['imageId'])));
     for (const b of ['baseline', 'corrected']) {
       expect((id[b] as J)['attestationId']).toEqual(expect.any(String));
+    }
+  });
+
+  it('RP-02/RP-06: the interceptor profile is REVIEWED only through a signed review by a reviewer distinct from the launcher', (ctx) => {
+    need(ctx);
+    const review = (journey['containment'] as J)['profileReview'] as J;
+    expect(review).toMatchObject({
+      reviewer: 'LOCAL_TEST_REVIEWER',
+      independentHumanReview: 'NOT_RUN',
+      reviewerIndependentOfLaunchers: true,
+      decision: 'APPROVED',
+      stateAfterReview: 'REVIEWED',
+      launcherKeyAsReviewer: { status: 409, code: 'RS_REVIEWER_NOT_INDEPENDENT' },
+      challengeReplay: { status: 422, code: 'RS_PROFILE_REVIEW_INVALID' },
+    });
+    expect((journey['containment'] as J)['interceptorReviewStateAtRegistration']).toBe('DECLARED_UNREVIEWED');
+    for (const c of allCases()) {
+      expect(inv(c, 'INV-04')?.missingPredicates ?? [], c.caseRunId).not.toContain(
+        'INTERCEPTOR_PROFILE_UNREVIEWED',
+      );
     }
   });
 
@@ -202,6 +222,11 @@ describe('M14 contained delivery from a clean clone', () => {
     }
     const reg = journey['regression'] as J;
     expect(reg['finalRegressionStatus']).toBe('CORRECTED_RUN_PASSED');
+    // M16 (RP-08): the confined, independently observed capture through the reviewed profile is
+    // release evidence: promoted as a REQUIRED case without any refusal.
+    expect(reg['releaseEvidence']).toMatchObject({ releaseEvidence: true, refusalReasons: [] });
+    expect(reg['promotionRefusal']).toBeNull();
+    expect(reg['promotion']).toMatchObject({ evidenceUse: 'RELEASE_EVIDENCE', refusalReasons: [] });
     expect((reg['mappingEffectCoverage'] as J)['limitations']).not.toContain('PROCESS_TREE_NOT_CONFINED');
     expect((reg['mappingEffectCoverage'] as J)['basis']).toBe('INDEPENDENT_BOUNDARY_INTERCEPT');
   });
@@ -229,8 +254,17 @@ describe('M14 contained delivery from a clean clone', () => {
       decisionAfterExport: 'PASS',
       decisionChanged: false,
     });
+    expect(exp).toMatchObject({ refusal: null, evidenceUse: 'RELEASE_EVIDENCE' });
     const bv = journey['bundleVerify'] as J;
     expect(bv).toMatchObject({ exitCode: 0, verified: true, decisionInBundle: 'PASS', bundlePathHits: 0 });
+    const checks = ((bv['result'] as J)['checks'] as Array<{ name: string; ok: boolean }>) ?? [];
+    for (const name of [
+      'evidence-use-declared',
+      'release-evidence-consistent',
+      'profile-review-signatures',
+    ]) {
+      expect(checks.find((x) => x.name === name)?.ok, name).toBe(true);
+    }
     const rs = journey['restart'] as J;
     expect(rs).toMatchObject({ oldControlTokenStatus: 401, correctedVerdict: 'PASS', stopExitCode: 0 });
     expect((rs['reEvaluation'] as J)['decision']).toBe('PASS');

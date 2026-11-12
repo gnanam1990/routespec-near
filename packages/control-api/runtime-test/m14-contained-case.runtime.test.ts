@@ -12,7 +12,14 @@
  * - a build whose artifact on disk differs from its registration: the launcher refuses to attest
  *   it, and the service refuses to launch it;
  * - a revoked launcher principal: the launches run unattested and INV-04 is REVIEW.
+ *
+ * M16 (RP-02, RP-06, RP-08): with everything else complete, an unreviewed interceptor profile
+ * keeps INV-04 at REVIEW and its capture is refused as release evidence; a locally enrolled TEST
+ * reviewer (its own key, not the launcher's) signs a review, after which the identical case
+ * passes and its capture is release evidence; revoking the review refuses the capture again and
+ * a new case is REVIEW. The independent human review itself is NOT_RUN.
  */
+import { generateKeyPairSync, sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -53,6 +60,27 @@ let profileDigest = '';
 let scenarioRevisionId = '';
 let corpusRevisionId = '';
 let trustedGateId = '';
+let profileId = '';
+let reviewId = '';
+let passingCaseRunId = '';
+const reviewerKeys = generateKeyPairSync('ed25519');
+const CHECKLIST = {
+  ARTIFACT_DIGEST_VERIFIED: true,
+  PROCESS_TREE_SCOPE_CONFINES_SUBJECT: true,
+  SUPPORTED_SINKS_COMPLETE: true,
+  DENIAL_MECHANISM_HAS_NO_EFFECT: true,
+  PRIVATE_CHANNEL_ISOLATED_FROM_SUBJECT: true,
+};
+
+async function captureEvidence(caseRunId: string): Promise<J> {
+  const hh = h as Harness;
+  const capture = expectOk(await hh.api('POST', `/case-runs/${caseRunId}/captures`, {}), 201);
+  return expectOk(await hh.api('GET', `/imports/${String(capture['importId'])}/release-evidence`), 200);
+}
+
+async function evidenceOf(importId: string): Promise<J> {
+  return expectOk(await (h as Harness).api('GET', `/imports/${importId}/release-evidence`), 200);
+}
 
 function needRuntime(ctx: TestContext): Harness {
   if (runtime.status !== 'AVAILABLE' || h === null) {
@@ -251,19 +279,19 @@ beforeAll(async () => {
       })
     )['principalId'],
   );
-  profileDigest = String(
-    expectOk(
-      await h.api('POST', '/interceptor-profiles', {
-        projectId,
-        interceptorArtifactDigest: interceptorArtifactDigest(INTERCEPTOR),
-        containment: 'PROCESS_TREE_ENFORCED',
-        processTreeScope: 'linux-container:network-none:read-only-root:cap-drop-all',
-        supportedSinks: [SINK],
-        denialMechanism: 'CANARY_REDIRECT',
-      }),
-      201,
-    )['profileDigest'],
+  const registered = expectOk(
+    await h.api('POST', '/interceptor-profiles', {
+      projectId,
+      interceptorArtifactDigest: interceptorArtifactDigest(INTERCEPTOR),
+      containment: 'PROCESS_TREE_ENFORCED',
+      processTreeScope: 'linux-container:network-none:read-only-root:cap-drop-all',
+      supportedSinks: [SINK],
+      denialMechanism: 'CANARY_REDIRECT',
+    }),
+    201,
   );
+  profileDigest = String(registered['profileDigest']);
+  profileId = String(registered['profileId']);
   scenarioRevisionId = String(
     expectOk(
       await h.api('POST', '/scenarios', {
@@ -305,6 +333,66 @@ afterAll(async () => {
 });
 
 describe('M14 contained subject cases through the control service', () => {
+  it('M16: an unreviewed interceptor profile keeps a confined, attested case at REVIEW and its capture is not release evidence', async (ctx) => {
+    const hh = needRuntime(ctx);
+    expect(expectOk(await hh.api('GET', `/interceptor-profiles/${profileId}`), 200)).toMatchObject({
+      reviewState: 'DECLARED_UNREVIEWED',
+      reviewCount: 0,
+    });
+    const b = await registerBuild('corrected-client.ts');
+    const att = String(expectOk(await attestBuild(b.buildRevisionId), 201)['attestationId']);
+    const caseRunId = await gateRun(trustedGateId, b, await policy(b, att), att);
+    await runContained(caseRunId, 'order-m16-unreviewed');
+    const r = inv04(caseRunId);
+    expect(r['verdict']).toBe('REVIEW');
+    // The profile review is the only gap: confinement, attestation, and observation are complete.
+    expect(JSON.parse(String(r['missing_predicates_json']))).toEqual(['INTERCEPTOR_PROFILE_UNREVIEWED']);
+    const evidence = await captureEvidence(caseRunId);
+    expect(evidence).toMatchObject({
+      releaseEvidence: false,
+      refusalReasons: ['INTERCEPTOR_PROFILE_NOT_REVIEWED'],
+    });
+
+    // A launcher key can never review; a locally enrolled test reviewer with its own key can.
+    const now = Date.now();
+    const enroll = {
+      projectId,
+      label: 'local test reviewer (not independent)',
+      publicKeyJwk: {
+        kty: 'OKP',
+        crv: 'Ed25519',
+        x: String(reviewerKeys.publicKey.export({ format: 'jwk' }).x),
+      },
+      validFromMs: now - 60_000,
+      validUntilMs: now + 3_600_000,
+    };
+    const reviewer = await confirmed('/profile-reviewers', enroll);
+    const challenge = expectOk(
+      await hh.api('POST', `/interceptor-profiles/${profileId}/review-challenges`, {
+        reviewerId: reviewer['reviewerId'],
+        decision: 'APPROVED',
+        checklist: CHECKLIST,
+      }),
+      201,
+    );
+    expect(challenge['statement']).toMatchObject({ profileDigest, decision: 'APPROVED' });
+    const signature = sign(
+      null,
+      Buffer.from(String(challenge['signingPayload']), 'base64url'),
+      reviewerKeys.privateKey,
+    ).toString('base64url');
+    const reviewed = expectOk(
+      await hh.api('POST', `/profile-review-challenges/${String(challenge['challengeId'])}/complete`, {
+        signature,
+      }),
+      201,
+    );
+    reviewId = String(reviewed['reviewId']);
+    expect((reviewed['profile'] as J)['reviewState']).toBe('REVIEWED');
+    // A review recorded after this case closed does not change the case's own evaluation.
+    expect(inv04(caseRunId)['verdict']).toBe('REVIEW');
+  });
+
   it('the corrected build runs confined with attested launches and passes complete-effect coverage', async (ctx) => {
     const hh = needRuntime(ctx);
     const b = await registerBuild('corrected-client.ts');
@@ -366,6 +454,7 @@ describe('M14 contained subject cases through the control service', () => {
     expect(released).toHaveLength(1);
     expect(Number(released[0]?.['session_sequence'])).toBeGreaterThan(authSeq);
     expect(inv04(caseRunId)).toMatchObject({ verdict: 'PASS' });
+    passingCaseRunId = caseRunId;
     const view = expectOk(await hh.api('GET', `/gate-runs/${String(start['gateRunId'])}/cases`), 200)[
       'items'
     ] as J[];
@@ -374,11 +463,44 @@ describe('M14 contained subject cases through the control service', () => {
       basis: 'INDEPENDENT_BOUNDARY_INTERCEPT',
       finding: 'COMPLETE',
       interceptorFreshness: 'FRESH',
+      interceptorReviewState: 'REVIEWED',
     });
     const idem = JSON.stringify(
       hh.store.journal.read((db) => db.prepare('SELECT * FROM control_idempotency').all()),
     );
     expect(idem).not.toMatch(/rsct_/);
+  });
+
+  it('M16: the reviewed case is release evidence; revoking the review refuses it and a new case is REVIEW', async (ctx) => {
+    const hh = needRuntime(ctx);
+    expect(passingCaseRunId).not.toBe('');
+    const before = await captureEvidence(passingCaseRunId);
+    expect(before).toMatchObject({
+      releaseEvidence: true,
+      refusalReasons: [],
+      interceptorReviewId: reviewId,
+      promotableAs: ['RELEASE_EVIDENCE', 'DIAGNOSTIC_ONLY'],
+    });
+    await confirmed(
+      `/interceptor-profile-reviews/${reviewId}/revoke`,
+      { reasonCode: 'PROFILE_DEFECT_FOUND' },
+      200,
+    );
+    const profile = expectOk(await hh.api('GET', `/interceptor-profiles/${profileId}`), 200);
+    expect(profile).toMatchObject({ reviewState: 'REVIEW_REVOKED', reviewCount: 1 });
+    expect((profile['reviews'] as J[])[0]).toMatchObject({ reviewId, decision: 'APPROVED', revoked: true });
+    const after = await evidenceOf(String(before['importId']));
+    expect(after).toMatchObject({
+      releaseEvidence: false,
+      refusalReasons: ['INTERCEPTOR_PROFILE_NOT_REVIEWED'],
+    });
+    const b = await registerBuild('corrected-client.ts');
+    const att = String(expectOk(await attestBuild(b.buildRevisionId), 201)['attestationId']);
+    const caseRunId = await gateRun(trustedGateId, b, await policy(b, att), att);
+    await runContained(caseRunId, 'order-m16-revoked-review');
+    const r = inv04(caseRunId);
+    expect(r['verdict']).toBe('REVIEW');
+    expect(JSON.parse(String(r['missing_predicates_json']))).toEqual(['INTERCEPTOR_PROFILE_REVIEW_REVOKED']);
   });
 
   it('a build whose artifact on disk differs from its registration is neither attested nor launched', async (ctx) => {

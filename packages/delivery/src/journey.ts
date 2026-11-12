@@ -40,7 +40,7 @@
  *        [--contained]
  */
 import { execFileSync, spawn } from 'node:child_process';
-import { generateKeyPairSync } from 'node:crypto';
+import { generateKeyPairSync, sign } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
@@ -203,6 +203,9 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
   const contained = options.contained === true;
   const containment: J = { mode: contained ? 'CONTAINED' : 'UNCONTAINED' };
   const extraArgs: string[] = [];
+  // An explicit port for the control service (parallel runs pin their own range).
+  const fixedPort = process.env['ROUTESPEC_DELIVERY_PORT'];
+  if (fixedPort !== undefined && /^\d{2,5}$/.test(fixedPort)) extraArgs.push('--port', fixedPort);
   let launcherKeyJwk: J | null = null;
   const launcherScript = join(root, 'packages', 'containment', 'src', 'attesting-launcher.ts');
   let toolchainOverride: string | null = null;
@@ -315,12 +318,91 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
       denialMechanism: 'CANARY_REDIRECT',
     });
     interceptorProfileDigest = String(profile['profileDigest']);
+    // M16 (RP-02/RP-06): a locally enrolled TEST reviewer, with its own key (never the launcher
+    // key), signs a review of the profile before any case runs. This exercises the real review
+    // workflow end to end; it is not an independent human review (that remains NOT_RUN).
+    const reviewerKeys = generateKeyPairSync('ed25519');
+    const reviewerJwk = reviewerKeys.publicKey.export({ format: 'jwk' });
+    const reviewerEnroll = {
+      projectId,
+      label: 'local test reviewer (not independent)',
+      publicKeyJwk: { kty: 'OKP', crv: 'Ed25519', x: String(reviewerJwk.x) },
+      validFromMs: now - 60_000,
+      validUntilMs: now + 24 * 3_600_000,
+    };
+    const launcherAsReviewer = await control.raw('POST', '/profile-reviewers', {
+      ...reviewerEnroll,
+      publicKeyJwk: launcherKeyJwk,
+    });
+    let launcherAsReviewerConfirmed = launcherAsReviewer;
+    if (launcherAsReviewer.status === 202) {
+      const n = await control.confirmation(String(launcherAsReviewer.body['confirmationId']));
+      launcherAsReviewerConfirmed = await control.raw('POST', '/profile-reviewers', {
+        ...reviewerEnroll,
+        publicKeyJwk: launcherKeyJwk,
+        confirmation: { confirmationId: n.confirmationId, code: n.code },
+      });
+    }
+    const pendingReviewer = await api('POST', '/profile-reviewers', reviewerEnroll);
+    const reviewerNotice = await control.confirmation(String(pendingReviewer['confirmationId']));
+    const reviewer = await api('POST', '/profile-reviewers', {
+      ...reviewerEnroll,
+      confirmation: { confirmationId: reviewerNotice.confirmationId, code: reviewerNotice.code },
+    });
+    const challenge = await api(
+      'POST',
+      `/interceptor-profiles/${String(profile['profileId'])}/review-challenges`,
+      {
+        reviewerId: reviewer['reviewerId'],
+        decision: 'APPROVED',
+        checklist: {
+          ARTIFACT_DIGEST_VERIFIED: true,
+          PROCESS_TREE_SCOPE_CONFINES_SUBJECT: true,
+          SUPPORTED_SINKS_COMPLETE: true,
+          DENIAL_MECHANISM_HAS_NO_EFFECT: true,
+          PRIVATE_CHANNEL_ISOLATED_FROM_SUBJECT: true,
+        },
+      },
+    );
+    const signature = sign(
+      null,
+      Buffer.from(String(challenge['signingPayload']), 'base64url'),
+      reviewerKeys.privateKey,
+    ).toString('base64url');
+    const reviewedProfile = await api(
+      'POST',
+      `/profile-review-challenges/${String(challenge['challengeId'])}/complete`,
+      { signature },
+    );
+    const replayedChallenge = await control.raw(
+      'POST',
+      `/profile-review-challenges/${String(challenge['challengeId'])}/complete`,
+      { signature },
+    );
     Object.assign(containment, {
       principalId,
       principalPolicyDigest: enrolled['policyDigest'],
       enrollmentConfirmation: 'LOCAL_OPERATOR_CHANNEL',
       interceptorProfileDigest,
-      interceptorReviewState: profile['reviewState'],
+      interceptorReviewStateAtRegistration: profile['reviewState'],
+      profileReview: {
+        reviewer: 'LOCAL_TEST_REVIEWER',
+        independentHumanReview: 'NOT_RUN',
+        reviewerKeyDigest: reviewer['keyDigest'],
+        reviewerIndependentOfLaunchers: reviewer['independentOfLaunchers'],
+        launcherKeyAsReviewer: {
+          status: launcherAsReviewerConfirmed.status,
+          code: ((launcherAsReviewerConfirmed.body['error'] ?? {}) as J)['code'] ?? null,
+        },
+        reviewId: reviewedProfile['reviewId'],
+        reviewDigest: reviewedProfile['reviewDigest'],
+        decision: reviewedProfile['decision'],
+        stateAfterReview: (reviewedProfile['profile'] as J)['reviewState'],
+        challengeReplay: {
+          status: replayedChallenge.status,
+          code: ((replayedChallenge.body['error'] ?? {}) as J)['code'] ?? null,
+        },
+      },
     });
   }
 
@@ -781,18 +863,40 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
     Number(afterVerify['revision']),
   );
   const afterReview = await api('GET', `/imports/${importId}`);
-  const promoted = await api(
+  // M16 (RP-08): ask whether the capture can be release evidence, try the release promotion,
+  // and fall back to an explicit diagnostic-only ADVISORY promotion only when it is refused.
+  const releaseEvidence = await api('GET', `/imports/${importId}/release-evidence`);
+  const promoteBody = {
+    reviewId: String((afterReview['review'] as J)['latestReviewId']),
+    baseCorpusRevisionId,
+    corpusLabel: 'release-corpus + captured regression',
+    severity: 'HIGH',
+    gatePolicy: 'REQUIRED',
+  };
+  const releaseAttempt = await control.raw(
     'POST',
     `/imports/${importId}/promote`,
-    {
-      reviewId: String((afterReview['review'] as J)['latestReviewId']),
-      baseCorpusRevisionId,
-      corpusLabel: 'release-corpus + captured regression',
-      severity: 'HIGH',
-      gatePolicy: 'REQUIRED',
-    },
+    promoteBody,
     Number(afterReview['revision']),
   );
+  const promotionRefusal =
+    releaseAttempt.status === 201
+      ? null
+      : {
+          status: releaseAttempt.status,
+          code: ((releaseAttempt.body['error'] ?? {}) as J)['code'] ?? null,
+          reasons:
+            (((releaseAttempt.body['error'] ?? {}) as J)['details'] as J | undefined)?.['reasons'] ?? null,
+        };
+  const promoted =
+    releaseAttempt.status === 201
+      ? releaseAttempt.body
+      : await api(
+          'POST',
+          `/imports/${importId}/promote`,
+          { ...promoteBody, gatePolicy: 'ADVISORY', evidenceUse: 'DIAGNOSTIC_ONLY' },
+          Number(afterReview['revision']),
+        );
   const promotedCorpusRevisionId = String(promoted['corpusRevisionId']);
   const afterPromote = await api('GET', `/imports/${importId}`);
   mark('captureToPromotion', since);
@@ -862,7 +966,27 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
 
   // --- 7a. Export the corrected decision as a checksummed bundle -----------------------------
   since = Date.now();
-  const plan = await api('POST', '/exports', { gateEvaluationId: correctedRun.gateEvaluationId });
+  // M16 (RP-08): a release-evidence bundle is refused when the gate uses a capture that is not
+  // release evidence; the journey then exports an explicit diagnostic-only bundle.
+  const releasePlan = await control.raw('POST', '/exports', {
+    gateEvaluationId: correctedRun.gateEvaluationId,
+  });
+  const exportRefusal =
+    releasePlan.status === 201 || releasePlan.status === 200
+      ? null
+      : {
+          status: releasePlan.status,
+          code: ((releasePlan.body['error'] ?? {}) as J)['code'] ?? null,
+          reasons:
+            (((releasePlan.body['error'] ?? {}) as J)['details'] as J | undefined)?.['reasons'] ?? null,
+        };
+  const plan =
+    exportRefusal === null
+      ? releasePlan.body
+      : await api('POST', '/exports', {
+          gateEvaluationId: correctedRun.gateEvaluationId,
+          evidenceUse: 'DIAGNOSTIC_ONLY',
+        });
   const bundlePath = join(out, 'routespec-corrected-release.tar');
   const written = await api('POST', `/exports/${String(plan['exportId'])}/write`, {
     outPath: bundlePath,
@@ -1026,6 +1150,13 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
         keys: Object.keys(verified).sort(),
       },
       review: { reviewId: reviewed['reviewId'] ?? null, stateAfter: afterReview['state'] },
+      releaseEvidence: {
+        releaseEvidence: releaseEvidence['releaseEvidence'],
+        refusalReasons: releaseEvidence['refusalReasons'],
+        promotableAs: releaseEvidence['promotableAs'],
+        interceptorReviewId: releaseEvidence['interceptorReviewId'],
+      },
+      promotionRefusal,
       promotion: {
         scenarioRevisionId: promoted['scenarioRevisionId'],
         corpusRevisionId: promotedCorpusRevisionId,
@@ -1033,6 +1164,8 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
         baseCorpusMutated: promoted['baseCorpusMutated'],
         lineageAfterPromotion: afterPromote['regressionStatus'],
         replayOnlyPass: afterPromote['replayOnlyPass'],
+        evidenceUse: promoted['evidenceUse'],
+        refusalReasons: promoted['refusalReasons'],
       },
       finalRegressionStatus: lineage['regressionStatus'],
     },
@@ -1040,6 +1173,8 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
     correctedRun,
     ui,
     export: {
+      refusal: exportRefusal,
+      evidenceUse: plan['evidenceUse'],
       exportId: plan['exportId'],
       planDigest: plan['planDigest'],
       blocked: plan['blocked'],

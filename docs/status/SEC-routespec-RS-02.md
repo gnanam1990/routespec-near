@@ -42,11 +42,21 @@ Environment: `ROUTESPEC_TEST_PORT_BASE=9710`, `ROUTESPEC_DELIVERY_PORT=9715`, `F
 `ROUTESPEC_CONTAINER_CLI=["wsl.exe","-d","Ubuntu-24.04","-u","root","--exec","docker"]` (Docker
 Engine in WSL 2, Ubuntu 24.04).
 
-| Command                     | Exit | Result                                                                                                   |
-| --------------------------- | ---- | -------------------------------------------------------------------------------------------------------- |
-| `pnpm run check`            | 0    | RESULT_CHECK                                                                                             |
-| `pnpm run test:containment` | 0    | RESULT_CONTAINMENT                                                                                       |
-| `pnpm run test:delivery`    | 0    | 2 files, 21 passed (M12 uncontained 14, M14 contained 7), run on the fix commit before the merge of main |
+All three ran after `git merge main` (main at the RS-06 merge), on the merged HEAD.
+
+| Command                     | Exit | Result                                                                                        |
+| --------------------------- | ---- | --------------------------------------------------------------------------------------------- |
+| `pnpm run check`            | 0    | typecheck, lint, format clean; 84 files, 714 passed, 2 skipped; secret scan clean (520 files) |
+| `pnpm run test:containment` | 0    | 4 files, 19 passed (M14 11, M16 2, M17 6), none skipped, real Docker engine                   |
+| `pnpm run test:delivery`    | 0    | 2 files, 21 passed (M12 uncontained 14, M14 contained 7)                                      |
+
+Also green before the merge on the fix commit: `pnpm run check` (82 files, 708 passed, 2 skipped),
+`pnpm run test:containment` (19 passed), `pnpm run test:delivery` (21 passed).
+
+Note: three intermediate `pnpm run check` runs while sibling suites saturated the host (CPU at
+100%, over 100 node processes) had load-dependent timeouts in `packages/cli` (T-025, T-057) and
+`packages/security-suite` (T-036, T-042); none touch containment. T-025 and T-057 passed alone
+(7 passed), and the full run above passed with no failures.
 
 ## Residual
 

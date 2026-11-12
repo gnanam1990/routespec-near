@@ -95,7 +95,9 @@ export function canonicalReplayDigest(
   if (!parsed.success) {
     throw new RouteSpecError('RS_SCHEMA_INVALID', 'Replay identity is incomplete or malformed.', {
       details: {
-        issues: parsed.error.issues.slice(0, 8).map((i) => `${i.path.join('.')}: ${stableIssueCode(i)}`),
+        issues: parsed.error.issues
+          .slice(0, 8)
+          .map((i) => `${i.path.join('.')}: ${stableIssueCode(i, identityInput)}`),
       },
     });
   }

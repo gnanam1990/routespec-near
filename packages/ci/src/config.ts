@@ -168,7 +168,7 @@ export function loadCiConfig(configPath: string, workspace: string): CiConfig {
       {
         details: {
           path: (issue?.path ?? []).join('.').slice(0, 120),
-          issue: (issue === undefined ? 'invalid' : stableIssueCode(issue)).slice(0, 40),
+          issue: (issue === undefined ? 'invalid' : stableIssueCode(issue, parsed)).slice(0, 40),
         },
       },
     );

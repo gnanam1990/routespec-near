@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { isMissingValueIssue, stableIssueCode } from '../src/index.ts';
+import { isMissingValueIssue, singleValueEnum, stableIssueCode } from '../src/index.ts';
 
 function issuesOf(schema: z.ZodType, input: unknown): z.core.$ZodIssue[] {
   const r = schema.safeParse(input);
@@ -15,7 +15,7 @@ function issuesOf(schema: z.ZodType, input: unknown): z.core.$ZodIssue[] {
 }
 
 function codesOf(schema: z.ZodType, input: unknown): string[] {
-  return issuesOf(schema, input).map(stableIssueCode);
+  return issuesOf(schema, input).map((i) => stableIssueCode(i, input));
 }
 
 describe('M13 stable validation issue codes', () => {
@@ -37,14 +37,16 @@ describe('M13 stable validation issue codes', () => {
       z.object({ kind: z.literal('b'), b: z.number() }).strict(),
     ]);
     const issues = issuesOf(z.object({ step: u }).strict(), { step: { kind: 'c' } });
-    expect(issues.map(stableIssueCode)).toEqual(['invalid_union_discriminator']);
+    expect(issues.map((i) => stableIssueCode(i, { step: { kind: 'c' } }))).toEqual([
+      'invalid_union_discriminator',
+    ]);
     expect(issues[0]?.path).toEqual(['step', 'kind']);
   });
 
   it('a record key failure reports the key check code at the key path', () => {
     const rec = z.record(z.string().max(3), z.string());
     const issues = issuesOf(rec, { abcdef: 'x' });
-    expect(issues.map(stableIssueCode)).toEqual(['too_big']);
+    expect(issues.map((i) => stableIssueCode(i, { abcdef: 'x' }))).toEqual(['too_big']);
     expect(issues[0]?.path).toEqual(['abcdef']);
   });
 
@@ -75,5 +77,46 @@ describe('M13 missing-value detection', () => {
   it('does not flag present fields of the wrong type or null', () => {
     const input = { a: 5, nested: { b: null } };
     expect(issuesOf(schema, input).some((i) => isMissingValueIssue(i, input))).toBe(false);
+  });
+});
+
+describe('M13 single-value enums', () => {
+  it('a single-value enum mismatch keeps the enum code, unlike a literal', () => {
+    expect(codesOf(singleValueEnum('CONNECTION_RESET'), 'TIMEOUT')).toEqual(['invalid_enum_value']);
+    expect(codesOf(z.literal('CONNECTION_RESET'), 'TIMEOUT')).toEqual(['invalid_literal']);
+  });
+
+  it('accepts only its value and reports other type errors unchanged', () => {
+    const e = singleValueEnum('CONNECTION_RESET');
+    expect(e.parse('CONNECTION_RESET')).toBe('CONNECTION_RESET');
+    expect(codesOf(e, 5)).toEqual(['invalid_type']);
+    expect(codesOf(z.object({ e }).strict(), {})).toEqual(['invalid_type']);
+  });
+});
+
+describe('M13 enum type mismatches', () => {
+  const schema = z
+    .object({ e: z.enum(['A', 'B']), one: singleValueEnum('X').optional(), lit: z.literal('L').optional() })
+    .strict();
+  const codes = (input: unknown): string[] => issuesOf(schema, input).map((i) => stableIssueCode(i, input));
+
+  it('an absent or non-string enum value is a type mismatch, as before', () => {
+    expect(codes({})).toEqual(['invalid_type']);
+    expect(codes({ e: 5 })).toEqual(['invalid_type']);
+    expect(codes({ e: null })).toEqual(['invalid_type']);
+    expect(codes({ e: 'A', one: 7 })).toEqual(['invalid_type']);
+  });
+
+  it('a string outside the enum is still an enum mismatch; literals keep the literal code', () => {
+    expect(codes({ e: 'C' })).toEqual(['invalid_enum_value']);
+    expect(codes({ e: 'A', one: 'Y' })).toEqual(['invalid_enum_value']);
+    expect(codes({ e: 'A', lit: 5 })).toEqual(['invalid_literal']);
+  });
+
+  it('an absent enum value is a missing value; a present wrong one is not', () => {
+    const missing = (input: unknown) => issuesOf(schema, input).some((i) => isMissingValueIssue(i, input));
+    expect(missing({})).toBe(true);
+    expect(missing({ e: 5 })).toBe(false);
+    expect(missing({ e: 'C' })).toBe(false);
   });
 });

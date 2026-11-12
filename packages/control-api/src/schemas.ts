@@ -442,7 +442,7 @@ export function parseBody<S extends z.ZodTypeAny>(schema: S, value: unknown): z.
   if (r.success) return r.data as z.infer<S>;
   const fields = r.error.issues.slice(0, 32).map((i) => ({
     field: i.path.length === 0 ? '$' : i.path.map(String).join('.').slice(0, 120),
-    code: i.code === 'unrecognized_keys' ? 'UNKNOWN_FIELD' : stableIssueCode(i).toUpperCase(),
+    code: i.code === 'unrecognized_keys' ? 'UNKNOWN_FIELD' : stableIssueCode(i, value).toUpperCase(),
     message: i.code === 'unrecognized_keys' ? 'Unknown field.' : 'Invalid value.',
   }));
   const unknown = r.error.issues

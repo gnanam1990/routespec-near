@@ -18,6 +18,7 @@ import {
   RAW_PROVIDER_STATUSES,
   StatusQueryMaterial,
   VERDICTS,
+  singleValueEnum,
   z,
 } from '@routespec/contracts';
 import { BUDGET_KEYS, HARD_CAPS } from './budget.ts';
@@ -100,7 +101,7 @@ export const Step = z.discriminatedUnion('type', [
       ...base,
       type: z.literal('transport_error'),
       match: RequestMatch,
-      error: z.enum(['CONNECTION_RESET']).optional(),
+      error: singleValueEnum('CONNECTION_RESET').optional(),
     })
     .strict(),
   z.object({ ...base, type: z.literal('delay_virtual'), ms: Ms }).strict(),

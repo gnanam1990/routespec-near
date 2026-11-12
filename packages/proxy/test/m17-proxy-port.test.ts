@@ -12,7 +12,22 @@ import { ScenarioProxy, type CaseRuntimeRegistry } from '../src/index.ts';
 import { openStore, send, tempDir } from './support/gate.ts';
 
 const NO_CASES: CaseRuntimeRegistry = { resolve: () => null } as unknown as CaseRuntimeRegistry;
-const RANGE = Array.from({ length: 50 }, (_, i) => 9350 + i);
+/**
+ * Host ports for this suite: a 50-port window starting at ROUTESPEC_TEST_PORT_BASE (default 9350),
+ * so parallel runs on one machine can be given disjoint ranges.
+ */
+function portBase(): number {
+  const raw = process.env['ROUTESPEC_TEST_PORT_BASE'];
+  if (raw === undefined || raw === '') return 9350;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1024 || n > 65535 - 50) {
+    throw new Error(`ROUTESPEC_TEST_PORT_BASE must be an integer in 1024-65485, got ${raw}`);
+  }
+  return n;
+}
+const PORT_BASE = portBase();
+const PORT_LAST = PORT_BASE + 49;
+const RANGE = Array.from({ length: 50 }, (_, i) => PORT_BASE + i);
 
 const cleanups: Array<() => Promise<void> | void> = [];
 afterEach(async () => {
@@ -42,7 +57,7 @@ async function startInRange(s: ReturnType<typeof store>): Promise<ScenarioProxy>
       if ((error as NodeJS.ErrnoException).code !== 'EADDRINUSE') throw error;
     }
   }
-  throw new Error('no free port in 9350-9399');
+  throw new Error(`no free port in ${PORT_BASE}-${PORT_LAST}`);
 }
 
 function hold(port: number): Promise<Server> {
@@ -70,7 +85,7 @@ describe('M17 — scenario proxy on an explicit loopback port', () => {
     const s = store();
     const proxy = await startInRange(s);
     cleanups.push(() => proxy.close());
-    const other = proxy.port === 9399 ? 9398 : proxy.port + 1;
+    const other = proxy.port === PORT_LAST ? PORT_LAST - 1 : proxy.port + 1;
     const r = await send(proxy.port, {
       method: 'POST',
       path: '/v0/quote',

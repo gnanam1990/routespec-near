@@ -127,6 +127,28 @@ test('T-050: live updates pause, and a lost service freezes data as stale until 
   await expect(page.locator('.timeline [data-stale="false"]')).toBeVisible();
 });
 
+test('T-051: focus stays on Next page while a slow next page loads (M18)', async ({ page }) => {
+  // The real service answers every request; only the timeline page requests are held back for a
+  // moment, as a slow machine would. Focus must not depend on how fast the next page arrives.
+  const total = SEED.dense.events;
+  await open(page, densePath());
+  await expect(page.getByTestId('timeline-range')).toContainText(`of ${total} events`);
+  await page.route('**/__routespec/v1/sessions/*/events?*', async (route) => {
+    if (route.request().url().includes('cursor=')) await new Promise((r) => setTimeout(r, 600));
+    await route.continue();
+  });
+  const next = page.getByRole('button', { name: 'Next page' });
+  for (let i = 0; i < 2; i++) {
+    await next.click();
+    await expect(page.getByTestId('timeline-range')).toContainText(
+      `Showing ${(i + 1) * 100 + 1}–${(i + 2) * 100} of ${total}`,
+    );
+    await expect(next).toBeFocused();
+    await expect(next).toBeEnabled();
+  }
+  await page.unroute('**/__routespec/v1/sessions/*/events?*');
+});
+
 test('T-051: the densest real session paginates with stable focus and fast feedback', async ({ page }) => {
   const total = SEED.dense.events;
   expect(total).toBeGreaterThan(8000);

@@ -39,7 +39,8 @@ this host inside the WSL 2 distribution Ubuntu-24.04 (cgroup v2). Docker Desktop
    the launcher, which connects it to the one host target configured for that port: the RouteSpec
    proxy (same port number, so the Host check holds) and the effect-interceptor sink. A port
    without a target refuses the connection. The subject's IPC messages travel the same channel.
-   Nothing else can leave: there is no network interface but `lo`.
+   Nothing else can leave: there is no network interface but `lo`. Only the shim writes frames
+   to this channel and every frame is bounded (amended by ADR-0023).
 5. **Containment is verified, fail closed.** `verifyInspect` checks the engine's own record
    (network `none` and no other network, no published ports, read-only root, not privileged, all
    capabilities dropped and none added, no-new-privileges, no unconfined seccomp/AppArmor, no host

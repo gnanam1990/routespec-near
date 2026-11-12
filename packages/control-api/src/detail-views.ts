@@ -131,6 +131,7 @@ export function runOperationView(d: ViewDeps, op: Row): Record<string, unknown> 
     d.store,
     str(op, 'effect_coverage_policy_digest'),
     strOrNull(gate, 'interceptor_profile_digest'),
+    { caseRunIds: [str(op, 'case_run_id')], control: d.control, nowMs: d.nowMs() },
   );
   return {
     runOperationId: id,

@@ -4,13 +4,16 @@
     "rootDir": ".",
     "outDir": "dist"
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "include": ["src/**/*.ts", "test/**/*.ts", "runtime-test/**/*.ts"],
   "references": [
     {
       "path": "../contracts"
     },
     {
       "path": "../hardening"
+    },
+    {
+      "path": "../containment"
     },
     {
       "path": "../store"

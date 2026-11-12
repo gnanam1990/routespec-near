@@ -277,6 +277,17 @@ export class CaseSupervisor implements CaseRuntimeRegistry {
     state.fencedForUncertainty = true;
   }
 
+  /** The current execution fence of a supervised case (null when not supervised here). */
+  fenceOf(caseRunId: string): ExecutionFence | null {
+    const state = this.cases.get(caseRunId);
+    return state ? { ...state.fence } : null;
+  }
+
+  /** Whether scenario input of a supervised case has been closed (ground truth journaled). */
+  inputFinished(caseRunId: string): boolean {
+    return this.cases.get(caseRunId)?.summary != null;
+  }
+
   supervises(caseRunId: string): boolean {
     return this.cases.has(caseRunId);
   }

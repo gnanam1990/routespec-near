@@ -34,11 +34,16 @@ export function requiredDigests(scope: string, binding: Record<string, unknown>)
     case 'BUILD_REGISTRATION':
       return pick('artifactDigest', 'lockDigest', 'toolchainDigest', 'manifestDigest');
     case 'CASE_LAUNCH':
-      return pick('artifactDigest', 'clientInstanceDigest');
+      // A contained launch (M14) also binds the engine-verified sandbox scope.
+      return 'sandboxScopeDigest' in binding
+        ? pick('artifactDigest', 'clientInstanceDigest', 'sandboxScopeDigest')
+        : pick('artifactDigest', 'clientInstanceDigest');
     case 'EFFECT_INVENTORY':
       return pick('artifactDigest', 'analyzerDigest', 'inventoryDigest', 'manifestDigest');
     case 'EFFECT_INTERCEPTOR_LAUNCH':
-      return pick('interceptorArtifactDigest', 'interceptorProfileDigest');
+      return 'sandboxScopeDigest' in binding
+        ? pick('interceptorArtifactDigest', 'interceptorProfileDigest', 'sandboxScopeDigest')
+        : pick('interceptorArtifactDigest', 'interceptorProfileDigest');
     default:
       throw new RouteSpecError('RS_SCHEMA_INVALID', 'Unknown challenge scope.');
   }
@@ -262,8 +267,13 @@ export class AttesterChannel {
     this.#control = control;
   }
 
-  static launch(control: ControlJournal, scriptPath: string, args: readonly string[] = []): AttesterChannel {
-    const measured = fileDigest(scriptPath);
+  static launch(
+    control: ControlJournal,
+    scriptPath: string,
+    args: readonly string[] = [],
+    measure: (path: string) => string = fileDigest,
+  ): AttesterChannel {
+    const measured = measure(scriptPath);
     const child = fork(scriptPath, [...args], {
       execArgv: ['--no-warnings'],
       stdio: ['ignore', 'ignore', 'pipe', 'ipc'],

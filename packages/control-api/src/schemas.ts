@@ -286,6 +286,7 @@ export const observedDigests = z
     interceptorArtifactDigest: digest.optional(),
     interceptorProfileDigest: digest.optional(),
     clientInstanceDigest: digest.optional(),
+    sandboxScopeDigest: digest.optional(),
   })
   .strict();
 export type ObservedDigests = z.infer<typeof observedDigests>;
@@ -353,6 +354,28 @@ export const gateRunCreate = z
     ]),
     mode: z.string().max(32),
     maxParallelCases: z.number().int().min(1).max(64),
+    /** Per-scenario effect-coverage policies for multi-scenario corpora (M14). */
+    casePolicies: z
+      .array(z.object({ scenarioRevisionId: uuid, effectCoveragePolicyDigest: digest }).strict())
+      .max(64)
+      .optional(),
+  })
+  .strict();
+
+/** Start a case with its subject build confined in a container (M14). */
+export const containedStart = z
+  .object({
+    attesterPrincipalId: uuid.nullable(),
+    job: z
+      .object({
+        logicalJob: shortId,
+        txHash: shortId,
+        quote: z.record(
+          z.string().min(1).max(64),
+          z.union([z.string().max(256), z.number().int(), z.boolean(), z.null()]),
+        ),
+      })
+      .strict(),
   })
   .strict();
 

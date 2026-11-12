@@ -121,6 +121,8 @@ export const ERROR_CODES = Object.freeze([
   'RS_PEER_BINDING_UNAVAILABLE',
   'RS_PROBE_NOT_AUTHORIZED',
   'RS_DELETION_PLAN_MISMATCH',
+  // container containment launcher (M14)
+  'RS_CONTAINMENT_UNAVAILABLE',
   'RS_INTERNAL',
 ] as const);
 export type ErrorCode = (typeof ERROR_CODES)[number];

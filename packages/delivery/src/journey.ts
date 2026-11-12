@@ -26,15 +26,34 @@
  *  7. export a checksummed bundle, crash the service and restart it from the same data,
  *     then verify the bundle in a clean location with no journal.
  *
+ * Contained mode (M14, `--contained`): the control service is started with a subject root, the
+ * configured container engine, and the reviewed attesting launcher. The driver enrolls the
+ * operator's launcher key (with the local confirmation delivered over the operator channel),
+ * registers each build with the container-image toolchain and its declared effect file, has the
+ * launcher attest the build registration, registers an independent interceptor profile that
+ * requires process-tree containment, and selects INDEPENDENT_BOUNDARY_INTERCEPT policies (one per
+ * scenario). Every subject case then runs through `contained-start`: the service launches the
+ * build inside the container, the launcher attests the case and interceptor launches, and the
+ * subject's tokens never reach this driver.
+ *
  *   node packages/delivery/src/journey.ts --work <dir> --out <json> [--commit <sha>] [--no-ui]
+ *        [--contained]
  */
 import { execFileSync, spawn } from 'node:child_process';
+import { generateKeyPairSync } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { makeCanary, scanTree, type Canary } from '@routespec/hardening';
 import { CORE_SCENARIO_SOURCES } from '@routespec/scenario';
+import {
+  containerCliFromEnv,
+  containerToolchainDigest,
+  detectContainerRuntime,
+  interceptorArtifactDigest,
+  launcherArtifactDigest,
+} from '@routespec/containment';
 import { ControlProcess, type J } from './control.ts';
 import { fileDigest, sha256 } from './identity.ts';
 import { offlineEnv } from './clean-install.ts';
@@ -62,6 +81,8 @@ export interface JourneyOptions {
   readonly work: string;
   readonly commit?: string;
   readonly ui?: boolean;
+  /** Run every subject case confined in a container with attested launches (M14). */
+  readonly contained?: boolean;
 }
 
 interface Registered {
@@ -69,6 +90,10 @@ interface Registered {
   artifactDigest: string;
   manifestDigest: string;
   policyDigest: string;
+  /** BUILD_REGISTRATION attestation (contained mode). */
+  attestationId: string | null;
+  /** Effect-coverage policy per scenario revision (contained mode: one per scenario). */
+  policies: Map<string, string>;
 }
 
 interface CaseOutcome {
@@ -87,6 +112,7 @@ interface CaseOutcome {
   fencingEpoch: number;
   evidence: unknown;
   effectCoverage: unknown;
+  containment: J | null;
   runOperationIds: string[];
   invariants: Array<{ invariantId: string; status: string; facts: string[]; missingPredicates: string[] }>;
 }
@@ -173,12 +199,56 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
   const tokenCanaries: Canary[] = [];
   const keepToken = (label: string, value: string) => tokenCanaries.push({ label, value });
 
+  // --- Containment setup (M14): engine, image, operator launcher key ------------------------
+  const contained = options.contained === true;
+  const containment: J = { mode: contained ? 'CONTAINED' : 'UNCONTAINED' };
+  const extraArgs: string[] = [];
+  let launcherKeyJwk: J | null = null;
+  const launcherScript = join(root, 'packages', 'containment', 'src', 'attesting-launcher.ts');
+  let toolchainOverride: string | null = null;
+  if (contained) {
+    const rt = await detectContainerRuntime({ cli: containerCliFromEnv(process.env) });
+    if (rt.status !== 'AVAILABLE') throw new Error(`containment unavailable: ${rt.reason} ${rt.detail}`);
+    const keyDir = join(work, 'launcher');
+    mkdirSync(keyDir, { recursive: true, mode: 0o700 });
+    const keys = generateKeyPairSync('ed25519');
+    const keyPath = join(keyDir, 'launcher-key.pem');
+    writeFileSync(keyPath, keys.privateKey.export({ type: 'pkcs8', format: 'pem' }), { mode: 0o600 });
+    const jwk = keys.publicKey.export({ format: 'jwk' });
+    launcherKeyJwk = { kty: jwk.kty, crv: jwk.crv, x: jwk.x };
+    toolchainOverride = containerToolchainDigest(rt.imageId);
+    extraArgs.push(
+      '--subject-root',
+      root,
+      '--container-cli',
+      JSON.stringify(rt.cli.argv),
+      '--container-image',
+      rt.imageRef,
+      '--launcher',
+      launcherScript,
+      '--launcher-key',
+      keyPath,
+    );
+    Object.assign(containment, {
+      engine: rt.engine,
+      serverVersion: rt.serverVersion,
+      serverOs: rt.serverOs,
+      imageRef: rt.imageRef,
+      imageId: rt.imageId,
+      imageNodeVersion: rt.imageNodeVersion,
+      cliProgram: rt.cli.argv[0],
+      pathStyle: rt.cli.pathStyle,
+      launcherArtifactDigest: launcherArtifactDigest(launcherScript),
+    });
+  }
+
   let control = await ControlProcess.start({
     root,
     data,
     console: true,
     configuredSecrets: [configured.value],
     env,
+    extraArgs,
   });
   keepToken('control-token-1', control.revealToken());
   const api = (m: string, p: string, b?: unknown, ifMatch?: number) => control.api(m, p, b, ifMatch);
@@ -193,9 +263,9 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
   const project = await api('POST', '/projects', { name: 'Checkout integration (M12 delivery)' });
   const projectId = String(project['projectId']);
   const lockDigest = fileDigest(join(root, 'pnpm-lock.yaml'));
-  const toolchainDigest = sha256(
-    JSON.stringify({ node: process.version, platform: process.platform, arch: process.arch }),
-  );
+  const toolchainDigest =
+    toolchainOverride ??
+    sha256(JSON.stringify({ node: process.version, platform: process.platform, arch: process.arch }));
   const revision = await api('POST', `/projects/${projectId}/revisions`, {
     revisionLabel: 'release-candidate-1',
     commitSha: commit,
@@ -210,6 +280,50 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
   });
   const baseScenarioRevisionId = String(scenario['scenarioRevisionId']);
 
+  let principalId: string | null = null;
+  let interceptorProfileDigest: string | null = null;
+  if (contained) {
+    const now = Date.now();
+    const enroll = {
+      projectId,
+      label: 'operator launcher (contained subjects)',
+      policy: {
+        kind: 'LOCAL_LAUNCHER_KEY',
+        publicKeyJwk: launcherKeyJwk,
+        launcherArtifactDigest: launcherArtifactDigest(launcherScript),
+        peerBinding: 'INHERITED_IPC_CHILD',
+        validFromMs: now - 60_000,
+        validUntilMs: now + 24 * 3_600_000,
+        maxFreshnessMs: 6 * 3_600_000,
+      },
+    };
+    const pending = await api('POST', '/attester-principals', enroll);
+    const notice = await control.confirmation(String(pending['confirmationId']));
+    const enrolled = await api('POST', '/attester-principals', {
+      ...enroll,
+      confirmation: { confirmationId: notice.confirmationId, code: notice.code },
+    });
+    principalId = String(enrolled['principalId']);
+    const profile = await api('POST', '/interceptor-profiles', {
+      projectId,
+      interceptorArtifactDigest: interceptorArtifactDigest(
+        join(root, 'packages', 'proxy', 'src', 'interceptor', 'canary-interceptor.ts'),
+      ),
+      containment: 'PROCESS_TREE_ENFORCED',
+      processTreeScope: 'linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init',
+      supportedSinks: [SINK],
+      denialMechanism: 'CANARY_REDIRECT',
+    });
+    interceptorProfileDigest = String(profile['profileDigest']);
+    Object.assign(containment, {
+      principalId,
+      principalPolicyDigest: enrolled['policyDigest'],
+      enrollmentConfirmation: 'LOCAL_OPERATOR_CHANNEL',
+      interceptorProfileDigest,
+      interceptorReviewState: profile['reviewState'],
+    });
+  }
+
   const hooks = [
     {
       hookId: 'fulfilment',
@@ -222,8 +336,12 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
       coverageExpectation: 'REQUIRED',
     },
   ];
+  const effectsFile = (build: Build) => buildScript(root, build).replace(/\.ts$/, '.effects.json');
   const register = async (build: Build): Promise<Registered> => {
     const artifactDigest = buildArtifactDigest(root, build);
+    const buildHooks = contained
+      ? ((JSON.parse(readFileSync(effectsFile(build), 'utf8')) as J)['hooks'] as J[])
+      : hooks;
     const b = await api('POST', `/projects/${projectId}/builds`, {
       integrationRevisionId,
       repositoryLocator: `git+file:${relative(root, buildScript(root, build)).split('\\').join('/')}`,
@@ -232,32 +350,59 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
       artifactDigest,
       toolchainDigest,
       lockDigest,
-      effectManifestDigest: sha256(JSON.stringify({ build, hooks })),
+      effectManifestDigest: contained
+        ? fileDigest(effectsFile(build))
+        : sha256(JSON.stringify({ build, hooks })),
       launchRecipeDigest: sha256(`node --no-warnings ${build}.ts`),
       ciWorkflowRunId: null,
     });
     const buildRevisionId = String(b['buildRevisionId']);
+    let attestationId: string | null = null;
+    if (contained) {
+      const a = await api('POST', '/launcher-challenges', {
+        scope: 'BUILD_REGISTRATION',
+        projectId,
+        principalId,
+        buildRevisionId,
+      });
+      attestationId = String(a['attestationId']);
+    }
     const m = await api('POST', '/effect-manifests', {
       projectId,
       buildRevisionId,
       artifactDigest,
       adapterRevision: 'routespec-adapter@1.0.0',
-      hooks,
+      hooks: buildHooks,
     });
     const manifestDigest = String(m['manifestDigest']);
-    const p = await api('POST', '/effect-coverage-policies', {
-      projectId,
+    const reg: Registered = {
       buildRevisionId,
       artifactDigest,
-      selectedAttestationId: null,
-      scenarioRevisionId: baseScenarioRevisionId,
       manifestDigest,
+      policyDigest: '',
+      attestationId,
+      policies: new Map(),
+    };
+    reg.policyDigest = await policyFor(reg, baseScenarioRevisionId);
+    return reg;
+  };
+  const policyFor = async (reg: Registered, scenarioRevisionId: string): Promise<string> => {
+    const known = reg.policies.get(scenarioRevisionId);
+    if (known !== undefined) return known;
+    const p = await api('POST', '/effect-coverage-policies', {
+      projectId,
+      buildRevisionId: reg.buildRevisionId,
+      artifactDigest: reg.artifactDigest,
+      selectedAttestationId: reg.attestationId,
+      scenarioRevisionId,
+      manifestDigest: reg.manifestDigest,
       requiredSinkClasses: [SINK],
-      interceptorProfileDigest: null,
+      interceptorProfileDigest: contained ? interceptorProfileDigest : null,
       callsiteInventoryDigest: null,
-      basis: 'DECLARED_HOOKS_ONLY',
+      basis: contained ? 'INDEPENDENT_BOUNDARY_INTERCEPT' : 'DECLARED_HOOKS_ONLY',
     });
-    return { buildRevisionId, artifactDigest, manifestDigest, policyDigest: String(p['policyDigest']) };
+    reg.policies.set(scenarioRevisionId, String(p['policyDigest']));
+    return String(p['policyDigest']);
   };
   const baseline = await register('baseline-client');
   const baseCorpus = await api('POST', '/corpora', {
@@ -281,7 +426,7 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
           name,
           corpusRevisionId,
           enforcementMode: 'LOCAL_ADVISORY',
-          buildAttestationPolicy: 'ALLOW_USER_ASSERTED',
+          buildAttestationPolicy: contained ? 'REQUIRE_TRUSTED' : 'ALLOW_USER_ASSERTED',
         })
       )['gateId'],
     );
@@ -290,7 +435,21 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
 
   // --- Gate run and case helpers -------------------------------------------------------------
   const caseGate = new Map<string, string>();
-  const startGateRun = async (gateId: string, corpusRevisionId: string, reg: Registered) => {
+  const startGateRun = async (
+    gateId: string,
+    corpusRevisionId: string,
+    reg: Registered,
+    extraScenarios: readonly string[] = [],
+  ) => {
+    const casePolicies: J[] = [];
+    if (contained) {
+      for (const scenarioRevisionId of extraScenarios) {
+        casePolicies.push({
+          scenarioRevisionId,
+          effectCoveragePolicyDigest: await policyFor(reg, scenarioRevisionId),
+        });
+      }
+    }
     const g = await api('POST', '/gate-runs', {
       projectId,
       gateId,
@@ -300,10 +459,14 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
       effectManifestDigest: reg.manifestDigest,
       effectCoveragePolicyDigest: reg.policyDigest,
       callsiteInventoryDigest: null,
-      interceptorProfileDigest: null,
-      buildAttestation: { class: 'USER_ASSERTED_LOCAL' },
+      interceptorProfileDigest: contained ? interceptorProfileDigest : null,
+      buildAttestation:
+        contained && reg.attestationId !== null
+          ? { subjectAttestationId: reg.attestationId }
+          : { class: 'USER_ASSERTED_LOCAL' },
       mode: 'SIMULATE',
       maxParallelCases: 1,
+      ...(casePolicies.length > 0 ? { casePolicies } : {}),
     });
     const gateRunId = String(g['gateRunId']);
     const v = await api('POST', `/gate-runs/${gateRunId}/validate`, {}, Number(g['revision']));
@@ -341,7 +504,57 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
     return all;
   };
 
+  const runContainedCase = async (c: J, build: Build, job: string): Promise<CaseOutcome> => {
+    const caseRunId = String(c['caseRunId']);
+    const started = await api('POST', `/case-runs/${caseRunId}/contained-start`, {
+      attesterPrincipalId: principalId,
+      job: { logicalJob: job, quote: quoteBody(), txHash: `sim-tx-${job}` },
+    });
+    const startCase = started['case'] as J;
+    let live = (started['live'] ?? null) as J | null;
+    const deadline = Date.now() + 240_000;
+    while (
+      live !== null &&
+      (live['job'] === 'RUNNING' || live['job'] === 'STARTING') &&
+      Date.now() < deadline
+    ) {
+      await sleep(250);
+      live = ((await api('GET', `/case-runs/${caseRunId}/containment`))['live'] ?? null) as J | null;
+    }
+    await api('POST', `/case-runs/${caseRunId}/finish-input`, {});
+    const view = await caseResult(caseRunId);
+    const after = await api('GET', `/case-runs/${caseRunId}/containment`);
+    const runOperationIds = (view['runOperationIds'] as string[]) ?? [];
+    return {
+      caseRunId,
+      ordinal: Number(view['ordinal']),
+      scenarioName: String(view['scenarioName']),
+      lineageRole: String(view['lineageRole']),
+      build,
+      subjectPid: -1,
+      clientInstanceId: String(startCase['clientInstanceId'] ?? ''),
+      startEpoch: Number(startCase['fencingEpoch'] ?? 0),
+      recovery: null,
+      jobOutcome: (live?.['subjectOutcome'] ?? {}) as J,
+      lifecycle: String(view['lifecycle']),
+      verdict: String(view['verdict']),
+      fencingEpoch: Number(view['fencingEpoch']),
+      evidence: view['evidence'],
+      effectCoverage: view['effectCoverage'],
+      containment: {
+        startTokenReturned: started['token'] !== null,
+        tokenDelivery: started['tokenDelivery'],
+        live,
+        records: after['records'],
+        runtime: after['runtime'],
+      },
+      runOperationIds,
+      invariants: await invariantsOf(runOperationIds),
+    };
+  };
+
   const runCase = async (proxyBaseUrl: string, c: J, build: Build, job: string): Promise<CaseOutcome> => {
+    if (contained) return runContainedCase(c, build, job);
     const caseRunId = String(c['caseRunId']);
     const start = await api('POST', `/case-runs/${caseRunId}/start`, {});
     const creds = credentialsOf(start);
@@ -403,6 +616,7 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
       fencingEpoch: Number(view['fencingEpoch']),
       evidence: view['evidence'],
       effectCoverage: view['effectCoverage'],
+      containment: null,
       runOperationIds,
       invariants: await invariantsOf(runOperationIds),
     };
@@ -414,8 +628,9 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
     corpusRevisionId: string,
     reg: Registered,
     build: Build,
+    extraScenarios: readonly string[] = [],
   ): Promise<GateOutcome> => {
-    const g = await startGateRun(gateId, corpusRevisionId, reg);
+    const g = await startGateRun(gateId, corpusRevisionId, reg, extraScenarios);
     const cases: CaseOutcome[] = [];
     for (const c of g.cases)
       cases.push(await runCase(g.proxyBaseUrl, c, build, `order-${label}-${String(c['ordinal'])}`));
@@ -585,12 +800,14 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
   // --- 5. Original build on the new corpus, then the corrected build -------------------------
   since = Date.now();
   const promotedGateId = await gate(promotedCorpusRevisionId, 'release gate with captured regression');
+  const promotedScenarioRevisionId = String(promoted['scenarioRevisionId']);
   const baselineOnPromoted = await runGate(
     'baseline-promoted',
     promotedGateId,
     promotedCorpusRevisionId,
     baseline,
     'baseline-client',
+    [promotedScenarioRevisionId],
   );
   const corrected = await register('corrected-client');
   const correctedRun = await runGate(
@@ -599,6 +816,7 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
     promotedCorpusRevisionId,
     corrected,
     'corrected-client',
+    [promotedScenarioRevisionId],
   );
   const lineage = await api('GET', `/imports/${importId}`);
   mark('correctedGateRuns', since);
@@ -666,6 +884,7 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
     console: true,
     configuredSecrets: [configured.value],
     env,
+    extraArgs,
   });
   keepToken('control-token-2', control.revealToken());
   const oldTokenAfterRestart = await control.raw('GET', '/settings', undefined, undefined, oldToken);
@@ -773,7 +992,15 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
       liveDry: settings['liveDry'] ?? settings['liveDryProbe'] ?? null,
       settingsKeys: Object.keys(settings).sort(),
     },
-    identity: { projectId, integrationRevisionId, lockDigest, toolchainDigest, baseline, corrected },
+    identity: {
+      projectId,
+      integrationRevisionId,
+      lockDigest,
+      toolchainDigest,
+      baseline: { ...baseline, policies: Object.fromEntries(baseline.policies) },
+      corrected: { ...corrected, policies: Object.fromEntries(corrected.policies) },
+    },
+    containment,
     scenario: { id: SCENARIO, baseScenarioRevisionId, requiredInvariants: REQUIRED_INVARIANTS, sink: SINK },
     baselineRun,
     recoveryProof,
@@ -858,13 +1085,16 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   const work = arg('work');
   const outFile = arg('out');
   if (work === undefined || outFile === undefined) {
-    process.stderr.write('usage: journey.ts --work <dir> --out <json> [--commit <sha>] [--no-ui]\n');
+    process.stderr.write(
+      'usage: journey.ts --work <dir> --out <json> [--commit <sha>] [--no-ui] [--contained]\n',
+    );
     process.exit(4);
   }
   const commit = arg('commit');
   const record = await runJourney({
     work,
     ui: !process.argv.includes('--no-ui'),
+    contained: process.argv.includes('--contained'),
     ...(commit !== undefined ? { commit } : {}),
   });
   writeFileSync(outFile, `${JSON.stringify(record, null, 2)}\n`);

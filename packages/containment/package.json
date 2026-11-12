@@ -1,0 +1,17 @@
+{
+  "name": "@routespec/containment",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Container containment launcher for the subject client: runtime detection, confined launch, loopback-only tunnel, and engine-verified containment evidence (M14).",
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@routespec/contracts": "workspace:*"
+  }
+}

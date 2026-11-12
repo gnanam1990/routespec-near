@@ -25,6 +25,7 @@
     "test:e2e:real": "pnpm --filter @routespec/console e2e:real",
     "audit:supply-chain": "node --no-warnings packages/hardening/src/audit-cli.ts",
     "test:delivery": "vitest run -c vitest.delivery.config.ts",
+    "test:containment": "vitest run -c vitest.containment.config.ts",
     "delivery:journey": "node --no-warnings packages/delivery/src/journey.ts"
   },
   "devDependencies": {

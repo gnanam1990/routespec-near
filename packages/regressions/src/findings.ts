@@ -97,16 +97,48 @@ export function safePath(parts: readonly (string | number)[]): string {
   return out;
 }
 
-/** Collects findings, merging repeated (category, path) pairs into a count. */
+/** Most finding records one import may persist (the journal refuses more). */
+export const MAX_FINDING_RECORDS = 512;
+
+const CATEGORY_COUNT = REJECTING_CATEGORIES.length + BLOCKING_CATEGORIES.length + ADVISORY_CATEGORIES.length;
+
+/**
+ * Distinct (category, path) records kept before further paths are merged per category. The
+ * headroom leaves room for one merged record per category plus the few findings an import adds
+ * outside the analysis (a filename), so the persisted list stays within MAX_FINDING_RECORDS.
+ */
+export const MAX_PATH_FINDINGS = MAX_FINDING_RECORDS - CATEGORY_COUNT - 8;
+
+/**
+ * Collects findings, merging repeated (category, path) pairs into a count.
+ *
+ * The set is bounded, but the bound never drops a finding: once MAX_PATH_FINDINGS distinct
+ * paths are recorded, a new path is counted under one path-less (`$`) record for its category.
+ * A blocking or rejecting finding therefore always survives, whatever number of advisory
+ * findings came first.
+ */
 export class FindingSet {
   private readonly map = new Map<string, Finding>();
 
   add(category: FindingCategory, path: string): void {
     const key = `${category}\u0000${path}`;
     const prior = this.map.get(key);
-    if (prior) this.map.set(key, { ...prior, count: prior.count + 1 });
-    else if (this.map.size < 512)
+    if (prior) {
+      this.map.set(key, { ...prior, count: prior.count + 1 });
+      return;
+    }
+    if (this.map.size < MAX_PATH_FINDINGS) {
       this.map.set(key, { category, path, count: 1, blocking: isBlocking(category) });
+      return;
+    }
+    const merged = `${category}\u0000$`;
+    const kept = this.map.get(merged);
+    this.map.set(
+      merged,
+      kept
+        ? { ...kept, count: kept.count + 1 }
+        : { category, path: '$', count: 1, blocking: isBlocking(category) },
+    );
   }
 
   has(predicate: (f: Finding) => boolean): boolean {

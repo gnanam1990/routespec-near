@@ -79,6 +79,7 @@ export function Timeline({
   const tabsId = useId();
   const pageIndex = cursors.length - 1;
   const data = state.data;
+  const pageLoading = state.status === 'loading' && data === null;
   const firstShown = data && data.items.length > 0 ? pageIndex * pageSize + 1 : 0;
   const lastShown = data ? pageIndex * pageSize + data.items.length : 0;
 
@@ -286,7 +287,11 @@ export function Timeline({
         <button
           type="button"
           className="btn"
-          disabled={!data?.nextCursor}
+          // While a newly selected page loads there is no data yet. Disabling the button then
+          // would drop keyboard focus to the page body whenever the load is slower than a frame
+          // (T-051), so it stays focusable and reports itself busy instead.
+          disabled={!pageLoading && !data?.nextCursor}
+          aria-disabled={pageLoading ? true : undefined}
           onClick={() => {
             const next = data?.nextCursor;
             if (next) setCursors((c) => [...c, next]);

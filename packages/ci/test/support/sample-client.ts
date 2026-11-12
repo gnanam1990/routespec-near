@@ -10,9 +10,12 @@
  *   variables visible to this module and to the subject process.
  * - `ROUTESPEC_CI_TEST_SWAP_FILE`: append bytes to this artifact file during the first case
  *   (an artifact swapped while the gate runs).
+ * - `ROUTESPEC_CI_TEST_PROC_ENVIRON` (Linux): a comma-separated list of variable names; append
+ *   which of them (names only) appear in the initial environment block of this process (the
+ *   subject's parent) and of its parent, as `/proc/<pid>/environ` serves it.
  */
 import { fork } from 'node:child_process';
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import type { LauncherCaseControl, LauncherCaseResult } from '@routespec/cli';
 import type { CaseHandoff } from '@routespec/runner';
 
@@ -23,6 +26,13 @@ function credentialNames(env: NodeJS.ProcessEnv): string[] {
   return Object.keys(env)
     .filter((k) => CREDENTIAL_NAME.test(k) && k !== 'ROUTESPEC_CI_TEST_ENV_REPORT')
     .sort();
+}
+
+/** Which of `watched` appear in the initial environment block of `pid` (names only). */
+function initialEnvironNames(pid: string, watched: readonly string[]): string[] {
+  const block = readFileSync(`/proc/${pid}/environ`, 'latin1');
+  const present = new Set(block.split('\0').map((entry) => entry.slice(0, entry.indexOf('='))));
+  return watched.filter((name) => present.has(name)).sort();
 }
 
 function quoteBody(): Record<string, unknown> {
@@ -53,6 +63,16 @@ export async function onCase(
       report,
       `${JSON.stringify({ where: 'client-module', names: credentialNames(process.env) })}\n`,
     );
+  const watched = process.env['ROUTESPEC_CI_TEST_PROC_ENVIRON'];
+  if (report && watched && handoff.ordinal === 0) {
+    const names = watched.split(',').filter((n) => n !== '');
+    for (const [where, pid] of [
+      ['client-module-initial-environ', 'self'],
+      ['action-parent-initial-environ', String(process.ppid)],
+    ] as const) {
+      appendFileSync(report, `${JSON.stringify({ where, names: initialEnvironNames(pid, names) })}\n`);
+    }
+  }
   const swap = process.env['ROUTESPEC_CI_TEST_SWAP_FILE'];
   if (swap && handoff.ordinal === 0) appendFileSync(swap, 'swapped during the gate run\n');
 

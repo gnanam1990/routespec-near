@@ -11,12 +11,14 @@ import { RouteSpecError } from '@routespec/contracts';
 const FORBIDDEN_KEY =
   /^(authorization|proxy[-_]?authorization|cookie|set[-_]?cookie|jwt|bearer|token|access[-_]?token|refresh[-_]?token|id[-_]?token|provider[-_]?(jwt|token|credential)s?|api[-_]?key|apikey|secret|client[-_]?secret|password|passphrase|private[-_]?key|mnemonic|seed[-_]?phrase|signing[-_]?key|x-routespec-case-token)$/i;
 
+// Credential shapes carry no leading word boundary: a letter, digit or underscore placed
+// directly before a JWT or an rsct_/rsctl_ token must not hide it (security fix vuln-0002).
 const SECRET_VALUE_RULES: ReadonlyArray<readonly [string, RegExp]> = [
-  ['jwt', /\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/],
+  ['jwt', /eyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/],
   ['bearer', /^\s*Bearer\s+\S{8,}/i],
   ['private-key', /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
-  ['case-token', /\brsct_[A-Za-z0-9_-]{20,}/],
-  ['control-token', /\brsctl_[A-Za-z0-9_-]{20,}/],
+  ['case-token', /rsct_[A-Za-z0-9_-]{20,}/],
+  ['control-token', /rsctl_[A-Za-z0-9_-]{20,}/],
 ];
 
 export function assertNoSecrets(value: unknown, path = '$', depth = 0): void {
@@ -66,8 +68,8 @@ export function assertNoSecrets(value: unknown, path = '$', depth = 0): void {
 // credentials (control token `rsctl_`, case token `rsct_`). A hit aborts the transaction.
 
 const CREDENTIAL_SHAPES: ReadonlyArray<readonly [string, RegExp]> = [
-  ['control-token', /\brsctl_[A-Za-z0-9_-]{20,}/],
-  ['case-token', /\brsct_[A-Za-z0-9_-]{20,}/],
+  ['control-token', /rsctl_[A-Za-z0-9_-]{20,}/],
+  ['case-token', /rsct_[A-Za-z0-9_-]{20,}/],
   ['private-key', /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
 ];
 

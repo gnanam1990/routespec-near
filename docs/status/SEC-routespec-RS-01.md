@@ -64,8 +64,17 @@ Environment: `ROUTESPEC_TEST_PORT_BASE=9700`, `ROUTESPEC_DELIVERY_PORT=9705`, `F
 `ROUTESPEC_CONTAINER_CLI='["wsl.exe","-d","Ubuntu-24.04","-u","root","--exec","docker"]'` for the
 containment and delivery suites.
 
-| Command | Exit | Result |
-| ------- | ---- | ------ |
+| Command                     | Exit | Result                                                                                        |
+| --------------------------- | ---- | --------------------------------------------------------------------------------------------- |
+| `pnpm run check`            | 0    | typecheck, lint, format clean; 82 files, 709 passed, 2 skipped; secret scan clean (517 files) |
+| `pnpm run test:containment` | 0    | 4 files, 19 passed, none skipped (Docker 29.1.3 in WSL Ubuntu 24.04)                          |
+| `pnpm run test:delivery`    | 0    | 2 files, 21 passed (clean-clone uncontained journey and contained journey, none skipped)      |
+
+Note: earlier `pnpm run check` runs, made while sibling suites were loading the host, had
+timing failures in unrelated kill-timing and timeout-bound tests (T-025, T-044, T-046, T-057,
+M16, T-036, M14 export boundary kill). Each passed when rerun alone and the whole suite passed on
+the run above. One earlier `pnpm run test:delivery` (before `main` was merged) had a T-058 upload
+failure inside the clean clone that did not reproduce; the run above passed.
 
 ## Residual
 

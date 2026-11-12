@@ -193,6 +193,14 @@ crash and restart.
   framed. The reviewed interceptor artifact digest pin is updated (ADR-0024,
   `docs/status/SEC-routespec-RS-01.md`).
 
+## Security fix: RS-03 (external security audit)
+
+- Credential-less local requests spent the global read/mutation budget before authentication and
+  could lock the genuine control token out with `429` each window. Fixed: the budgets are charged
+  only after the control or case token is accepted, failures count only in the failure window,
+  and console assets have their own counter (ADR-0022 amendment, `docs/status/SEC-routespec-RS-03.md`).
+  Remaining limit: a genuine-token holder can still spend the global budgets.
+
 ## External action ledger
 
 All NOT_AUTHORIZED and NOT_RUN by this build: push, fetch, remote creation, PR creation, remote

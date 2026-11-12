@@ -147,6 +147,13 @@ crash and restart.
   checked against its published SHA-256 list, plus a frozen-lockfile `pnpm install` from the npm
   registry in a temporary clone. No system setting was changed.
 
+## Security fix: RS-06 (external security audit)
+
+- The shared scenario proxy kept held connection-barrier responses keyed by step id only, so two
+  parallel cases running the same scenario released or overwrote each other's held response.
+  Fixed: held barriers are keyed by the authenticated case run and step id, and an abandoned
+  entry is dropped (`docs/status/SEC-routespec-RS-06.md`).
+
 ## External action ledger
 
 All NOT_AUTHORIZED and NOT_RUN by this build: push, fetch, remote creation, PR creation, remote

@@ -29,8 +29,8 @@ import {
 } from '@routespec/store';
 import { LIVE_INVARIANTS, Product, Subject } from '../../regressions/test/support/product.ts';
 import { promoteUserTrace, simpleUserTrace } from '../../regressions/test/support/traces.ts';
-import { gateInput } from './support/gate-fixture.ts';
-import { runCliProcess, tempDir } from './support/product.ts';
+import { gateInput } from '../../cli/test/support/gate-fixture.ts';
+import { runCliProcess, tempDir } from '../../cli/test/support/product.ts';
 
 let tmp: ReturnType<typeof tempDir>;
 let data: string;

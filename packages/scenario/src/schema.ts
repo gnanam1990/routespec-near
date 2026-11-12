@@ -59,14 +59,14 @@ export const RequestMatch = z
     for (const key of Object.keys(m.fields ?? {})) {
       if (!ROUTE_FIELDS[m.route].includes(key)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           path: ['fields', key],
           message: `field is not a ${m.route} profile field`,
         });
       }
     }
     if (Object.keys(m.fields ?? {}).length > 16) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['fields'], message: 'at most 16 field matchers' });
+      ctx.addIssue({ code: 'custom', path: ['fields'], message: 'at most 16 field matchers' });
     }
   });
 export type RequestMatch = z.infer<typeof RequestMatch>;

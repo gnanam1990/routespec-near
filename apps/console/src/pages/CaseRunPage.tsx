@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router';
 import { useConsole, useMutation, useResource } from '../app/context.tsx';
 import { usePageTitle } from '../app/usePageTitle.ts';
 import type { CaseRun, CaseStart, Page, RecoveryResult } from '../api/schemas.ts';

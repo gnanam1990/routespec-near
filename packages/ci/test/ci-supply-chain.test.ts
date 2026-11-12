@@ -155,7 +155,7 @@ describe('M10 workflow and supply-chain policy', () => {
     const sbom = JSON.parse(a) as J;
     expect(sbom).toMatchObject({ bomFormat: 'CycloneDX', specVersion: '1.5' });
     const zod = (sbom['components'] as J[]).find((c) => c['name'] === 'zod') as J;
-    expect(zod['purl']).toBe('pkg:npm/zod@3.25.76');
+    expect(zod['purl']).toBe('pkg:npm/zod@4.6.7');
     expect((zod['hashes'] as J[])[0]).toMatchObject({
       alg: 'SHA-512',
       content: expect.stringMatching(/^[0-9a-f]{128}$/),

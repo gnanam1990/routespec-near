@@ -10,6 +10,7 @@ import {
   DigestString,
   RouteSpecError,
   digestValue,
+  stableIssueCode,
   z,
   type Digest,
   type ErrorCode,
@@ -93,7 +94,9 @@ export function canonicalReplayDigest(
   const parsed = ReplayIdentity.safeParse(identityInput);
   if (!parsed.success) {
     throw new RouteSpecError('RS_SCHEMA_INVALID', 'Replay identity is incomplete or malformed.', {
-      details: { issues: parsed.error.issues.slice(0, 8).map((i) => `${i.path.join('.')}: ${i.code}`) },
+      details: {
+        issues: parsed.error.issues.slice(0, 8).map((i) => `${i.path.join('.')}: ${stableIssueCode(i)}`),
+      },
     });
   }
   const identity = parsed.data;

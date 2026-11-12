@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router';
 import { useMutation, useResource } from '../app/context.tsx';
 import { usePageTitle } from '../app/usePageTitle.ts';
 import type { CaseRun, ExportPlan, GateRun, Page } from '../api/schemas.ts';

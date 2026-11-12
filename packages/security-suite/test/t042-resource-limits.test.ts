@@ -290,8 +290,10 @@ describe('T-042 — Parser and service resource limits hold under abuse', () => 
       ),
     );
     expect(bad.some((r) => r.status === 429)).toBe(true);
-    // During the lockout window even the real token is refused (no oracle for guessing).
-    expect((await h.api('GET', '/settings')).status).toBe(429);
+    // Further failing guesses stay held back, but the real token is not locked out (SEC vuln-0003).
+    const more = await h.api('GET', '/settings', undefined, { token: 'rsctl_wrongwrongwrongwrongwrong' });
+    expect(more.status).toBe(429);
+    expect((await h.api('GET', '/settings')).status).toBe(200);
     await nextWindow();
     await healthy();
   });

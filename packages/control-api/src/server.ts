@@ -455,11 +455,13 @@ export class ControlServer {
       if (policy === null) throw new RouteSpecError('RS_STORAGE_UNAVAILABLE', 'The service is starting.');
       const method = req.method ?? 'GET';
       const mutating = !['GET', 'HEAD', 'OPTIONS'].includes(method);
-      if (!this.#limits.take(mutating ? 'mutations' : 'reads') || this.#limits.exhausted('authFailures')) {
+      // The boundary runs first so refused cross-site / foreign-Host requests never spend the
+      // shared budgets that the operator's own requests depend on.
+      checkBrowserBoundary(req, policy);
+      if (!this.#limits.take(mutating ? 'mutations' : 'reads')) {
         req.resume();
         throw new RouteSpecError('RS_RATE_LIMITED', 'Too many requests; retry later.', { recoverable: true });
       }
-      checkBrowserBoundary(req, policy);
       const url = new URL(req.url ?? '/', policy.primaryOrigin);
       if (method === 'OPTIONS') {
         // Same-origin pages never need a preflight; foreign origins were already refused.
@@ -482,8 +484,17 @@ export class ControlServer {
         try {
           authenticate(req, this.token);
         } catch (error) {
+          // Only failing credentials are throttled: once the failure window is exhausted further
+          // failures are answered 429, while the genuine control token keeps working (any local
+          // process can reach the port, so a global lockout would be a denial of service).
+          const exhausted = this.#limits.exhausted('authFailures');
           this.#limits.take('authFailures');
           req.resume();
+          if (exhausted) {
+            throw new RouteSpecError('RS_RATE_LIMITED', 'Too many requests; retry later.', {
+              recoverable: true,
+            });
+          }
           throw error;
         }
       }

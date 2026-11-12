@@ -7,16 +7,21 @@
  * talks to its parent over the inherited pipe.
  *
  * Behavior:
- * 1. On `bind` (private channel key + exact build/gate/case/session/epoch/policy/manifest
- *    binding + supported sinks) it opens a loopback sink listener and reports its port.
- * 2. A subject effect attempt `POST /sink/<sinkClass>` with `{effectId, runOperationId?}` is
- *    framed as ATTEMPTED and handed to the parent for journaling; the subject receives no
- *    answer until the parent acknowledges the frame (journal handoff before any response).
+ * 1. On `bind` (private channel key + per-instance sink token + exact build/gate/case/session/
+ *    epoch/policy/manifest binding + supported sinks) it opens a loopback sink listener and
+ *    reports its port.
+ * 2. A subject effect attempt `POST /sink/<sinkClass>` with `{effectId, runOperationId?}` must
+ *    present the sink token in `x-routespec-sink-token`; the loopback listener is reachable by
+ *    any local process, so a request without the exact token is refused (401) before its body is
+ *    read or anything is framed. An authenticated attempt is framed as ATTEMPTED and handed to
+ *    the parent for journaling; the subject receives no answer until the parent acknowledges the
+ *    frame (journal handoff before any response).
  * 3. Before `release` the attempt is denied (BLOCKED, 409). After `release` (declared
  *    completion accepted upstream of this process) it is RELEASED to a no-effect canary (202):
  *    no real target is ever invoked. Any unacknowledged frame fails closed (503).
  * 4. On `teardown` it closes the listener, says `bye`, and exits.
  */
+import { timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
 interface Binding {
@@ -33,14 +38,16 @@ interface Binding {
 }
 
 type ParentMsg =
-  | { type: 'bind'; channelKey: string; binding: Binding }
+  | { type: 'bind'; channelKey: string; sinkToken: string; binding: Binding }
   | { type: 'ack'; sequence: number; ok: boolean; code: string | null }
   | { type: 'release' }
   | { type: 'teardown' };
 
 const MAX_BODY = 4096;
 const ID = /^[A-Za-z0-9._:-]{1,128}$/;
+const SINK_TOKEN = /^[A-Za-z0-9_-]{43,128}$/;
 let channelKey: string | null = null;
+let sinkToken: Buffer | null = null;
 let binding: Binding | null = null;
 let released = false;
 let sequence = 0;
@@ -115,7 +122,19 @@ async function readBody(req: IncomingMessage): Promise<Record<string, unknown> |
   }
 }
 
+/** Constant-time check of the per-instance sink token; no token bound means nothing is accepted. */
+function sinkAuthenticated(req: IncomingMessage): boolean {
+  const header = req.headers['x-routespec-sink-token'];
+  if (sinkToken === null || typeof header !== 'string') return false;
+  const presented = Buffer.from(header, 'utf8');
+  return presented.length === sinkToken.length && timingSafeEqual(presented, sinkToken);
+}
+
 async function onSink(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  if (!sinkAuthenticated(req)) {
+    reply(res, 401, { denied: true, reason: 'SINK_UNAUTHENTICATED' });
+    return;
+  }
   const match = /^\/sink\/([A-Za-z0-9._-]{1,64})$/.exec(req.url ?? '');
   if (req.method !== 'POST' || !match || binding === null) {
     reply(res, 404, { denied: true, reason: 'UNKNOWN_SINK_ROUTE' });
@@ -163,6 +182,11 @@ const server = createServer({ requestTimeout: 10_000, headersTimeout: 5_000 }, (
 process.on('message', (raw: unknown) => {
   const msg = raw as ParentMsg;
   if (msg.type === 'bind' && channelKey === null) {
+    if (typeof msg.sinkToken !== 'string' || !SINK_TOKEN.test(msg.sinkToken)) {
+      send({ type: 'bind-refused', reason: 'SINK_TOKEN_INVALID' });
+      return;
+    }
+    sinkToken = Buffer.from(msg.sinkToken, 'utf8');
     channelKey = msg.channelKey;
     binding = msg.binding;
     server.listen({ port: 0, host: '127.0.0.1', exclusive: true }, () => {

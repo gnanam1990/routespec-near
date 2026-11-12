@@ -212,6 +212,20 @@ describe('T-004 — Protected side effect requires configured terminal evidence'
     expect(evaluateInv04(mismatched)[0]!.missingPredicates).toContain('INVENTORY_MISMATCH');
   });
 
+  it('live: a sink request from an unrelated local process is refused and is not boundary evidence (RS-01)', async () => {
+    const baseline = await runLiveEffectCase(h, 't004-rs01-baseline', { subjectAttempts: false });
+    expect(baseline.inv04.missingPredicates).toContain(`REQUIRED_SINK_UNOBSERVED:${SINK}`);
+    const c = await runLiveEffectCase(h, 't004-rs01-forged', {
+      subjectAttempts: false,
+      forgeFromOtherProcess: true,
+    });
+    expect(c.attempts.map((a) => [a.phase, a.status])).toEqual([['forged', 401]]);
+    expect(c.attempts[0]!.body).toMatchObject({ denied: true, reason: 'SINK_UNAUTHENTICATED' });
+    expect(c.input.boundaryObservations).toEqual([]);
+    expect(c.inv04.verdict).toBe('REVIEW');
+    expect(c.inv04.missingPredicates).toContain(`REQUIRED_SINK_UNOBSERVED:${SINK}`);
+  });
+
   it('live: a missing interceptor, an unpinned forged profile, and a stale instance are REVIEW', async () => {
     const missing = await runLiveEffectCase(h, 't004-missing', { launch: false });
     expect(missing.inv04.missingPredicates).toEqual(

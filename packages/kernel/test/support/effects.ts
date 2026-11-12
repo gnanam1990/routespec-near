@@ -5,6 +5,7 @@
  * attempts over loopback HTTP at the interceptor's sink, subject self-reports through the
  * case-token path, the runner's fenced release authorization, and the pure kernel.
  */
+import { execFile } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { digestValue } from '@routespec/contracts';
 import {
@@ -36,7 +37,7 @@ export async function attemptEffect(
 ): Promise<{ status: number; body: Record<string, unknown> }> {
   const res = await fetch(`${host.sinkOrigin}/sink/${sink}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...host.sinkHeaders },
     body: JSON.stringify({ effectId }),
   });
   return { status: res.status, body: (await res.json()) as Record<string, unknown> };
@@ -96,6 +97,30 @@ export interface LiveCaseOptions extends GateOptions {
   escapeFinding?: boolean;
   /** Subject self-reports an effect release the boundary never observed. */
   unobservedSubjectRelease?: boolean;
+  /** The bound subject attempts the sink (default true). */
+  subjectAttempts?: boolean;
+  /** An unrelated local process (empty environment, no sink token) posts to the sink (RS-01). */
+  forgeFromOtherProcess?: boolean;
+}
+
+/** POST to the sink from a separate node process with env {} and no sink token. */
+export function forgeFromOtherProcess(
+  origin: string,
+  effectId: string,
+  sink = SINK,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  const script = `
+    const [url, effectId] = JSON.parse(process.argv[1]);
+    fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ effectId }) })
+      .then(async (res) => process.stdout.write(JSON.stringify({ status: res.status, body: await res.json().catch(() => ({})) })));`;
+  return new Promise((resolve, reject) => {
+    execFile(
+      process.execPath,
+      ['-e', script, JSON.stringify([`${origin}/sink/${sink}`, effectId])],
+      { env: {}, timeout: 20_000 },
+      (error, stdout) => (error ? reject(error) : resolve(JSON.parse(stdout))),
+    );
+  });
 }
 
 export interface LiveCase {
@@ -141,7 +166,14 @@ export async function runLiveEffectCase(
     if (!options.staleInterceptor)
       report(store, auth, gate, { effectId: `${label}-early`, action: 'ATTEMPTED' });
     if (options.releaseEarly && host) await host.release();
-    if (host) attempts.push({ phase: 'before-completion', ...(await attemptEffect(host, `${label}-early`)) });
+    if (host && options.forgeFromOtherProcess)
+      attempts.push({
+        phase: 'forged',
+        ...(await forgeFromOtherProcess(host.sinkOrigin, `${label}-forged`)),
+      });
+    const subjectAttempts = options.subjectAttempts !== false;
+    if (host && subjectAttempts)
+      attempts.push({ phase: 'before-completion', ...(await attemptEffect(host, `${label}-early`)) });
     if (options.unobservedSubjectRelease)
       report(store, auth, gate, { effectId: `${label}-bypass`, action: 'RELEASED' });
     if (options.escapeFinding) {
@@ -206,7 +238,8 @@ export async function runLiveEffectCase(
         });
         if (host) await host.release();
       }
-      if (host) attempts.push({ phase: 'after-completion', ...(await attemptEffect(host, `${label}-late`)) });
+      if (host && subjectAttempts)
+        attempts.push({ phase: 'after-completion', ...(await attemptEffect(host, `${label}-late`)) });
       report(store, caseAuthFor(h, gate, caseRunId), gate, { effectId: `${label}-late`, action: 'RELEASED' });
     }
     if (host && options.killInterceptor) {

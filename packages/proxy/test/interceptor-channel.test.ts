@@ -7,6 +7,7 @@
  * real running case in a real journal. The subject role is played by plain loopback HTTP
  * attempts at the interceptor's sink; no row is written directly.
  */
+import { execFile } from 'node:child_process';
 import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -64,10 +65,40 @@ async function attempt(
 ): Promise<{ status: number; body: unknown }> {
   const res = await fetch(`${host.sinkOrigin}/sink/${sink}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...host.sinkHeaders },
     body: JSON.stringify({ effectId }),
   });
   return { status: res.status, body: await res.json() };
+}
+
+/** POST to the sink from a separate node process with env {} (optionally presenting a token). */
+function forgeFromOtherProcess(
+  origin: string,
+  sink: string,
+  effectId: string,
+  tokens: Array<string | null>,
+): Promise<Array<{ status: number; reason: unknown }>> {
+  const script = `
+    const [origin, sink, effectId, tokens] = JSON.parse(process.argv[1]);
+    (async () => {
+      const out = [];
+      for (const t of tokens) {
+        const headers = { 'content-type': 'application/json' };
+        if (t !== null) headers['x-routespec-sink-token'] = t;
+        const res = await fetch(origin + '/sink/' + sink, { method: 'POST', headers, body: JSON.stringify({ effectId }) });
+        const body = await res.json().catch(() => ({}));
+        out.push({ status: res.status, reason: body.reason });
+      }
+      process.stdout.write(JSON.stringify(out));
+    })();`;
+  return new Promise((resolve, reject) => {
+    execFile(
+      process.execPath,
+      ['-e', script, JSON.stringify([origin, sink, effectId, tokens])],
+      { env: {}, timeout: 20_000 },
+      (error, stdout) => (error ? reject(error) : resolve(JSON.parse(stdout))),
+    );
+  });
 }
 
 describe('M02 interceptor channel transport (supports T-004; coverage semantics are M04)', () => {
@@ -172,6 +203,34 @@ describe('M02 interceptor channel transport (supports T-004; coverage semantics 
       ).toThrow(expect.objectContaining({ code: 'RS_CHANNEL_AUTH_FAILED' }));
     }
     expect(ctx.store.listBoundaryObservations(ctx.caseRunId)).toHaveLength(2);
+  });
+
+  it('an unrelated local process without the per-instance sink token cannot frame or journal anything (RS-01)', async () => {
+    const frames: string[] = [];
+    const host = await InterceptorHost.launch({
+      store: ctx.store,
+      fence: ctx.supervisor.fenceFor(ctx.caseRunId),
+      onFrame: (f) => frames.push(f.action),
+    });
+    hosts.push(host);
+    // A separate process with an empty environment: it can reach host loopback, nothing else.
+    const forged = await forgeFromOtherProcess(
+      host.sinkOrigin,
+      'fulfilment-webhook',
+      'forged-by-other-process',
+      [null, 'x'.repeat(43)],
+    );
+    expect(forged).toEqual([
+      { status: 401, reason: 'SINK_UNAUTHENTICATED' },
+      { status: 401, reason: 'SINK_UNAUTHENTICATED' },
+    ]);
+    expect(frames).toEqual([]);
+    expect(host.acks).toEqual([]);
+    expect(ctx.store.listBoundaryObservations(ctx.caseRunId)).toEqual([]);
+    // The bound subject, holding the token, is still observed exactly as before.
+    const r = await attempt(host, 'fulfilment-webhook', 'order-6');
+    expect(r.status).toBe(409);
+    expect(frames).toEqual(['ATTEMPTED', 'BLOCKED']);
   });
 
   it('a stale fencing epoch invalidates the instance; attempts then fail closed', async () => {

@@ -12,6 +12,11 @@
  *   argv/env secret). A random channel key is generated here and sent over that pipe only; the
  *   journal stores its digest. Frames are accepted only from this child's own pipe and only
  *   with that key, so no case token, control token, or subject path can write observations.
+ * - Sink authentication: the interceptor's effect sink is a loopback HTTP listener, which any
+ *   local process can reach. A random per-instance sink token (generated here, or pre-issued by a
+ *   containment launcher that hands it only to the contained subject) travels in the bind
+ *   message; the interceptor refuses any sink request that does not present it, before framing,
+ *   so an unrelated process cannot cause boundary observations or a release decision.
  * - Binding: the instance is registered under the case's current execution fence; every frame
  *   must carry the exact build/gate/case/session/epoch/policy/manifest/profile binding and a
  *   supported sink class, or the store rejects it (fail closed; the subject is denied).
@@ -43,10 +48,18 @@ export interface InterceptorProfile {
 
 export const INTERCEPTOR_ARTIFACT_DOMAIN = 'routespec.interceptor-artifact/1' as const;
 export const INTERCEPTOR_CHANNEL_KEY_DOMAIN = 'routespec.interceptor-channel-key/1' as const;
+/** Header the subject presents its per-instance sink token in. */
+export const INTERCEPTOR_SINK_TOKEN_HEADER = 'x-routespec-sink-token' as const;
+const SINK_TOKEN = /^[A-Za-z0-9_-]{43,128}$/;
+
+/** A fresh per-instance sink token (32 random bytes, base64url). */
+export function newSinkToken(): string {
+  return randomBytes(32).toString('base64url');
+}
 
 /** Pinned digest of `interceptor/canary-interceptor.ts` as reviewed (update only on review). */
 export const CANARY_INTERCEPTOR_ARTIFACT_DIGEST: Digest =
-  'sha256:5e36e58c3145519ef6d45f3f88b7993dc7b2f0bd873ac8fe10212960a5ddf5ab';
+  'sha256:2105d1ab3a14f6a40fa4957753578bd23b60d9dd18510739fc4bd0d95ae12710';
 
 export const CANARY_INTERCEPTOR_PROFILE: InterceptorProfile = Object.freeze({
   profileId: 'routespec-canary-interceptor@1.0.0',
@@ -152,6 +165,7 @@ export class InterceptorHost {
   private readonly store: RouteSpecStore;
   private readonly child: ChildProcess;
   readonly #channelKey: string;
+  readonly #sinkToken: string;
   #closed = false;
   #onFrame: ((frame: InterceptorFrame, ack: InterceptorFrameAck) => void) | null = null;
   readonly #fencingEpoch: number;
@@ -160,6 +174,7 @@ export class InterceptorHost {
     store: RouteSpecStore;
     child: ChildProcess;
     channelKey: string;
+    sinkToken: string;
     interceptorInstanceId: string;
     sinkPort: number;
     containment: Containment;
@@ -170,6 +185,7 @@ export class InterceptorHost {
     this.#fencingEpoch = args.fencingEpoch;
     this.child = args.child;
     this.#channelKey = args.channelKey;
+    this.#sinkToken = args.sinkToken;
     this.interceptorInstanceId = args.interceptorInstanceId;
     this.sinkPort = args.sinkPort;
     this.peerPid = args.child.pid as number;
@@ -195,6 +211,11 @@ export class InterceptorHost {
     containment?: VerifiedContainment;
     /** EFFECT_INTERCEPTOR_LAUNCH attestation completed for this launch (M14). */
     attestationId?: string | null;
+    /**
+     * Per-instance sink token, when the caller must hand it to the subject before the interceptor
+     * exists (contained mode). Absent, a fresh one is generated. Only the bound subject may hold it.
+     */
+    sinkToken?: string;
     /** Called after each frame is journaled (or refused). */
     onFrame?: (frame: InterceptorFrame, ack: InterceptorFrameAck) => void;
   }): Promise<InterceptorHost> {
@@ -225,6 +246,10 @@ export class InterceptorHost {
     const platform = detected.platform;
     const profileDigest = input.registeredProfileDigest ?? interceptorProfileDigest(profile);
     const channelKey = randomBytes(32).toString('base64url');
+    const sinkToken = input.sinkToken ?? newSinkToken();
+    if (!SINK_TOKEN.test(sinkToken)) {
+      throw new RouteSpecError('RS_TOKEN_INVALID', 'Interceptor sink token is malformed.');
+    }
     // Minimal environment: nothing secret is inherited; the key travels only over the pipe.
     const env: Record<string, string> = {};
     for (const k of ['PATH', 'Path', 'SystemRoot', 'TEMP', 'TMP']) {
@@ -262,6 +287,7 @@ export class InterceptorHost {
       child.send({
         type: 'bind',
         channelKey,
+        sinkToken,
         binding: {
           interceptorInstanceId,
           buildRevisionId: String(session['build_revision_id']),
@@ -280,6 +306,7 @@ export class InterceptorHost {
         store: input.store,
         child,
         channelKey,
+        sinkToken,
         interceptorInstanceId,
         sinkPort,
         containment,
@@ -296,6 +323,16 @@ export class InterceptorHost {
 
   get sinkOrigin(): string {
     return `http://127.0.0.1:${this.sinkPort}`;
+  }
+
+  /** The per-instance sink token: give it only to the bound subject. */
+  get sinkToken(): string {
+    return this.#sinkToken;
+  }
+
+  /** Headers a bound subject sends with each sink request. */
+  get sinkHeaders(): Record<string, string> {
+    return { [INTERCEPTOR_SINK_TOKEN_HEADER]: this.#sinkToken };
   }
 
   get closed(): boolean {

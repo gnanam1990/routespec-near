@@ -209,6 +209,21 @@ export function deriveInstalledCapture(store: RouteSpecStore, caseRunId: string)
       : 'DECLARED_HOOKS_ONLY') as TraceIdentity['coverageBasis'],
   };
 
+  const containments = store.journal.read(
+    (db) =>
+      db
+        .prepare(
+          `SELECT c.containment FROM interceptor_channels c JOIN effect_interceptor_instances i USING (interceptor_instance_id)
+            WHERE i.case_run_id = ?`,
+        )
+        .all(caseRunId) as Array<Record<string, unknown>>,
+  );
+  if (containments.length > 0) {
+    identity.processTreeContainment = containments.every((r) => r['containment'] === 'PROCESS_TREE_ENFORCED')
+      ? 'PROCESS_TREE_ENFORCED'
+      : 'DECLARED_HOOKS_ONLY';
+  }
+
   const trace: TraceDocument = {
     format: TRACE_FORMAT,
     origin: 'INSTALLED_ARTIFACT_CAPTURE',

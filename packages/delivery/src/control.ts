@@ -25,6 +25,14 @@ export interface ControlStartOptions {
   readonly console?: boolean;
   readonly configuredSecrets?: readonly string[];
   readonly env: Record<string, string>;
+  /** Further service arguments (M14: containment and the reviewed launcher). */
+  readonly extraArgs?: readonly string[];
+}
+
+export interface ConfirmationNotice {
+  readonly confirmationId: string;
+  readonly actionCode: string;
+  readonly code: string;
 }
 
 export class ControlProcess {
@@ -35,6 +43,8 @@ export class ControlProcess {
   #token: string;
   #key = 0;
   #stderr = '';
+  /** Local confirmation codes delivered over the operator IPC channel (never stderr/disk). */
+  readonly #confirmations: ConfirmationNotice[] = [];
 
   private constructor(child: ChildProcess, origin: string, token: string, consoleUrl: string) {
     this.child = child;
@@ -46,6 +56,27 @@ export class ControlProcess {
       'data',
       (c: Buffer) => (this.#stderr = (this.#stderr + c.toString('utf8')).slice(-8000)),
     );
+    child.on('message', (m: unknown) => {
+      const msg = m as J;
+      if (msg['type'] === 'routespec.confirmation') {
+        this.#confirmations.push({
+          confirmationId: String(msg['confirmationId']),
+          actionCode: String(msg['actionCode']),
+          code: String(msg['code']),
+        });
+      }
+    });
+  }
+
+  /** Wait for the local confirmation code of one confirmation id (operator channel). */
+  async confirmation(confirmationId: string, timeoutMs = 10_000): Promise<ConfirmationNotice> {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const n = this.#confirmations.find((c) => c.confirmationId === confirmationId);
+      if (n) return n;
+      if (Date.now() > deadline) throw new Error('local confirmation was not delivered');
+      await new Promise((r) => setTimeout(r, 25));
+    }
   }
 
   /** The value is needed only to drive the browser and to scan persisted files for it. */
@@ -60,6 +91,7 @@ export class ControlProcess {
   static start(o: ControlStartOptions): Promise<ControlProcess> {
     const args = ['--data', o.data, '--handoff', 'ipc'];
     if (o.console) args.push('--console', join(o.root, 'apps', 'console', 'dist'));
+    args.push(...(o.extraArgs ?? []));
     const env = { ...o.env };
     if (o.configuredSecrets && o.configuredSecrets.length > 0) {
       env['ROUTESPEC_CONFIGURED_SECRETS'] = o.configuredSecrets.join('\n');

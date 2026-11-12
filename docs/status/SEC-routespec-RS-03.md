@@ -63,7 +63,13 @@ Environment: `ROUTESPEC_TEST_PORT_BASE=9720`, `ROUTESPEC_DELIVERY_PORT=9725`, `F
 | `pnpm run test:containment` (after `git merge main`) | 0    | 4 files, 19 passed                                                           |
 | `pnpm run test:delivery` (after `git merge main`)    | 0    | 2 files, 21 passed                                                           |
 
-`main` brought in RS-04 (`packages/regressions`) and RS-06 (`packages/proxy`); neither touches
+Final run, after a second `git merge main` that brought in RS-02 (`packages/containment`,
+ADR-0023): `pnpm run check` 0 (85 files / 719 passed, 2 skipped; secret-scan clean),
+`pnpm run test:containment` 0 (4 files, 19 passed), `pnpm run test:delivery` 0 (2 files, 21
+passed).
+
+`main` brought in RS-04 (`packages/regressions`), RS-06 (`packages/proxy`) and RS-02
+(`packages/containment`); none of them touches
 `packages/control-api/src/server.ts`. Merge conflicts were limited to `BUILD-STATUS.md` (both
 entries kept).
 

@@ -7,7 +7,9 @@
  * attempt has no route, and the only reachable endpoints are the tunnels the launcher set up.
  *
  * IPC (from the shim): {type:'escape'} | {type:'http', port, path, body?} | {type:'daemon'} |
- * {type:'flood', count} | {type:'detach'}; each answers `<type>-done`.
+ * {type:'flood', count} | {type:'detach'} | {type:'connect-close', port, count}; each answers
+ * `<type>-done`. `connect-close` opens `count` connections to a tunnel port and closes each as
+ * soon as it is connected (before the launcher can have finished its own host-side connect).
  */
 import { spawn } from 'node:child_process';
 import { createSocket } from 'node:dgram';
@@ -151,6 +153,22 @@ process.on('message', (msg) => {
       }
       for (const k of kids) k.kill('SIGKILL');
       reply({ started, refused });
+    } else if (msg.type === 'connect-close') {
+      const results = await Promise.all(
+        Array.from(
+          { length: msg.count },
+          () =>
+            new Promise((resolve) => {
+              const c = connect({ host: '127.0.0.1', port: msg.port });
+              c.once('connect', () => {
+                c.destroy();
+                resolve('CLOSED');
+              });
+              c.once('error', (e) => resolve(code(e)));
+            }),
+        ),
+      );
+      reply({ results });
     } else if (msg.type === 'exit') {
       reply({});
       setTimeout(() => process.exit(0), 20);

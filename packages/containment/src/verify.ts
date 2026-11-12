@@ -29,6 +29,11 @@ export interface SelfObservation {
   readonly capEff: string | null;
   readonly capPrm: string | null;
   readonly noNewPrivs: string | null;
+  /**
+   * `Seccomp` from /proc/self/status: '2' means a filter is active. Required since M17: on WSL 2
+   * the filter is what refuses AF_VSOCK to the Windows interop interpreter inside a container.
+   */
+  readonly seccomp?: string | null;
   readonly interfaces: readonly string[];
   readonly node?: string;
 }
@@ -125,6 +130,7 @@ export function verifyInspect(
     if (self.capEff !== '0000000000000000') f.push('SELF_CAPABILITIES_PRESENT');
     if (self.capPrm !== null && self.capPrm !== '0000000000000000') f.push('SELF_CAPABILITIES_PRESENT');
     if (self.noNewPrivs !== '1') f.push('SELF_NEW_PRIVILEGES_ALLOWED');
+    if (self.seccomp !== '2') f.push('SELF_SECCOMP_NOT_FILTERED');
     if (self.uid === null || self.uid === 0) f.push('SELF_RUNS_AS_ROOT');
     if (self.interfaces.length !== 1 || self.interfaces[0] !== 'lo') f.push('SELF_NETWORK_INTERFACES');
   }

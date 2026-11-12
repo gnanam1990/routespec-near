@@ -70,6 +70,11 @@ export interface ScenarioProxyOptions {
   readonly cases: CaseRuntimeRegistry;
   readonly redactor?: Redactor;
   readonly maxBodyBytes?: number;
+  /**
+   * Loopback port to listen on (M17). Absent or 0: an OS-assigned port. The address is always
+   * 127.0.0.1; only the port is configurable. An invalid port is refused before any socket opens.
+   */
+  readonly port?: number;
   readonly log?: (entry: ProxyLogEntry) => void;
   /**
    * Denial journaling budget (M11, NFR-06). Every denial is counted and answered, but at most
@@ -184,10 +189,14 @@ export class ScenarioProxy {
   }
 
   static async start(options: ScenarioProxyOptions): Promise<ScenarioProxy> {
+    const port = options.port ?? 0;
+    if (!Number.isInteger(port) || port < 0 || port > 65_535) {
+      throw new RouteSpecError('RS_MODE_POLICY_DENIED', 'The proxy port must be an integer from 0 to 65535.');
+    }
     const proxy = new ScenarioProxy(options);
     await new Promise<void>((resolve, reject) => {
       proxy.server.once('error', reject);
-      proxy.server.listen({ port: 0, host: '127.0.0.1', exclusive: true }, () => resolve());
+      proxy.server.listen({ port, host: '127.0.0.1', exclusive: true }, () => resolve());
     });
     const address = proxy.server.address() as AddressInfo;
     if (address.address !== '127.0.0.1' || address.family !== 'IPv4') {

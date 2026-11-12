@@ -75,6 +75,19 @@ export interface TeardownEvidence {
   readonly tunnels: Readonly<Record<string, TunnelStats>>;
 }
 
+interface TunnelEntry {
+  socket: Socket | null;
+  pending: Buffer[];
+  purpose: string;
+  /** The subject ended its side before (or after) the host-side connect completed. */
+  ended: boolean;
+}
+
+/** End a host-side tunnel socket after its queued bytes are written, then close it fully. */
+function closeAfterFlush(socket: Socket): void {
+  socket.end(() => socket.destroy());
+}
+
 export const DEFAULT_MAX_PIDS = 128;
 export const DEFAULT_MAX_MEMORY_BYTES = 512 * 1024 * 1024;
 
@@ -109,7 +122,9 @@ export class ContainedSubject {
   readonly #targets = new Map<number, { hostPort: number | null; purpose: string }>();
   readonly #resolveTunnel: ((containerPort: number) => Promise<number | null>) | null;
   readonly #resolving = new Map<number, Promise<number | null>>();
-  readonly #sockets = new Map<number, { socket: Socket | null; pending: Buffer[]; purpose: string }>();
+  readonly #sockets = new Map<number, TunnelEntry>();
+  /** Every host-side socket this launcher opened that has not closed yet (M17). */
+  readonly #hostSockets = new Set<Socket>();
   readonly #listeners = new Set<(m: Record<string, unknown>) => void>();
   /** Messages that arrived while nobody listened (for example `loaded` during verification). */
   readonly #backlog: Record<string, unknown>[] = [];
@@ -180,7 +195,9 @@ export class ContainedSubject {
     this.#proc.on('error', (e) => this.#failed?.(e));
     this.#proc.once('close', (code) => {
       this.#failed?.(new Error(`container exited before ready (${String(code)})`));
-      for (const s of this.#sockets.values()) s.socket?.destroy();
+      // Nothing the subject opened may outlive its container (M17).
+      for (const s of this.#hostSockets) s.destroy();
+      this.#hostSockets.clear();
       this.#sockets.clear();
     });
     let stderr = '';
@@ -398,8 +415,12 @@ export class ContainedSubject {
       case 'end': {
         const c = this.#sockets.get(id);
         if (c) {
+          // The shim's side is closed in both directions once the subject ends it (no half-open
+          // tunnels), so the host side is ended and then fully closed. If the host-side connect
+          // has not completed yet, it is closed as soon as it does (M17).
           this.#sockets.delete(id);
-          c.socket?.end();
+          c.ended = true;
+          if (c.socket) closeAfterFlush(c.socket);
         }
         break;
       }
@@ -414,11 +435,7 @@ export class ContainedSubject {
       this.#write({ t: 'end', id });
       return;
     }
-    const entry: { socket: Socket | null; pending: Buffer[]; purpose: string } = {
-      socket: null,
-      pending: [],
-      purpose: target.purpose,
-    };
+    const entry: TunnelEntry = { socket: null, pending: [], purpose: target.purpose, ended: false };
     this.#sockets.set(id, entry);
     const refuse = () => {
       const s = this.stats[target.purpose];
@@ -452,18 +469,18 @@ export class ContainedSubject {
     });
   }
 
-  #connect(
-    id: number,
-    entry: { socket: Socket | null; pending: Buffer[]; purpose: string },
-    hostPort: number,
-  ): void {
+  #connect(id: number, entry: TunnelEntry, hostPort: number): void {
     const stats = this.stats[entry.purpose] as TunnelStats;
     stats.connections++;
     const socket = connect({ host: '127.0.0.1', port: hostPort }, () => {
       entry.socket = socket;
       for (const b of entry.pending) socket.write(b);
       entry.pending = [];
+      if (entry.ended) closeAfterFlush(socket);
     });
+    this.#hostSockets.add(socket);
+    socket.once('close', () => this.#hostSockets.delete(socket));
+    if (!this.running) socket.destroy();
     socket.on('data', (chunk: Buffer) => {
       stats.bytesIn += chunk.length;
       this.#write({ t: 'data', id, b: chunk.toString('base64') });

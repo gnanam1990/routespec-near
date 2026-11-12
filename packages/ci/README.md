@@ -61,6 +61,13 @@ screenshot, "verified", or "blocking" key is refused with `RS_ENFORCEMENT_CLAIM_
 | LOCAL, TRUSTED                | withheld         | staged after scanning         | yes                       | `ELIGIBLE_NOT_RUN` |
 | PULL_REQUEST, FORK, UNTRUSTED | withheld         | refused (`UNTRUSTED_CONTEXT`) | no                        | refused (exit 6)   |
 
+"Withheld" means the composite action's step shell removes provider secrets and CI credentials
+before the entry point starts, so they are in no environment block of the action process (not
+even `/proc/<pid>/environ`), and passes the values to it over a pipe for the upload leak scan
+only (ADR-0022). The client module runs inside the action process, so withholding cannot contain
+hostile client code; do not expose provider secrets to the gate step. Running `routespec-ci run`
+directly, without the action's step script, removes them from `process.env` only.
+
 Every job keeps its decision and its `CI_CHECK` / `REQUIRED_CHECK_UNVERIFIED` label, always with
 `enforcement-verified=false` and `blocking=false`. CI attestation is `UNAVAILABLE`
 (`HOSTED_ISSUER_CANNOT_BIND_NONCE`); builds stay `USER_ASSERTED_LOCAL`.

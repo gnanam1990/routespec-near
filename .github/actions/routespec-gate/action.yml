@@ -5,7 +5,8 @@
 # - every third-party action is pinned to a full commit SHA;
 # - inputs reach the shell only through environment variables, never through an expression
 #   inside a script;
-# - the entry point withholds provider secrets and CI runtime tokens from everything it starts;
+# - provider secrets and CI runtime tokens are removed before the entry point starts, so neither
+#   it nor anything it starts or loads has them in an environment block;
 # - enforcement is CI_CHECK or REQUIRED_CHECK_UNVERIFIED, always unverified and never blocking;
 # - the step exits 0 only for a PASS decision.
 name: RouteSpec gate
@@ -64,4 +65,13 @@ runs:
       env:
         ROUTESPEC_ACTION_ROOT: ${{ github.action_path }}/../../..
         ROUTESPEC_CI_CONFIG: ${{ inputs.config }}
-      run: node --no-warnings "$ROUTESPEC_ACTION_ROOT/packages/ci/bin/routespec-ci.mjs" run --config "$ROUTESPEC_CI_CONFIG"
+      # Withheld credentials must not reach the action process's environment block at all: deleting
+      # them inside Node leaves them readable through /proc/<pid>/environ on Linux. The shell drops
+      # their export flag, replaces itself with Node (exec, so no process keeps the original block),
+      # and hands the values over a pipe for the in-memory leak scan only.
+      run: |
+        withheld="$(node --no-warnings "$ROUTESPEC_ACTION_ROOT/packages/ci/bin/withheld-names.mjs")"
+        for name in $withheld; do export -n "$name"; done
+        export ROUTESPEC_CI_WITHHELD_FD=3
+        exec node --no-warnings "$ROUTESPEC_ACTION_ROOT/packages/ci/bin/routespec-ci.mjs" run --config "$ROUTESPEC_CI_CONFIG" \
+          3< <(for name in $withheld; do printf '%s=%s\0' "$name" "${!name}"; done)

@@ -141,7 +141,12 @@ describe('M14 contained delivery from a clean clone', () => {
     expect(install?.cleanTreeAfterBuild).toBe(true);
     expect(install?.authorPathHits).toEqual([]);
     expect(containmentSuite?.exitCode).toBe(0);
-    expect(containmentSuite?.stdoutTail).toMatch(/Tests\s+11 passed \(11\)/);
+    // Every runtime test ran and passed (M14: 11; M17 adds T-036 container-host access and the
+    // tunnel teardown test): none failed and none was skipped as NOT_RUN.
+    const totals = /Tests\s+(\d+) passed \((\d+)\)/.exec(containmentSuite?.stdoutTail ?? '');
+    expect(totals, 'containment suite totals').not.toBeNull();
+    expect(totals?.[1]).toBe(totals?.[2]);
+    expect(Number(totals?.[1])).toBeGreaterThanOrEqual(17);
   });
 
   it('RP-01: trust-rooted identity - every build registration attested by the enrolled launcher', (ctx) => {

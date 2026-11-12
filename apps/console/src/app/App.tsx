@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router';
 import type { ControlClient } from '../api/client.ts';
 import { ConsoleProvider } from './context.tsx';
 import { Shell } from './Shell.tsx';
@@ -33,7 +33,7 @@ export const ROUTES = [
 export function App({ client }: { client: ControlClient }) {
   return (
     <ConsoleProvider client={client}>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <BrowserRouter>
         <Shell>
           <Routes>
             <Route path="/" element={<ProjectsPage />} />

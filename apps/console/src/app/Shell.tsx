@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { NavLink, matchPath, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, matchPath, useLocation, useNavigate } from 'react-router';
 import { Icon, type IconName } from '../components/Icon.tsx';
 import { useConsole, useResource } from './context.tsx';
 import type { Page, Project } from '../api/schemas.ts';

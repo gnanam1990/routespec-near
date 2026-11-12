@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router';
 import { useConsole, useResource } from '../app/context.tsx';
 import { usePageTitle } from '../app/usePageTitle.ts';
 import type { FieldError } from '../api/errors.ts';

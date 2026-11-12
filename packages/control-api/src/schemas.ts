@@ -6,7 +6,7 @@
  * submitted value.
  */
 import { z } from 'zod';
-import { RouteSpecError, type SafeDetails } from '@routespec/contracts';
+import { RouteSpecError, stableIssueCode, type SafeDetails } from '@routespec/contracts';
 
 const digest = z.string().regex(/^sha256:[0-9a-f]{64}$/, 'expected a sha256 digest');
 const uuid = z
@@ -207,7 +207,7 @@ export const launcherPolicy = z
 export const oidcPolicy = z
   .object({
     kind: z.literal('CI_OIDC'),
-    issuer: z.string().url().max(256).startsWith('https://'),
+    issuer: z.url().max(256).startsWith('https://'),
     signingKeys: z
       .array(z.object({ kid: shortId, jwk: ecJwk, notBeforeMs: ms, notAfterMs: ms }).strict())
       .min(1)
@@ -442,7 +442,7 @@ export function parseBody<S extends z.ZodTypeAny>(schema: S, value: unknown): z.
   if (r.success) return r.data as z.infer<S>;
   const fields = r.error.issues.slice(0, 32).map((i) => ({
     field: i.path.length === 0 ? '$' : i.path.map(String).join('.').slice(0, 120),
-    code: i.code === 'unrecognized_keys' ? 'UNKNOWN_FIELD' : i.code.toUpperCase(),
+    code: i.code === 'unrecognized_keys' ? 'UNKNOWN_FIELD' : stableIssueCode(i).toUpperCase(),
     message: i.code === 'unrecognized_keys' ? 'Unknown field.' : 'Invalid value.',
   }));
   const unknown = r.error.issues

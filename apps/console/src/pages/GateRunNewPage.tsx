@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useMutation } from '../app/context.tsx';
 import { usePageTitle } from '../app/usePageTitle.ts';
 import type { FieldError } from '../api/errors.ts';

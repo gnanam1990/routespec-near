@@ -19,7 +19,7 @@
     "@routespec/contracts": "workspace:*",
     "@routespec/regressions": "workspace:*",
     "@routespec/runner": "workspace:*",
-    "zod": "3.25.76"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@routespec/proxy": "workspace:*",

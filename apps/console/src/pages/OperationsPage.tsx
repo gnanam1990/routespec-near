@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 import { usePageTitle } from '../app/usePageTitle.ts';
 import type { FieldError } from '../api/errors.ts';
 import { ErrorSummary, Field, Notice, PageHeader } from '../components/ui.tsx';

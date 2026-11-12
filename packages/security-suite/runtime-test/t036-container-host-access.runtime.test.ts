@@ -68,7 +68,22 @@ const ROOT = fileURLToPath(new URL('../../..', import.meta.url));
 const PROBE = fileURLToPath(new URL('./support/host-reach-probe.mjs', import.meta.url));
 const CONSOLE_DIR = join(ROOT, 'apps', 'console', 'dist');
 const CONSOLE_BUILT = existsSync(join(CONSOLE_DIR, 'index.html'));
-const PORT_RANGE = Array.from({ length: 50 }, (_, i) => 9350 + i);
+/**
+ * Host ports for this suite: a 50-port window starting at ROUTESPEC_TEST_PORT_BASE (default 9350),
+ * so parallel runs on one machine can be given disjoint ranges.
+ */
+function portBase(): number {
+  const raw = process.env['ROUTESPEC_TEST_PORT_BASE'];
+  if (raw === undefined || raw === '') return 9350;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1024 || n > 65535 - 50) {
+    throw new Error(`ROUTESPEC_TEST_PORT_BASE must be an integer in 1024-65485, got ${raw}`);
+  }
+  return n;
+}
+const PORT_BASE = portBase();
+const PORT_LAST = PORT_BASE + 49;
+const PORT_RANGE = Array.from({ length: 50 }, (_, i) => PORT_BASE + i);
 /** Results that show there is no path at all (not a refusal by something that is reachable). */
 const NO_ROUTE = new Set(['ENETUNREACH', 'EHOSTUNREACH', 'EADDRNOTAVAIL', 'EAI_AGAIN', 'ENOTFOUND']);
 
@@ -110,7 +125,7 @@ async function startInRange<T>(start: (port: number) => Promise<T>): Promise<T> 
       if ((error as NodeJS.ErrnoException).code !== 'EADDRINUSE') throw error;
     }
   }
-  throw new Error('no free port in 9350-9399');
+  throw new Error(`no free port in ${PORT_BASE}-${PORT_LAST}`);
 }
 
 function tryConnect(host: string, port: number): Promise<string> {
@@ -398,7 +413,7 @@ describe('T-036 — container-host access to RouteSpec listeners (real engine)',
   it('every listener is up on its loopback address on this host (sanity)', async (ctx) => {
     needRuntime(ctx);
     for (const l of listeners) expect(await tryConnect(l.loopback, l.port), l.label).toBe('CONNECTED');
-    for (const p of usedPorts) if (p >= 9350 && p <= 9399) expect(PORT_RANGE).toContain(p);
+    for (const p of usedPorts) if (p >= PORT_BASE && p <= PORT_LAST) expect(PORT_RANGE).toContain(p);
     expect(PORT_RANGE).toContain(control4?.port);
     expect(PORT_RANGE).toContain(control6?.port);
     expect(PORT_RANGE).toContain(proxy?.port);

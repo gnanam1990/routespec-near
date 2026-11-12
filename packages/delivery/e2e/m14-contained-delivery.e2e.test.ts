@@ -67,6 +67,16 @@ const allCases = () => [
 const inv = (c: Case, id: string) => c.invariants.find((i) => i.invariantId === id);
 const record = (c: Case) => ((c.containment?.['records'] ?? []) as J[])[0] ?? {};
 
+/**
+ * With ROUTESPEC_DELIVERY_PORT set, the uncontained journey uses that port and the contained
+ * journey the next one, so the two never rebind a port the other just released.
+ */
+function containedJourneyPort(): Record<string, string> {
+  const port = process.env['ROUTESPEC_DELIVERY_PORT'];
+  if (port === undefined || !/^\d{4,5}$/.test(port)) return {};
+  return { ROUTESPEC_DELIVERY_PORT: String(Number(port) + 1) };
+}
+
 beforeAll(async () => {
   runtime = await detectContainerRuntime();
   if (runtime.status !== 'AVAILABLE') return;
@@ -74,7 +84,13 @@ beforeAll(async () => {
   const clone = join(tmp, 'install');
   const work = join(tmp, 'work');
   install = await cleanInstall({ source: SOURCE, commit: COMMIT, dir: clone, authorPaths: [SOURCE] });
-  const env = offlineEnv({ ROUTESPEC_CONTAINER_CLI: JSON.stringify(runtime.cli.argv) });
+  // The runtime suites bind a fixed host port window; a configured base is carried into the
+  // clean clone (offlineEnv strips every other ROUTESPEC_ variable).
+  const portBase = process.env['ROUTESPEC_TEST_PORT_BASE'];
+  const env = offlineEnv({
+    ROUTESPEC_CONTAINER_CLI: JSON.stringify(runtime.cli.argv),
+    ...(portBase !== undefined && /^\d{4,5}$/.test(portBase) ? { ROUTESPEC_TEST_PORT_BASE: portBase } : {}),
+  });
   containmentSuite = await run('pnpm', ['run', 'test:containment'], {
     cwd: clone,
     env,
@@ -95,7 +111,7 @@ beforeAll(async () => {
       COMMIT,
       '--contained',
     ],
-    { cwd: clone, env, timeoutMs: 15 * 60_000 },
+    { cwd: clone, env: { ...env, ...containedJourneyPort() }, timeoutMs: 15 * 60_000 },
   );
   if (journeyRun.exitCode !== 0) throw new Error(`contained journey failed: ${journeyRun.stderrTail}`);
   journey = JSON.parse(readFileSync(out, 'utf8')) as J;

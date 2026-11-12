@@ -96,7 +96,12 @@ beforeAll(async () => {
   clone = join(tmp, 'install');
   work = join(tmp, 'work');
   install = await cleanInstall({ source: SOURCE, commit: COMMIT, dir: clone, authorPaths: [SOURCE] });
-  const env = offlineEnv();
+  // A configured control-service port (ROUTESPEC_DELIVERY_PORT) is carried into the clean
+  // clone; offlineEnv strips every other ROUTESPEC_ variable. Without it the port is OS-assigned.
+  const port = process.env['ROUTESPEC_DELIVERY_PORT'];
+  const env = offlineEnv(
+    port !== undefined && /^\d{4,5}$/.test(port) ? { ROUTESPEC_DELIVERY_PORT: port } : {},
+  );
 
   const out = join(tmp, 'journey.json');
   journeyRun = await run(

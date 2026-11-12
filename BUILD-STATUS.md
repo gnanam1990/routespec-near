@@ -102,8 +102,8 @@ corrected decision was identical before and after export, and after a crash and 
 | Typecheck, lint, format, unit/integration, secret scan      | `pnpm run check`            | 74 files / 602 tests (601 passed, 1 skipped), secret scan clean |
 | Container runtime tests (escape attempts, contained cases)  | `pnpm run test:containment` | 2 files / 11 passed (NOT_RUN with reason when no engine)        |
 | Clean-clone delivery (T-054, T-055, M14 contained journey)  | `pnpm run test:delivery`    | 2 files / 20 passed (M12 14, M14 6)                             |
-| Console against the real control service (Playwright + axe) | `pnpm run test:e2e:real`    | see `docs/status/M14.md` "Final verification"                   |
-| Console fixture suite (simulated, development only)         | `pnpm run test:e2e`         | see `docs/status/M14.md` "Final verification"                   |
+| Console against the real control service (Playwright + axe) | `pnpm run test:e2e:real`    | 59 passed                                                       |
+| Console fixture suite (simulated, development only)         | `pnpm run test:e2e`         | 25 passed (M14 run)                                             |
 
 ## External action ledger
 

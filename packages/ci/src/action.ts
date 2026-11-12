@@ -79,6 +79,8 @@ export interface ActionOptions {
   readonly workDirectory: string;
   /** The runner environment. Credentials are removed from it in place. */
   readonly env: Record<string, string | undefined>;
+  /** Credentials the step shell removed before starting this process (values for the leak scan). */
+  readonly launcherWithheld?: Readonly<Record<string, string>>;
   /** Caller-supplied flags (from the action inputs); enforcement claims are refused. */
   readonly flags?: Readonly<Record<string, string | boolean>>;
   readonly stderr: (line: string) => void;
@@ -138,7 +140,7 @@ function str(v: unknown): string {
 
 export async function runAction(options: ActionOptions): Promise<ActionResult> {
   // 1. Credentials leave the environment before any configuration or client code is read.
-  const withheld = withholdSecrets(options.env);
+  const withheld = withholdSecrets(options.env, options.launcherWithheld);
   const childEnv = childEnvironment(options.env);
   const findings: string[] = [];
   let ctx = readCiContext(options.env);

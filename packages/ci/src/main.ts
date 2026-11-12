@@ -8,7 +8,7 @@
  * RouteSpec exit code (0 only for a PASS decision) and appends step outputs and a job summary
  * when the runner provides `GITHUB_OUTPUT` / `GITHUB_STEP_SUMMARY`.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { closeSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -17,12 +17,15 @@ import { errorResult } from '@routespec/cli';
 import { runAction } from './action.ts';
 import { writeGithubFiles } from './outputs.ts';
 import { buildSbom } from './sbom.ts';
+import { parseLauncherWithheld } from './secrets.ts';
 
 export interface CiIo {
   readonly stdout: (text: string) => void;
   readonly stderr: (line: string) => void;
   readonly env: Record<string, string | undefined>;
   readonly cwd: string;
+  /** Reads the credentials the step shell withheld before starting this process, if any. */
+  readonly launcherWithheld?: () => Record<string, string>;
 }
 
 function parseFlags(argv: readonly string[]): Record<string, string | boolean> {
@@ -62,7 +65,9 @@ export async function runCi(argv: readonly string[], io: CiIo): Promise<number> 
       const workDirectory = resolve(
         flagString(flags, 'work-dir') ?? join(io.env['RUNNER_TEMP'] ?? tmpdir(), 'routespec-ci'),
       );
+      const launcherWithheld = io.launcherWithheld?.() ?? {};
       const result = await runAction({
+        launcherWithheld,
         workspace,
         configPath: config,
         workDirectory,
@@ -101,12 +106,46 @@ export async function runCi(argv: readonly string[], io: CiIo): Promise<number> 
   }
 }
 
+/**
+ * The composite action's step shell removes withheld credentials from the environment before it
+ * starts this process and writes them to the pipe named by `ROUTESPEC_CI_WITHHELD_FD` (see
+ * `parseLauncherWithheld`). The pipe is read to its end and closed before anything else runs.
+ */
+function launcherWithheldReader(
+  env: Record<string, string | undefined>,
+): (() => Record<string, string>) | undefined {
+  const fd = env['ROUTESPEC_CI_WITHHELD_FD'];
+  if (fd === undefined) return undefined;
+  delete env['ROUTESPEC_CI_WITHHELD_FD'];
+  return () => {
+    if (!/^[3-9]$/.test(fd)) {
+      throw new RouteSpecError('RS_INTERNAL', 'The withheld-credentials handoff is malformed.');
+    }
+    const n = Number(fd);
+    let bytes: Buffer;
+    try {
+      bytes = readFileSync(n);
+    } catch {
+      throw new RouteSpecError('RS_INTERNAL', 'The withheld-credentials handoff could not be read.');
+    } finally {
+      try {
+        closeSync(n);
+      } catch {
+        // Already closed.
+      }
+    }
+    return parseLauncherWithheld(bytes);
+  };
+}
+
 export async function runCiMain(): Promise<void> {
+  const reader = launcherWithheldReader(process.env);
   const code = await runCi(process.argv.slice(2), {
     stdout: (t) => process.stdout.write(t),
     stderr: (line) => process.stderr.write(`${line}\n`),
     env: process.env,
     cwd: process.cwd(),
+    ...(reader ? { launcherWithheld: reader } : {}),
   });
   process.exitCode = code;
 }

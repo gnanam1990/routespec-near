@@ -1,6 +1,6 @@
 # SEC vuln-0003 — Auth-failure budget locked out the operator: status evidence
 
-- Source: external automated scan, finding vuln-0003 (LOW, CWE-770, availability only). Verified
+- Source: Strix 1.7.0 automated pentest scan, self-run, finding vuln-0003 (LOW, CWE-770, availability only). Verified
   independently on the real control server before any change.
 - State: **FIXED** on `feat/routespec-m22-auth-failure-budget-dos` (base `f20917f`, `main`
   merged in before the final runs).

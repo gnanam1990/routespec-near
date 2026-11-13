@@ -1,6 +1,6 @@
 # SEC RS-05 — Journal data directory and journal.db readable by other local users: status evidence
 
-- Source: external security audit, finding RS-05 (LOW, confidentiality, multi-user POSIX hosts
+- Source: self-run audit, Cloudflare security-audit skill methodology, finding RS-05 (LOW, confidentiality, multi-user POSIX hosts
   only). Re-confirmed with a failing test on the real code before any change.
 - State: **FIXED** on `feat/routespec-m27-data-dir-permissions` (base `c588307`, `main` merged in
   before the final runs).

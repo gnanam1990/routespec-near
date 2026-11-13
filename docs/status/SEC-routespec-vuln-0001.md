@@ -1,10 +1,11 @@
 # SEC vuln-0001 — Withheld CI credentials readable through /proc environ: status evidence
 
-- Source: external automated scan, finding vuln-0001 (MEDIUM, CWE-526). Verified independently on
+- Source: Strix 1.7.0 automated pentest scan, self-run, finding vuln-0001 (MEDIUM, CWE-526). Verified independently on
   the real modules and on the shipped gate step before any change.
 - State: **FIXED** on `feat/routespec-m20-proc-environ-withholding` (base `f20917f`, merged with
   `main` at `cc0fdd5` before the final runs).
-- Decision record: ADR-0022 (amends ADR-0015 decision 5).
+- Decision record: ADR-0025 (amends ADR-0015 decision 5; numbered 0022 until 2026-11-13, when the
+  duplicate number was resolved).
 
 ## Finding (verified)
 
@@ -62,7 +63,7 @@ input), and the merge in `withholdSecrets`.
 Delivery, containment and browser e2e suites were not rerun: no route, console, container or
 delivery code changed, and none of them invoke the gate action or `routespec-ci`.
 
-## Not done (recorded in ADR-0022)
+## Not done (recorded in ADR-0025)
 
 - Code loaded into the action process (the client module) can still read the values from the
   process's own memory, where they stay for the leak scan; this cannot be closed in-process.

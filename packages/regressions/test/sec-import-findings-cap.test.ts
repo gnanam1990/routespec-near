@@ -1,8 +1,9 @@
 /**
- * Security regression (external security audit, RS-04): the quarantine finding set is bounded,
- * but the bound must never drop a blocking or rejecting finding. A user trace whose notes fill
- * the set with advisory active-content findings before the step-7 determinism, reference and
- * material checks run must still carry those blocking findings, keep a non-zero blocking count,
+ * Security regression (self-run audit, Cloudflare security-audit skill methodology, RS-04): the
+ * quarantine finding set is bounded, but the bound must never drop a blocking or rejecting
+ * finding. A user trace whose notes fill the set with advisory active-content findings before the
+ * step-7 determinism, reference and material checks run must still carry those blocking
+ * findings, keep a non-zero blocking count,
  * and be refused at mapping (FR-11, FR-17; quarantine.ts step 7 blocks mapping and promotion).
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';

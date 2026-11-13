@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-11-12
-- Module: security follow-up (external security audit, RS-02; amends ADR-0019 decision on the
+- Module: security follow-up (self-run audit, Cloudflare security-audit skill methodology, RS-02; amends ADR-0019 decision on the
   shim channel; T-010, RP-06)
 
 ## Context

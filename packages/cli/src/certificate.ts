@@ -31,8 +31,10 @@ import {
   isProjectKey,
   isPublicKeyText,
   isRegistryAccountId,
+  isSmallOrderPublicKey,
   NEAR_NETWORKS,
   NearRpc,
+  parsePublicKey,
   publicKeyText,
   RegistryClient,
   signCertificate,
@@ -207,6 +209,9 @@ function attesterFlags(args: ParsedArgs): string[] {
   const keys = [...(args.multi['attester'] ?? [])];
   for (const k of keys) {
     if (!isPublicKeyText(k)) usage('Attester keys are written ed25519:<base58>.', { flag: 'attester' });
+    if (isSmallOrderPublicKey(parsePublicKey(k))) {
+      usage('That attester key is a small-order point; anyone can sign for it.', { flag: 'attester' });
+    }
   }
   return [...new Set(keys)];
 }

@@ -223,10 +223,14 @@ impl Registry {
     }
 
     /// Owner only: enrol an Ed25519 attester key. A key is enrolled at most once; a revoked key
-    /// can never be enrolled again.
+    /// can never be enrolled again. A small-order key, for which anyone could make a valid
+    /// signature, is refused.
     pub fn enrol_attester(&mut self, public_key: PublicKey, label: String) {
         self.require_owner();
         let key = ed25519_bytes(&public_key);
+        if cert::is_small_order_key(&key) {
+            fail("RSREG_KEY_WEAK");
+        }
         if !cert::is_plain_text(&label, cert::MAX_LABEL_LEN) {
             fail("RSREG_FIELD_INVALID:label");
         }

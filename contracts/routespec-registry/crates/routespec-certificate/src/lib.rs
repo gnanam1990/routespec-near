@@ -180,6 +180,42 @@ pub fn is_plain_text(s: &str, max: usize) -> bool {
     !s.is_empty() && s.len() <= max && s.bytes().all(|b| (0x20..=0x7e).contains(&b))
 }
 
+/// The seven encodings of the eight Ed25519 points of small order, compared without the sign bit
+/// (the list libsodium blocks). They include the non-canonical encodings `p` and `p + 1`.
+const SMALL_ORDER_ENCODINGS: [[u8; 32]; 7] = [
+    [0; 32],
+    [
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ],
+    [
+        0x26, 0xe8, 0x95, 0x8f, 0xc2, 0xb2, 0x27, 0xb0, 0x45, 0xc3, 0xf4, 0x89, 0xf2, 0xef, 0x98, 0xf0, 0xd5, 0xdf,
+        0xac, 0x05, 0xd3, 0xc6, 0x33, 0x39, 0xb1, 0x38, 0x02, 0x88, 0x6d, 0x53, 0xfc, 0x05,
+    ],
+    [
+        0xc7, 0x17, 0x6a, 0x70, 0x3d, 0x4d, 0xd8, 0x4f, 0xba, 0x3c, 0x0b, 0x76, 0x0d, 0x10, 0x67, 0x0f, 0x2a, 0x20,
+        0x53, 0xfa, 0x2c, 0x39, 0xcc, 0xc6, 0x4e, 0xc7, 0xfd, 0x77, 0x92, 0xac, 0x03, 0x7a,
+    ],
+    small_order_high(0xec),
+    small_order_high(0xed),
+    small_order_high(0xee),
+];
+
+const fn small_order_high(first: u8) -> [u8; 32] {
+    let mut out = [0xff; 32];
+    out[0] = first;
+    out[31] = 0x7f;
+    out
+}
+
+/// Whether 32 Ed25519 public-key bytes encode a point of small order. Such a key has no secret:
+/// with cofactorless verification (NEAR's `ed25519_verify`, OpenSSL) a signature made of a
+/// small-order `R` and `s = 0` verifies for any message, so anyone could sign for it.
+pub fn is_small_order_key(key: &[u8; 32]) -> bool {
+    SMALL_ORDER_ENCODINGS
+        .iter()
+        .any(|bad| key[..31] == bad[..31] && (key[31] & 0x7f) == bad[31])
+}
+
 fn nibble(c: u8) -> Option<u8> {
     match c {
         b'0'..=b'9' => Some(c - b'0'),

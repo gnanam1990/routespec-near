@@ -389,20 +389,25 @@ flowchart LR
     SDK["official 1Click SDK 0.1.26"] --- AD["RouteSpec adapter"]
   end
   subgraph RS["RouteSpec (loopback only)"]
-    API["control API + console\n(M08, M09)"]
-    RUN["gate service, reports, bundles\n(M06)"]
-    PX["networkless proxy + case supervisor\n(M02)"]
-    SC["scenario runtime, virtual clock\n(M03)"]
-    J[("SQLite journal\n(M01)")]
-    K["invariant kernel\n(M04)"]
-    RG["capture -> regression\n(M05)"]
+    API["control API and console<br/>M08, M09"]
+    RUN["gate service, reports, bundles<br/>M06"]
+    PX["networkless proxy and case supervisor<br/>M02"]
+    SC["scenario runtime, virtual clock<br/>M03"]
+    J[("SQLite journal<br/>M01")]
+    K["invariant kernel<br/>M04"]
+    RG["capture to regression<br/>M05"]
   end
-  CLI["routespec CLI / CI action\n(M06, M10)"] --> RUN
-  AD -- "HTTP to 127.0.0.1, case token" --> PX
-  API --> RUN --> PX --> SC
-  PX --> J --> K --> RUN
-  J --> RG --> RUN
-  LD["live-dry adapter (own process, dry:true only)\n(M07)"] -. "explicit user action" .-> OFF["official endpoint"]
+  CLI["routespec CLI and CI action<br/>M06, M10"] --> RUN
+  AD -->|"HTTP to 127.0.0.1, case token"| PX
+  API --> RUN
+  RUN --> PX
+  PX --> SC
+  PX --> J
+  J --> K
+  K --> RUN
+  J --> RG
+  RG --> RUN
+  LD["live-dry adapter, own process, dry:true only<br/>M07"] -.->|"explicit user action"| OFF["official endpoint"]
 ```
 
 The scenario runtime never has a network path or a provider credential. The live-dry adapter is

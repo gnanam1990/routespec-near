@@ -58,9 +58,40 @@ function publicKeyObject(publicKey: Uint8Array): KeyObject {
   });
 }
 
-/** Ed25519 verification that never throws: malformed keys or signatures are simply invalid. */
+/**
+ * The seven encodings of the eight Ed25519 points of small order, compared without the sign bit
+ * (the list libsodium blocks; the Rust twin is `is_small_order_key` in `routespec-certificate`).
+ */
+const SMALL_ORDER_ENCODINGS: readonly Buffer[] = [
+  '0000000000000000000000000000000000000000000000000000000000000000',
+  '0100000000000000000000000000000000000000000000000000000000000000',
+  '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05',
+  'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a',
+  'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+  'edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+  'eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+].map((hex) => Buffer.from(hex, 'hex'));
+
+/**
+ * Whether 32 public-key bytes encode an Ed25519 point of small order. Such a key has no secret:
+ * a signature made of a small-order R and s = 0 verifies for any message under cofactorless
+ * verification (Node's and NEAR's), so anyone could sign for it.
+ */
+export function isSmallOrderPublicKey(publicKey: Uint8Array): boolean {
+  if (publicKey.length !== 32) return false;
+  const key = Buffer.from(publicKey);
+  return SMALL_ORDER_ENCODINGS.some(
+    (bad) => key.subarray(0, 31).equals(bad.subarray(0, 31)) && ((key[31] as number) & 0x7f) === bad[31],
+  );
+}
+
+/**
+ * Ed25519 verification that never throws: malformed keys or signatures are simply invalid, and
+ * so is every signature for a small-order key.
+ */
 export function verifyEd25519(publicKey: Uint8Array, message: Uint8Array, signature: Uint8Array): boolean {
   if (publicKey.length !== 32 || signature.length !== 64) return false;
+  if (isSmallOrderPublicKey(publicKey)) return false;
   try {
     return verify(null, message, publicKeyObject(publicKey), signature);
   } catch {

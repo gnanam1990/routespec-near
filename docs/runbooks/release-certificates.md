@@ -178,6 +178,7 @@ workflow.
 | `RSREG_ALREADY_PUBLISHED`             | this attester already has a certificate for this bundle                                     |
 | `RSREG_TIMESTAMP_STALE` / `_FUTURE`   | the envelope is older than thirty days, or the signing clock is more than ten minutes ahead |
 | `RSREG_NOT_OWNER`                     | enrol and revoke must be signed by the owner account                                        |
+| `RSREG_KEY_WEAK`                      | the key is a small-order Ed25519 point that anyone can sign for; it can never be enrolled   |
 | `RS_CAPTURE_NOT_RELEASE_EVIDENCE`     | the bundle is diagnostic only (for example from an uncontained journey)                     |
 | `RS_BUNDLE_VERIFY_FAILED`             | the bundle file does not verify; nothing was signed or looked up                            |
 | `RS_REGISTRY_UNAVAILABLE`             | the RPC endpoint did not answer usably; this is never reported as a verdict                 |

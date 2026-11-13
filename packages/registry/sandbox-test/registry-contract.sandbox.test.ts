@@ -1,5 +1,5 @@
 /**
- * M47 — the routespec-registry contract on a real local NEAR node (near-sandbox).
+ * M47 â€” the routespec-registry contract on a real local NEAR node (near-sandbox).
  *
  * The wasm under test is deployed to a fresh account and driven through real signed
  * transactions and view calls. Covered: initialisation, owner-only enrolment and revocation,
@@ -552,5 +552,45 @@ describe('revocation', () => {
     expect(pinnedRevoked.acceptedCertificateIds).toEqual([]);
     // The second attester's certificate for the same bundle still stands.
     expect(aggregateRelease({ ...base, trustedAttesters: [] }).acceptedCertificateIds).toEqual([1]);
+  });
+});
+
+describe('small-order attester keys', () => {
+  it('cannot be enrolled, so nobody can forge a certificate for one', async (ctx) => {
+    need(ctx);
+    const fresh: SandboxAccount = { accountId: `weak-${suffix}.test.near`, signer: generateSigner() };
+    await createAccount(rpc, sandboxRoot(sandbox as { rootSecret: string }), fresh);
+    await deployRegistry(rpc, fresh, wasm, owner.accountId);
+    const weakRegistry = new RegistryClient(rpc, fresh.accountId);
+
+    // The identity point as a public key: R = identity and s = 0 verify for every payload.
+    const identity = new Uint8Array(32);
+    identity[0] = 1;
+    const weak = publicKeyText(identity);
+    expect.soft(await refusal(weakRegistry.enrolAttester(weak, 'weak key', owner))).toBe('RSREG_KEY_WEAK');
+
+    const f = fields({ registry: fresh.accountId, bundleDigest: digest('forged-bundle') });
+    const forged: SignedCertificate = {
+      ...signCertificate(f, attesterA),
+      attester: weak,
+      signature: Buffer.concat([Buffer.from(identity), Buffer.alloc(32)]).toString('base64'),
+    };
+    // A stranger with no key at all submits it.
+    expect.soft(await refusal(weakRegistry.publish(forged, stranger))).toBe('RSREG_ATTESTER_UNKNOWN');
+    expect.soft((await weakRegistry.info()).certificates).toBe(0);
+
+    // Every other small-order encoding is refused as well.
+    for (const hex of [
+      '0000000000000000000000000000000000000000000000000000000000000000',
+      '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05',
+      'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a',
+      'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+      'edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+      'eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+    ]) {
+      const k = publicKeyText(new Uint8Array(Buffer.from(hex, 'hex')));
+      expect.soft(await refusal(weakRegistry.enrolAttester(k, 'weak key', owner))).toBe('RSREG_KEY_WEAK');
+    }
+    expect((await weakRegistry.info()).attesters).toBe(0);
   });
 });

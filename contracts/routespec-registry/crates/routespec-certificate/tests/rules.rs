@@ -94,3 +94,35 @@ fn labels_and_reasons_are_plain_text() {
     assert!(!is_plain_text(&"x".repeat(MAX_LABEL_LEN + 1), MAX_LABEL_LEN));
     assert!(!is_plain_text("caf\u{e9}", MAX_LABEL_LEN));
 }
+
+fn hex32(s: &str) -> [u8; 32] {
+    let mut out = [0u8; 32];
+    for (i, slot) in out.iter_mut().enumerate() {
+        *slot = u8::from_str_radix(&s[2 * i..2 * i + 2], 16).unwrap();
+    }
+    out
+}
+
+#[test]
+fn small_order_keys_are_recognised_in_every_encoding() {
+    let listed = [
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "0100000000000000000000000000000000000000000000000000000000000000",
+        "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+        "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
+        "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+        "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+        "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+    ];
+    for hex in listed {
+        let mut key = hex32(hex);
+        assert!(is_small_order_key(&key), "{hex}");
+        key[31] ^= 0x80;
+        assert!(is_small_order_key(&key), "{hex} with the sign bit flipped");
+    }
+    // A real key (RFC 8032 test 1) and a nearby value are not.
+    let mut ordinary = hex32("d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a");
+    assert!(!is_small_order_key(&ordinary));
+    ordinary[0] = 2;
+    assert!(!is_small_order_key(&ordinary));
+}

@@ -270,9 +270,9 @@ State: **PARTIAL**. `routespec certificate keygen|publish|verify|revoke-check`, 
 require a trusted on-chain attester, and the CI certificate step are implemented
 (ADR-0029). Evidence in `docs/status/M47.md`: Rust host tests, TypeScript unit tests, and three
 suites against a real local near-sandbox node (`pnpm run test:registry`), including tamper,
-replay, deposit, and revocation cases. Reproducible wasm
-`sha256:ac402706a329d72c6ef98829dde5077d1c5596eb8f127bf99ce7087c407368d7` (NEAR code hash
-`CbPrvc6jbuVNNg2qVmUDSiPhCGNBZetQAmptQZWyCfxr`). **Not deployed**: testnet and mainnet
+replay, deposit, and revocation cases, and the M47A audit fix (`docs/status/M47A.md`). Reproducible wasm
+`sha256:bc6d8b9dcf69e94fb5d4ef74182da92b394a0de4562a4b5e35d2b60a8807b656` (NEAR code hash
+`DgYXio822TH3CGJqfKU8gDFFSSqmxurWAwG1i4Jhqo5P`). **Not deployed**: testnet and mainnet
 deployment, attester enrolment, and the first published certificate are PENDING owner actions
 (`docs/runbooks/release-certificates.md`). The certificate workflow on GitHub-hosted runners and
 the contract audit are NOT*RUN. Gate evaluation is unchanged and stays networkless; no

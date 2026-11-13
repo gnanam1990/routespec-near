@@ -19,11 +19,15 @@ store, the gate, or any verdict.
 1. **One npm package, `routespec`, compiled and self-contained.** Node refuses type stripping
    under `node_modules`, so the package ships the JavaScript that `tsc -b` already emits, never
    the sources. `packages/distribution/src/npm-package.ts` stages the runtime closure of
-   `@routespec/cli` and `@routespec/ci` (twelve workspace packages) plus their only third-party
-   runtime dependencies, `zod@4.6.7` and `yaml@2.8.4`, all as `bundleDependencies`. Installing
+   `@routespec/cli` and `@routespec/ci` (thirteen workspace packages after M53) plus their only
+   third-party runtime dependencies, `zod@4.6.7`, `yaml@2.8.4` and `typescript@5.9.3` (the M53
+   fix-pattern finder uses the compiler API), all as `bundleDependencies`. Installing
    the tarball fetches nothing else, so the provenance attestation of the tarball covers every
    file that runs. Bins: `routespec` (the CLI) and `routespec-ci` (the action entry point). The
    workspace packages keep their own names inside the package and stay private on npm.
+   `routespec mcp` (M52) is not packaged: the MCP server needs the official SDK and its dependency
+   tree at run time. The npm bin answers `mcp` with `RS_MCP_NOT_PACKAGED` (exit 4), and the build
+   audit lists that one missing file-URL target explicitly.
 2. **Forked child entry points are rewritten at build time, and checked.** A few modules fork a
    sibling file by URL (`new URL('./main.ts', import.meta.url)`). The build rewrites exactly that
    form to the compiled `.js` sibling and fails if a target is missing, if any relative `.ts`

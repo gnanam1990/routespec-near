@@ -10,8 +10,9 @@ Source, documentation and the full product journey: <https://github.com/gnanam19
 
 ## Requirements
 
-Node.js 22.18 or later. Nothing else: the package bundles its two third-party runtime
-dependencies (`zod`, `yaml`) and fetches nothing at run time.
+Node.js 22.18 or later. Nothing else: the package bundles its three third-party runtime
+dependencies (`zod`, `yaml`, `typescript`) and fetches nothing at run time. `routespec mcp`
+is not in this package (it needs the official SDK at run time); run it from a clone.
 
 ## Commands
 

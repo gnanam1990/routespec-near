@@ -10,7 +10,7 @@
     "node": ">=22.18.0"
   },
   "scripts": {
-    "typecheck": "tsc -b && tsc -p apps/console/tsconfig.json --noEmit && tsc -p apps/verify/tsconfig.json --noEmit && tsc -p packages/security-suite/tsconfig.json --noEmit && tsc -p packages/delivery/tsconfig.json --noEmit && tsc -p packages/distribution/tsconfig.json --noEmit",
+    "typecheck": "tsc -b && tsc -p apps/console/tsconfig.json --noEmit && tsc -p apps/verify/tsconfig.json --noEmit && tsc -p packages/security-suite/tsconfig.json --noEmit && tsc -p packages/delivery/tsconfig.json --noEmit && tsc -p packages/mcp/tsconfig.json --noEmit && tsc -p packages/distribution/tsconfig.json --noEmit",
     "build": "tsc -b",
     "clean": "tsc -b --clean",
     "test": "vitest run",
@@ -38,7 +38,9 @@
     "test:distribution": "vitest run -c vitest.distribution.config.ts",
     "demo:console": "node --no-warnings packages/distribution/src/console-demo/build.ts",
     "demo:record": "node --no-warnings packages/distribution/src/console-demo/record.ts",
-    "judge": "node --no-warnings packages/distribution/src/judge.ts"
+    "judge": "node --no-warnings packages/distribution/src/judge.ts",
+    "mcp": "node --no-warnings packages/cli/bin/routespec.mjs mcp",
+    "demo:agent-session": "node --no-warnings examples/agent-skill/demo/agent-session.ts --out examples/agent-skill/demo/TRANSCRIPT.md && prettier --write examples/agent-skill/demo/TRANSCRIPT.md"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",

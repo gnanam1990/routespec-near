@@ -1,0 +1,31 @@
+{
+  "name": "@routespec/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "RouteSpec MCP server for coding agents (M52): run the gate on a client build, list findings, explain an invariant, show a fix pattern, verify a release certificate.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "routespec-mcp": "./bin/routespec-mcp.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@defuse-protocol/one-click-sdk-typescript": "0.1.26",
+    "@routespec/cli": "workspace:*",
+    "@routespec/client-adapter": "workspace:*",
+    "@routespec/contracts": "workspace:*",
+    "@routespec/kernel": "workspace:*",
+    "@routespec/proxy": "workspace:*",
+    "@routespec/runner": "workspace:*",
+    "@routespec/scenario": "workspace:*",
+    "@routespec/store": "workspace:*"
+  },
+  "devDependencies": {
+    "@routespec/registry": "workspace:*"
+  }
+}

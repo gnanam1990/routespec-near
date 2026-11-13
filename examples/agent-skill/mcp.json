@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "routespec": {
+      "command": "node",
+      "args": ["--no-warnings", "packages/cli/bin/routespec.mjs", "mcp", "--root", "."]
+    }
+  }
+}

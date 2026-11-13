@@ -24,15 +24,25 @@ function tree(files: Record<string, string>): string {
 }
 
 describe('M54 npm package closure and audit', () => {
-  it('ships the CLI and CI entry packages with exactly zod and yaml as third-party code', () => {
+  it('ships the CLI and CI entry packages with exactly typescript, yaml and zod as third-party code', () => {
     const closure = packageClosure();
     const names = closure.internal.map((p) => p.name);
     expect(names).toEqual(expect.arrayContaining(['@routespec/cli', '@routespec/ci', '@routespec/store']));
     // Not runtime dependencies of the shipped commands.
-    for (const absent of ['@routespec/console', '@routespec/delivery', '@routespec/control-api']) {
+    for (const absent of [
+      '@routespec/console',
+      '@routespec/delivery',
+      '@routespec/control-api',
+      '@routespec/mcp',
+    ]) {
       expect(names).not.toContain(absent);
     }
-    expect(closure.external.map((e) => `${e.name}@${e.version}`)).toEqual(['yaml@2.8.4', 'zod@4.6.7']);
+    // typescript: the M53 fix-pattern finder parses SDK usage with the compiler API at run time.
+    expect(closure.external.map((e) => `${e.name}@${e.version}`)).toEqual([
+      'typescript@5.9.3',
+      'yaml@2.8.4',
+      'zod@4.6.7',
+    ]);
   });
 
   it('publishes under an exact version with provenance', () => {

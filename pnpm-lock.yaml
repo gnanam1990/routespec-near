@@ -142,6 +142,9 @@ importers:
       '@routespec/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@routespec/fix-patterns':
+        specifier: workspace:*
+        version: link:../fix-patterns
       '@routespec/hardening':
         specifier: workspace:*
         version: link:../hardening
@@ -274,6 +277,18 @@ importers:
         specifier: workspace:*
         version: link:../scenario
 
+  packages/fix-patterns:
+    dependencies:
+      '@routespec/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@routespec/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
   packages/hardening:
     dependencies:
       '@routespec/contracts':
@@ -332,6 +347,40 @@ importers:
       node-forge:
         specifier: 1.4.2
         version: 1.4.2
+
+  packages/mcp:
+    dependencies:
+      '@defuse-protocol/one-click-sdk-typescript':
+        specifier: 0.1.26
+        version: 0.1.26
+      '@routespec/cli':
+        specifier: workspace:*
+        version: link:../cli
+      '@routespec/client-adapter':
+        specifier: workspace:*
+        version: link:../client-adapter
+      '@routespec/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@routespec/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+      '@routespec/proxy':
+        specifier: workspace:*
+        version: link:../proxy
+      '@routespec/runner':
+        specifier: workspace:*
+        version: link:../runner
+      '@routespec/scenario':
+        specifier: workspace:*
+        version: link:../scenario
+      '@routespec/store':
+        specifier: workspace:*
+        version: link:../store
+    devDependencies:
+      '@routespec/registry':
+        specifier: workspace:*
+        version: link:../registry
 
   packages/proxy:
     dependencies:
@@ -397,6 +446,9 @@ importers:
       '@routespec/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@routespec/fix-patterns':
+        specifier: workspace:*
+        version: link:../fix-patterns
       '@routespec/hardening':
         specifier: workspace:*
         version: link:../hardening

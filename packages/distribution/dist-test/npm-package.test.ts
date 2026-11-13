@@ -121,7 +121,9 @@ describe('M54 npm package', () => {
     });
     const deps = Object.keys(manifest['dependencies'] as J).sort();
     expect(manifest['bundleDependencies']).toEqual(deps);
-    expect(deps).toEqual(expect.arrayContaining(['@routespec/cli', '@routespec/ci', 'zod', 'yaml']));
+    expect(deps).toEqual(
+      expect.arrayContaining(['@routespec/cli', '@routespec/ci', '@routespec/fix-patterns', 'zod', 'yaml']),
+    );
     expect([...packed.bundled].sort()).toEqual(deps);
     expect(packed.integrity).toMatch(/^sha512-/);
   });
@@ -153,6 +155,12 @@ describe('M54 npm package', () => {
     expect(r.code).toBe(4);
     expect(r.json).toMatchObject({ ok: false, cli: 'routespec-cli@1.0.0', error: { code: 'RS_CLI_USAGE' } });
     expect(r.stderr).not.toContain('ExperimentalWarning');
+  });
+
+  it('installed offline: routespec mcp is refused as not packaged, with the usage exit code', async () => {
+    const r = await run(join(installed, 'bin', 'routespec.mjs'), ['mcp'], work);
+    expect(r.code).toBe(4);
+    expect(r.json).toMatchObject({ ok: false, command: 'mcp', error: { code: 'RS_MCP_NOT_PACKAGED' } });
   });
 
   it('installed offline: routespec-ci gates the self-gate configuration to PASS', async () => {

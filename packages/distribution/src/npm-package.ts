@@ -11,7 +11,7 @@
  *     bin/routespec-ci.mjs  the CI entry point (packages/ci), the one the GitHub Action runs
  *     bin/withheld-names.mjs  names of credentials the action shell withholds (names only)
  *     node_modules/@routespec/<pkg>/src/**.js   compiled workspace packages
- *     node_modules/zod, node_modules/yaml       the two third-party runtime dependencies
+ *     node_modules/{zod,yaml,typescript}       the three third-party runtime dependencies
  *
  * Every runtime dependency is bundled (`bundleDependencies`), so installing the tarball fetches
  * nothing else and the provenance attestation of the tarball covers every file that runs.
@@ -221,10 +221,30 @@ const QUIET_SQLITE_WARNING = [
   '};',
 ];
 
+/**
+ * File-URL targets that are deliberately not in the package. `routespec mcp` (M52) loads the MCP
+ * server package by URL; that package needs the official 1Click SDK and its dependency tree at run
+ * time, which this self-contained package does not bundle. The npm `routespec` bin answers
+ * `mcp` itself with a usage error (exit 4) and never reaches the missing file.
+ */
+export const NOT_SHIPPED_TARGETS = new Set(['node_modules/@routespec/mcp/src/main.js']);
+
+const MCP_NOT_PACKAGED = [
+  "if (process.argv[2] === 'mcp') {",
+  '  const error = {',
+  "    code: 'RS_MCP_NOT_PACKAGED',",
+  "    message: 'routespec mcp is not part of the npm package; run it from a clone of the repository (pnpm run mcp).',",
+  '  };',
+  "  process.stdout.write(`${JSON.stringify({ ok: false, command: 'mcp', exitCode: 4, error })}\\n`);",
+  '  process.exit(4);',
+  '}',
+];
+
 const BIN_SOURCES: Record<string, string> = {
   'bin/routespec.mjs': [
     '#!/usr/bin/env node',
     '// RouteSpec CLI (compiled). One JSON document on stdout; exit codes as documented.',
+    ...MCP_NOT_PACKAGED,
     ...QUIET_SQLITE_WARNING,
     "const { runMain } = await import('@routespec/cli');",
     '',
@@ -292,7 +312,10 @@ export function auditStagedTree(dir: string, bundled: readonly string[]): string
       problems.push(`relative .ts reference in ${rel}: ${m[0]}`);
     for (const m of text.matchAll(/new URL\((['"])(\.{1,2}\/[^'"]+)\1,\s*import\.meta\.url\)/g)) {
       const target = fileURLToPath(new URL(m[2] as string, pathToFileURL(file)));
-      if (!existsSync(target)) problems.push(`missing file-URL target in ${rel}: ${m[2] as string}`);
+      const shippedRel = toPosix(relative(dir, target));
+      if (!existsSync(target) && !NOT_SHIPPED_TARGETS.has(shippedRel)) {
+        problems.push(`missing file-URL target in ${rel}: ${m[2] as string}`);
+      }
     }
     for (const m of text.matchAll(SPECIFIER)) {
       const spec = m[2] as string;

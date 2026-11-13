@@ -15,3 +15,4 @@ export * from './service.ts';
 export * from './reports.ts';
 export * from './tar.ts';
 export * from './bundle.ts';
+export * from './fix-advice.ts';

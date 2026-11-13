@@ -3,6 +3,9 @@
  *
  * Machine output: exactly one JSON document on stdout (`{"ok":..., "command":..., ...}`).
  * Diagnostics and structured logs: stderr only. Exit codes: see `exit.ts`.
+ *
+ * `routespec mcp` is the exception: it hands stdio to the MCP server of the sibling
+ * `@routespec/mcp` workspace package (M52), which speaks JSON-RPC on stdout instead.
  */
 import { pathToFileURL } from 'node:url';
 import { COMMAND_NAMES, COMMANDS, errorResult, type CommandResult } from './commands.ts';
@@ -49,7 +52,15 @@ export async function runCli(argv: readonly string[], io: CliIo): Promise<number
   return outcome.exitCode;
 }
 
+/** Entry of the MCP server package, loaded only for `routespec mcp` (no build-time dependency). */
+export const MCP_ENTRY = new URL('../../mcp/src/main.ts', import.meta.url).href;
+
 export async function runMain(): Promise<void> {
+  if (process.argv[2] === 'mcp') {
+    const mcp = (await import(MCP_ENTRY)) as { runMcpMain: (argv: readonly string[]) => Promise<void> };
+    await mcp.runMcpMain(process.argv.slice(3));
+    return;
+  }
   const code = await runCli(process.argv.slice(2), {
     stdout: (text) => process.stdout.write(text),
     stderr: (line) => process.stderr.write(`${line}\n`),

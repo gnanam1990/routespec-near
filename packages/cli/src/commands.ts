@@ -8,7 +8,7 @@
  */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { basename, isAbsolute, relative, resolve } from 'node:path';
 import {
   ADAPTER_HEADERS,
   ADAPTER_REVISION,
@@ -17,9 +17,11 @@ import {
   digestValue,
   type EnforcementMode,
 } from '@routespec/contracts';
+import type { FixAdvice } from '@routespec/fix-patterns';
 import {
   GateService,
   IpcCaseDriver,
+  gateFixAdviceInput,
   Logger,
   buildGateReport,
   exitCodeForDecision,
@@ -34,7 +36,7 @@ import {
   type RunnerMode,
 } from '@routespec/runner';
 import { compileScenario } from '@routespec/scenario';
-import { GateJournal, RouteSpecStore, ensurePrivateDataDir } from '@routespec/store';
+import { GateJournal, RouteSpecStore, ensurePrivateDataDir, type GateEvaluationView } from '@routespec/store';
 import { checkLocalPathSyntax } from '@routespec/hardening';
 import { intFlag, usage, type CommandSpec, type ParsedArgs } from './args.ts';
 import { EXIT, exitCodeForError, type ExitCode } from './exit.ts';
@@ -135,15 +137,58 @@ function writeReportFile(path: string, content: string): string {
   return digestValue('routespec.report-file/1', content);
 }
 
+const MAX_SOURCE_BYTES = 1_048_576;
+
+/**
+ * Fix advice (M53) when `--fix-out`, `--fix-md`, or `--source` is given; otherwise null. The
+ * source path is shown relative to the working directory (its file name when outside it), so no
+ * absolute local path enters a report.
+ */
+interface RenderedAdvice {
+  readonly advice: FixAdvice;
+  readonly sarif: ReadonlyArray<{ ruleId: string; message: string; uri: string; startLine: number }>;
+  readonly markdown: string;
+}
+
+/** The fix-pattern module loads the TypeScript compiler, so it is imported only when used. */
+function loadFixPatterns(): Promise<typeof import('@routespec/fix-patterns')> {
+  return import('@routespec/fix-patterns');
+}
+
+async function fixAdviceFor(
+  args: ParsedArgs,
+  store: RouteSpecStore,
+  view: GateEvaluationView,
+): Promise<RenderedAdvice | null> {
+  const file = args.strings['source'];
+  if (file === undefined && args.strings['fix-out'] === undefined && args.strings['fix-md'] === undefined) {
+    return null;
+  }
+  let source: { path: string; text: string } | null = null;
+  if (file !== undefined) {
+    const text = readSource(file, MAX_SOURCE_BYTES);
+    const rel = relative(process.cwd(), resolve(file));
+    const display = rel.length === 0 || rel.startsWith('..') || isAbsolute(rel) ? basename(file) : rel;
+    source = { path: display.split('\\').join('/'), text };
+  }
+  const input = gateFixAdviceInput(store, view);
+  const fp = await loadFixPatterns();
+  const advice = fp.buildFixAdvice({ ...input, source });
+  return { advice, sarif: fp.fixAdviceSarifFindings(advice), markdown: fp.renderFixAdviceMarkdown(advice) };
+}
+
 function writeReports(
   args: ParsedArgs,
   report: ReturnType<typeof buildGateReport>,
+  advice: RenderedAdvice | null = null,
 ): Record<string, { digest: string }> {
   const written: Record<string, { digest: string }> = {};
   const targets: Array<[string, () => string]> = [
     ['json-out', () => renderJson(report)],
     ['junit', () => renderJUnit(report)],
-    ['sarif', () => renderSarif(report)],
+    ['sarif', () => renderSarif(report, advice?.sarif ?? [])],
+    ['fix-out', () => renderJson(advice?.advice ?? null)],
+    ['fix-md', () => advice?.markdown ?? ''],
   ];
   for (const [flag, render] of targets) {
     const p = args.strings[flag] ?? (flag === 'json-out' ? args.strings['json'] : undefined);
@@ -156,6 +201,9 @@ const REPORT_FLAGS = {
   'json-out': { kind: 'string' },
   junit: { kind: 'string' },
   sarif: { kind: 'string' },
+  'fix-out': { kind: 'string' },
+  'fix-md': { kind: 'string' },
+  source: { kind: 'string' },
 } as const;
 
 const BLOCKING_CLAIM_FLAGS = ['branch-protection', 'required-check-verified', 'blocking'] as const;
@@ -511,7 +559,8 @@ export const COMMANDS: Readonly<Record<string, Command>> = Object.freeze({
         }
         const { evaluation } = service.evaluateGate(created.gateRunId);
         const report = buildGateReport(evaluation);
-        const files = writeReports(args, report);
+        const advice = await fixAdviceFor(args, store, evaluation);
+        const files = writeReports(args, report, advice);
         const result = {
           gateRunId: created.gateRunId,
           gateRunIdentityDigest: created.identityDigest,
@@ -527,6 +576,7 @@ export const COMMANDS: Readonly<Record<string, Command>> = Object.freeze({
           },
           cases,
           report,
+          ...(advice === null ? {} : { fixAdvice: advice.advice }),
           files,
           metrics: logger.metrics.snapshot(),
         };
@@ -552,25 +602,66 @@ export const COMMANDS: Readonly<Record<string, Command>> = Object.freeze({
     },
     run: (args, ctx) => {
       rejectBlockingClaims(args);
-      return withStore(ctx.dataDir, (store) => {
+      return withStore(ctx.dataDir, async (store) => {
         const service = new GateService(store, { logger: new Logger({ sink: ctx.stderr }) });
         const { evaluation, created } = service.evaluateGate(idArg(args, 'gate-run'));
         const report = buildGateReport(evaluation);
-        const files = writeReports(args, report);
-        return { exitCode: exitCodeForDecision(report.decision), result: { created, report, files } };
+        const advice = await fixAdviceFor(args, store, evaluation);
+        const files = writeReports(args, report, advice);
+        return {
+          exitCode: exitCodeForDecision(report.decision),
+          result: { created, report, ...(advice === null ? {} : { fixAdvice: advice.advice }), files },
+        };
       });
     },
   },
   'gate show': {
     needsData: true,
-    spec: { flags: { 'gate-evaluation': { kind: 'string', required: true } } },
+    spec: { flags: { 'gate-evaluation': { kind: 'string', required: true }, ...REPORT_FLAGS } },
     run: (args, ctx) =>
-      withStore(ctx.dataDir, (store) => {
-        const report = buildGateReport(
-          new GateJournal(store).getGateEvaluation(idArg(args, 'gate-evaluation')),
-        );
-        return { exitCode: exitCodeForDecision(report.decision), result: { report } };
+      withStore(ctx.dataDir, async (store) => {
+        const view = new GateJournal(store).getGateEvaluation(idArg(args, 'gate-evaluation'));
+        const report = buildGateReport(view);
+        const advice = await fixAdviceFor(args, store, view);
+        const files = writeReports(args, report, advice);
+        return {
+          exitCode: exitCodeForDecision(report.decision),
+          result: {
+            report,
+            ...(advice === null ? {} : { fixAdvice: advice.advice }),
+            ...(Object.keys(files).length === 0 ? {} : { files }),
+          },
+        };
       }),
+  },
+  'fix patterns': {
+    needsData: false,
+    spec: { flags: {} },
+    run: async () => {
+      const fp = await loadFixPatterns();
+      return {
+        exitCode: EXIT.PASS,
+        result: {
+          revision: fp.FIX_PATTERNS_REVISION,
+          patterns: fp.listFixPatterns(),
+          codes: fp.CODE_PATTERNS,
+        },
+      };
+    },
+  },
+  'fix show': {
+    needsData: false,
+    spec: { flags: { pattern: { kind: 'string', required: true } } },
+    run: async (args) => {
+      const id = (args.strings['pattern'] as string).toUpperCase().replace(/-/g, '_');
+      const fp = await loadFixPatterns();
+      const pattern = fp.getFixPattern(id);
+      if (pattern === null) usage('Unknown fix pattern.', { pattern: id.slice(0, 64) });
+      const codes = Object.entries(fp.CODE_PATTERNS)
+        .filter(([, ids]) => (ids as readonly string[]).includes(pattern.id))
+        .map(([code]) => code);
+      return { exitCode: EXIT.PASS, result: { revision: fp.FIX_PATTERNS_REVISION, pattern, codes } };
+    },
   },
   'case recover': {
     needsData: true,

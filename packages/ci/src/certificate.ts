@@ -1,5 +1,5 @@
 /**
- * The certificate step (M47, ADR-0028): after a gate step that decided PASS in a trusted job,
+ * The certificate step (M47, ADR-0029): after a gate step that decided PASS in a trusted job,
  * sign the certificate of the staged evidence bundle and submit it to the registry contract.
  *
  *   routespec-ci certificate --bundle <file> --journal <dir> --decision <gate decision>

@@ -1,4 +1,4 @@
-# ADR-0028 — On-chain release certificates and the attester registry
+# ADR-0029 — On-chain release certificates and the attester registry
 
 - Status: accepted
 - Date: 2026-11-13

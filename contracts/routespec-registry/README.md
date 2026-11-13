@@ -1,7 +1,7 @@
 # routespec-registry
 
 The RouteSpec release-certificate registry for NEAR (M47). Decisions and limits:
-`docs/adr/0028-onchain-release-certificates.md`. How to deploy and use it:
+`docs/adr/0029-onchain-release-certificates.md`. How to deploy and use it:
 `docs/runbooks/release-certificates.md`.
 
 - `crates/routespec-certificate`: field rules and the exact bytes an attester signs. No

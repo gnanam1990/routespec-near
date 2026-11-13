@@ -2,7 +2,7 @@
 # against the repository's sample subject and, when the decision is PASS and a signer is
 # configured, publish the certificate of the evidence bundle to the routespec-registry contract.
 #
-# This is the only workflow that references secrets, and only its last step receives them: the
+# Only the last step of this workflow receives secrets: the
 # gate step runs without any. With no signer configured the last step reports SKIPPED_NO_SIGNER
 # and the job stays green. Configure:
 #   secrets  ROUTESPEC_ATTESTER_KEY, ROUTESPEC_NEAR_SIGNER_KEY

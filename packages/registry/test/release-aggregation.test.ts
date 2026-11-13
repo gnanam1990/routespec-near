@@ -1,5 +1,5 @@
 /**
- * M47 — release aggregation over on-chain certificates (ADR-0028). A pure function: the local
+ * M47 — release aggregation over on-chain certificates (ADR-0029). A pure function: the local
  * gate decision read from a verified bundle, the certificates and attester states read from the
  * registry, and a policy. Under REQUIRE_ONCHAIN_ATTESTER a PASS needs a certificate that an
  * enrolled, unrevoked (and, when keys are pinned, trusted) attester signed for exactly this

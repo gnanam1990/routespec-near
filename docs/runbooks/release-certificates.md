@@ -5,7 +5,7 @@ evidence bundle and recorded its gate verdict. It lives in the `routespec-regist
 NEAR. This runbook covers building the contract, deploying it, enrolling an attester, publishing
 a certificate, verifying one, and revoking a key.
 
-Decisions and limits: `docs/adr/0028-onchain-release-certificates.md`. Evidence:
+Decisions and limits: `docs/adr/0029-onchain-release-certificates.md`. Evidence:
 `docs/status/M47.md`.
 
 Words used here:

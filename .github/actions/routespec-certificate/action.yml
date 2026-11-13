@@ -3,7 +3,7 @@
 # step, after the gate step: the gate step loads the integrator's client module and never
 # receives a signer secret.
 #
-# Security properties (ADR-0028):
+# Security properties (ADR-0029):
 # - every third-party action is pinned to a full commit SHA;
 # - inputs reach the shell only through environment variables, never through an expression
 #   inside a script;

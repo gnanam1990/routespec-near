@@ -3,7 +3,7 @@
 Owner module: M47. Status: **VERIFIED_BOUNDED** on win32/x64 with a local near-sandbox node in a
 Linux container (see `docs/status/M47.md`). Nothing here has been run against NEAR testnet or
 mainnet by the build; deployment and publication are owner actions
-(`docs/runbooks/release-certificates.md`). Decisions: `docs/adr/0028-onchain-release-certificates.md`.
+(`docs/runbooks/release-certificates.md`). Decisions: `docs/adr/0029-onchain-release-certificates.md`.
 
 What it holds:
 

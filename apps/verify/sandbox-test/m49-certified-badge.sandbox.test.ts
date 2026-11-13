@@ -40,7 +40,7 @@ const DEAD_PORT = 9559;
 const PROJECT = 'gnanam1990/routespec-near';
 const suffix = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
 /** The NEAR code hash of the reproducible registry build recorded in docs/status/M47.md. */
-const REPRODUCIBLE_CODE_HASH = 'CbPrvc6jbuVNNg2qVmUDSiPhCGNBZetQAmptQZWyCfxr';
+const REPRODUCIBLE_CODE_HASH = 'DgYXio822TH3CGJqfKU8gDFFSSqmxurWAwG1i4Jhqo5P';
 
 let tmpPass: ReturnType<typeof tempDir>;
 let tmpFail: ReturnType<typeof tempDir>;

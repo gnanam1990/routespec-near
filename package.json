@@ -10,7 +10,7 @@
     "node": ">=22.18.0"
   },
   "scripts": {
-    "typecheck": "tsc -b && tsc -p apps/console/tsconfig.json --noEmit && tsc -p packages/security-suite/tsconfig.json --noEmit && tsc -p packages/delivery/tsconfig.json --noEmit",
+    "typecheck": "tsc -b && tsc -p apps/console/tsconfig.json --noEmit && tsc -p packages/security-suite/tsconfig.json --noEmit && tsc -p packages/delivery/tsconfig.json --noEmit && tsc -p packages/mcp/tsconfig.json --noEmit",
     "build": "tsc -b",
     "clean": "tsc -b --clean",
     "test": "vitest run",
@@ -33,7 +33,9 @@
     "test:registry": "vitest run -c vitest.registry.config.ts",
     "registry:build": "node scripts/registry/build.mjs",
     "registry:test": "cargo test --locked --manifest-path contracts/routespec-registry/Cargo.toml -p routespec-certificate",
-    "registry:reproduce": "node scripts/registry/reproduce.mjs"
+    "registry:reproduce": "node scripts/registry/reproduce.mjs",
+    "mcp": "node --no-warnings packages/cli/bin/routespec.mjs mcp",
+    "demo:agent-session": "node --no-warnings examples/agent-skill/demo/agent-session.ts --out examples/agent-skill/demo/TRANSCRIPT.md && prettier --write examples/agent-skill/demo/TRANSCRIPT.md"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",

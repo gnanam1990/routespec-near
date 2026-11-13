@@ -10,7 +10,8 @@ error, 5 internal error or corrupted state, 6 safety policy denial.
 Commands: `project create`, `revision register`, `build register`, `effect manifest`,
 `effect policy`, `scenario validate|add`, `corpus create`, `gate create|run|evaluate|show`,
 `case recover`, `export plan|write|verify`, `probe dry` (always refused here: the live-dry probe is
-a separately authorized adapter), `certificate keygen|publish|verify|revoke-check` (M47). The data
+a separately authorized adapter), `certificate keygen|publish|verify|revoke-check` (M47), and `mcp` (M52: starts the MCP server of
+`packages/mcp` on stdio; it is the one command that does not print a single JSON document). The data
 directory comes from `--data` or `ROUTESPEC_DATA_DIR`.
 
 `gate run` hands each case to the reviewed launcher (`runWithLauncher`) over an inherited IPC

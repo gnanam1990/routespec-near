@@ -93,6 +93,10 @@ CLI, not `pnpm run test:delivery`.
 
 ## 3. Official live dry probe (RP-07, `OFFICIAL_ENDPOINT_COMPATIBLE`)
 
+Done once on 2026-11-13 (`OFFICIAL_ENDPOINT_COMPATIBLE`, `docs/status/M42.md`). Repeat it to
+recheck the endpoint later; add `--debug-echo-diff` to see a redacted field-level diff if the
+result is ever `RS_FINALIZATION_REQUEST_MISMATCH`.
+
 Optional. It is separate from `WORKING_LOCAL` and never changes a local verdict. It sends one
 `dry: true` quote to the pinned official endpoint; committed quotes, deposits, signatures, and
 transfers are refused before any credential, DNS lookup, or socket.
@@ -101,8 +105,8 @@ transfers are refused before any credential, DNS lookup, or socket.
    create accounts or tokens. (Without a JWT the probe still runs as `OPTIONAL_ABSENT`, but the
    provider may reject or rate-limit it, which is recorded as `UNKNOWN`.)
 2. Write `dry-quote.json` with real asset IDs from the provider's token list, a future
-   `deadline`, and `"dry": true`. The full template is in `docs/status/M07.md` ("BLOCKED: RP-07
-   real official dry probe").
+   `deadline`, and `"dry": true`. The full template is in `docs/status/M07.md` ("RP-07
+   official dry probe (exact user steps to repeat it)").
 3. In PowerShell, keep the token out of history and argv:
 
    ```powershell

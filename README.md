@@ -230,11 +230,11 @@ The step exits 0 only for a PASS decision, so the sample subject's gate decision
 
 ## NEAR integration: exactly what is used
 
-| Used                                                         | How                                                                                                                                                                                                                                                |
-| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| NEAR Intents 1Click TypeScript SDK                           | `@defuse-protocol/one-click-sdk-typescript` pinned at `0.1.26` ([ADR-0002](docs/adr/0002-official-1click-sdk-pin.md)). The clients under test call it unchanged; RouteSpec only points its base URL at the loopback proxy.                         |
-| 1Click API protocol (`oneclick-v0` profile)                  | The local service implements `/v0/quote`, `/v0/deposit/submit`, and `/v0/status` and the status lifecycle (`PROCESSING`, `SUCCESS`, `REFUNDED`, `FAILED`, ...) as a data-only model. Unknown routes never pass through.                            |
-| 1Click official endpoint, `dry: true` quotes only (optional) | A separate live-dry adapter can send at most one `dry: true` quote to `https://1click.chaindefuser.com`; committed quotes, deposits, and signatures are refused before any credential, DNS lookup, or socket. **Not run** for this record (RP-07). |
+| Used                                                         | How                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NEAR Intents 1Click TypeScript SDK                           | `@defuse-protocol/one-click-sdk-typescript` pinned at `0.1.26` ([ADR-0002](docs/adr/0002-official-1click-sdk-pin.md)). The clients under test call it unchanged; RouteSpec only points its base URL at the loopback proxy.                                                                                                                     |
+| 1Click API protocol (`oneclick-v0` profile)                  | The local service implements `/v0/quote`, `/v0/deposit/submit`, and `/v0/status` and the status lifecycle (`PROCESSING`, `SUCCESS`, `REFUNDED`, `FAILED`, ...) as a data-only model. Unknown routes never pass through.                                                                                                                        |
+| 1Click official endpoint, `dry: true` quotes only (optional) | A separate live-dry adapter can send at most one `dry: true` quote to `https://1click.chaindefuser.com`; committed quotes, deposits, and signatures are refused before any credential, DNS lookup, or socket. **Run once** with the owner's JWT (RP-07, 2026-11-13): `OFFICIAL_ENDPOINT_COMPATIBLE`, HTTP 201 ([details](docs/status/M42.md)). |
 
 Not used: NEAR smart contracts, NEAR RPC, wallets, signing, chain signatures, testnet or mainnet
 transactions. Nothing ran on NEAR testnet: NEAR Intents has no testnet, and RouteSpec is
@@ -268,8 +268,11 @@ Full record: [`BUILD-STATUS.md`](BUILD-STATUS.md); per-module evidence in
   Engine in WSL 2, all on Windows 11 x64; and `pnpm run check` on Linux and macOS through the CI
   runs above.
 - **What ran on testnet:** nothing (see NEAR integration).
-- **Not done:** the independent interceptor profile review (above); the official `dry: true`
-  probe (needs a user-held 1Click JWT); the contained journey and `test:delivery` on Linux and
+- **Official `dry: true` probe (RP-07):** run with the owner's 1Click JWT on 2026-11-13:
+  `OFFICIAL_ENDPOINT_COMPATIBLE` (HTTP 201, one wNEAR -> USDC dry quote, no settlement). The
+  first run reported `INCOMPATIBLE` because RouteSpec compared the echoed request byte-for-byte;
+  M42 fixed that comparison (`docs/status/M42.md`).
+- **Not done:** the independent interceptor profile review (above); the contained journey and `test:delivery` on Linux and
   macOS hosts; Firefox, WebKit, and screen readers; an independent human security review; plain
   Linux Docker and rootless engines. RouteSpec has no funded mode and no hosted deployment.
 
@@ -355,7 +358,8 @@ This repository implements it module by module (M00–M18).
   windows-2022, macos-15). `WORKING_LOCAL` still needs a review of the interceptor profile by a
   reviewer independent of the operator, followed by a contained gate run on that review
   (RP-02/RP-06) and a `test:delivery` rerun on that commit. The official live dry probe (RP-07)
-  has not been run; it needs your own provider JWT.
+  ran once with the owner's JWT: `OFFICIAL_ENDPOINT_COMPATIBLE` for one `dry: true` quote (HTTP
+  201). That is a separate claim and does not change `WORKING_LOCAL`.
 - Enforcement is advisory: `LOCAL_ADVISORY`, `CI_CHECK`, or `REQUIRED_CHECK_UNVERIFIED`.
   RouteSpec never says it blocks a merge or a release.
 - Not run: the contained journey on Linux and macOS hosts, Firefox and WebKit, screen readers,

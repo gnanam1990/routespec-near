@@ -1788,3 +1788,34 @@ input[type='radio'] {
   position: relative;
   z-index: var(--layer-raised);
 }
+
+/* Touch layouts: digest reveal/copy controls keep the 44 px touch target (UI-SPEC 5.3), and
+   the header controls wrap instead of pushing past a 320 px viewport. */
+@media (max-width: 767px) {
+  .table .digest .btn-icon,
+  .kv .digest .btn-icon,
+  .lineage .digest .btn-icon {
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+  }
+  .header-end {
+    flex-wrap: wrap;
+    row-gap: var(--space-2);
+  }
+  .theme-select,
+  .theme-select select {
+    min-width: 0;
+  }
+}
+@media (max-width: 767px) {
+  /* Restated after the control rules so the touch size wins the cascade (it was shadowed). */
+  .btn,
+  .btn-icon,
+  select,
+  .input {
+    min-height: var(--touch-target);
+  }
+  .btn-icon {
+    min-width: var(--touch-target);
+  }
+}

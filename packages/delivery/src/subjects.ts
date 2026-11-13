@@ -1,10 +1,12 @@
 /**
  * Separately launched installed subjects for the delivery journey.
  *
- * The two client builds are the reviewed integrator builds kept with the M05 regression suite:
+ * The client builds are the reviewed integrator builds kept with the M05 regression suite:
  * `baseline-client.ts` (resubmits an unanswered deposit submission and never reconciles) and
  * `corrected-client.ts` (never resubmits an unknown commit; reads status read-only after
- * reconciliation authority arrives). Both run the exact pinned official SDK with the RouteSpec
+ * reconciliation authority arrives). A third build, `hedging-client.ts`, places a second order
+ * (fresh quote, second deposit submission) while its first submission is still unanswered. All
+ * three run the exact pinned official SDK with the RouteSpec
  * adapter on the SDK's own axios instance. The artifact digest of a build is the SHA-256 of its
  * own source bytes, so the fix is a different artifact.
  *
@@ -18,7 +20,7 @@ import { join } from 'node:path';
 import { fileDigest, type Sha256 } from './identity.ts';
 import type { J } from './control.ts';
 
-export type Build = 'baseline-client' | 'corrected-client';
+export type Build = 'baseline-client' | 'corrected-client' | 'hedging-client';
 
 export function buildScript(root: string, build: Build): string {
   return join(root, 'packages', 'regressions', 'test', 'support', 'subject', `${build}.ts`);

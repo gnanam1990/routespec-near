@@ -37,7 +37,7 @@ $env:ROUTESPEC_CONTAINER_CLI = '["wsl.exe","-d","Ubuntu-24.04","-u","root","--ex
 ```
 
 `pnpm run examples:fetch -- --check` verifies what is already on disk without using the network.
-The same run is part of the containment suite: `pnpm run test:containment` (it reports
+The same run is checked by `pnpm run test:third-party` (it reports
 `NOT_RUN: THIRD_PARTY_SOURCES_ABSENT` until the fetch has been done once).
 
 ## Result recorded on 2026-11-13

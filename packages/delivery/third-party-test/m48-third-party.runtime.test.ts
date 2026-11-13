@@ -1,6 +1,6 @@
 /**
  * M48: the pinned third-party example clients, run for real through the control service inside
- * the subject container. Part of the containment suite (`pnpm run test:containment`).
+ * the subject container. Its own suite: `pnpm run test:third-party`.
  *
  * Skipped as `NOT_RUN: <reason>` when there is no usable container engine or image
  * (for example CONTAINER_RUNTIME_ABSENT), or when the pinned files have not been fetched

@@ -13,7 +13,7 @@
     "src/**/*.ts",
     "e2e/**/*.ts",
     "test/**/*.ts",
-    "runtime-test/**/*.ts",
+    "third-party-test/**/*.ts",
     "../../examples/third-party/**/*.ts"
   ]
 }

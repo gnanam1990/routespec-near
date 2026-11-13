@@ -79,4 +79,6 @@ were reviewed.
 - The target of two to four repositories was not met: one repository satisfied every rule on
   2026-11-13. Adding another is a pin, an adapter of about sixty lines, and a notice file.
 - The fetch needs the network once. Tests never fetch: the contained runtime test reports
-  `NOT_RUN: THIRD_PARTY_SOURCES_ABSENT` when the files are not on disk.
+  `NOT_RUN: THIRD_PARTY_SOURCES_ABSENT` when the files are not on disk. It is its own suite
+  (`pnpm run test:third-party`), not part of `test:containment`, because the M14 delivery check
+  requires every containment test to run, unskipped, from an offline clean clone.

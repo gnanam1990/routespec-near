@@ -10,7 +10,7 @@
  * - the committed adapter, started as a real subject process on this host, refuses to load the
  *   example because it is not inside a container.
  *
- * The contained run of the real pinned example is `runtime-test/m48-third-party.runtime.test.ts`.
+ * The contained run of the real pinned example is `third-party-test/m48-third-party.runtime.test.ts`.
  */
 import { execFileSync, fork, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';

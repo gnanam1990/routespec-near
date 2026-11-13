@@ -89,6 +89,8 @@ Three constraints shape the design:
   delayed for the reason given, or delivered.
 - A descriptor keeps one swap's shape, not its place in a sequence of swaps. Volumes are counts
   per descriptor; rates per route or per asset are deliberately not kept.
+- The second look sends each held swap's deposit address back to the same service, as the
+  documented `search` parameter of the same endpoint. It is sent nowhere else and is not kept.
 - The second look costs one request per held swap (five seconds each), capped by `--recheck-max`.
   Held swaps beyond the cap are classified from one look and counted as `recheckSkipped`.
 - The kernel has no invariant for "a second order while the first swap is still held". These

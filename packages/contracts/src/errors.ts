@@ -128,6 +128,11 @@ export const ERROR_CODES = Object.freeze([
   'RS_PROFILE_REVIEW_INVALID',
   'RS_REVIEW_SIGNATURE_INVALID',
   'RS_REVIEWER_NOT_INDEPENDENT',
+  // on-chain release certificates and attester registry (M47)
+  'RS_CERTIFICATE_INVALID',
+  'RS_CERTIFICATE_KEY_INVALID',
+  'RS_REGISTRY_UNAVAILABLE',
+  'RS_REGISTRY_REJECTED',
   'RS_INTERNAL',
 ] as const);
 export type ErrorCode = (typeof ERROR_CODES)[number];

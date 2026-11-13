@@ -7,3 +7,4 @@ export * from './args.ts';
 export { COMMANDS, COMMAND_NAMES, errorResult } from './commands.ts';
 export { runCli, runMain, CLI_REVISION, type CliIo } from './main.ts';
 export * from './launcher.ts';
+export { CERTIFICATE_COMMANDS, CERTIFICATE_ENV } from './certificate.ts';

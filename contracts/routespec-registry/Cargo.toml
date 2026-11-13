@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+members = ["crates/routespec-certificate", "crates/routespec-registry"]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+publish = false
+
+[profile.release]
+codegen-units = 1
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = true
+
+# Host tests verify Ed25519 signatures; optimize dependencies so they stay fast.
+[profile.dev.package."*"]
+opt-level = 2

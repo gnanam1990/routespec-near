@@ -1,0 +1,19 @@
+{
+  "schema": "routespec.verify-page-config/1",
+  "project": "gnanam1990/routespec-near",
+  "defaultNetwork": "testnet",
+  "networks": {
+    "testnet": {
+      "chainId": "testnet",
+      "rpcUrl": "https://test.rpc.fastnear.com",
+      "registry": "gnanam1990-routespec.testnet"
+    },
+    "mainnet": {
+      "chainId": "mainnet",
+      "rpcUrl": "https://free.rpc.fastnear.com",
+      "registry": null
+    }
+  },
+  "trustedAttesters": [],
+  "knownCodeHashes": ["CbPrvc6jbuVNNg2qVmUDSiPhCGNBZetQAmptQZWyCfxr"]
+}

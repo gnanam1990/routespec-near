@@ -7,6 +7,8 @@ Updated by M41 on 2026-11-13: the real CI run (RP-05) observed, a judge-visible 
 delivery journey, concrete audit names, ADR numbering, and the console Gate summary default.
 Updated by M42 on 2026-11-13: the real RP-07 official dry probe and the quote-finalization
 request-echo equivalence fix (`docs/status/M42.md`).
+Updated by M48 on 2026-11-13: one pinned official example client run contained; no invariant could be
+evaluated for it (`docs/status/M48.md`).
 Updated by M50 on 2026-11-13: observed-incident corpus and the read-only Explorer importer; the
 live import is pending the owner's Explorer API key (`docs/status/M50.md`).
 
@@ -78,6 +80,7 @@ tests pass for the part this host can run, with a named part BLOCKED or NOT_RUN.
 | M18    | Consolidation and full regression                          | `262b663`  | VERIFIED_BOUNDED | full regression (table below); T-051 slow-page focus (new); configurable test port window                                                                | — (T-051 focus defect found and fixed)                                                        | `docs/status/M18.md`         |
 | M41    | Screening fixes (judge-visible FAIL, CI evidence, console) | this stage | VERIFIED_BOUNDED | T-055 hedged-submission case (uncontained and contained journeys); console Gate summary default (unit + fixture e2e)                                     | —                                                                                             | this file, `README.md`       |
 | M42    | Official dry probe and finalization equivalence (RP-07)    | this stage | VERIFIED_BOUNDED | M42 echo-equivalence contract tests; real-shape classification test; real official dry probe                                                             | one pair and one day only                                                                     | `docs/status/M42.md`         |
+| M48    | Official example clients, pinned and contained             | this stage | PARTIAL          | M48 pin, fetch, loader, and runner tests; real contained run of the official SDK example                                                                 | no invariant evaluated: the example stops at `GET /v0/tokens`, outside the profile            | `docs/status/M48.md`         |
 | M50    | Scenarios from observed incidents (Explorer importer)      | this stage | PARTIAL          | M50 shape, sanitisation, template, import, HTTP-client, command and gate-run tests (42)                                                                  | **live import PENDING** (Explorer API key); committed corpus has 0 records                    | `docs/status/M50.md`         |
 
 All 59 canonical tests T-001..T-059 have an owning module above; none is claimed beyond its

@@ -22,6 +22,7 @@ import {
   runImport,
   verifyCorpusDir,
   writeCorpusDir,
+  type TransactionSource,
 } from '../src/index.ts';
 import { WINDOW, fixtureDoc } from './support/fixture.ts';
 
@@ -92,18 +93,22 @@ describe('M50 import and corpus', () => {
     expect(m.observedAtHour).toBe('2026-11-13T12:00:00.000Z');
     expect(m.recheckedAtHour).toBe('2026-11-13T13:00:00.000Z');
     expect(m.statusesQueried).toEqual(['FAILED', 'INCOMPLETE_DEPOSIT', 'PROCESSING', 'REFUNDED']);
-    expect(m.templates.map((t) => [t.scenarioId, t.count, t.gatePolicy])).toEqual([
-      ['shape-failed-deposit-seen', 1, 'REQUIRED'],
-      ['shape-failed-no-deposit-seen', 1, 'REQUIRED'],
-      ['shape-late-success-proc-ge-30m', 1, 'ADVISORY'],
-      ['shape-refund-amount-less-than-min-amount-out', 2, 'REQUIRED'],
-      ['shape-refund-intent-submit-failed-proc-ge-15m', 1, 'REQUIRED'],
-      ['shape-refund-no-liquidity', 1, 'REQUIRED'],
-      ['shape-refund-none-reported', 1, 'REQUIRED'],
-      ['shape-refund-partial-deposit', 1, 'REQUIRED'],
-      ['shape-stuck-incd-ge-3h', 1, 'REQUIRED'],
-      ['shape-stuck-proc-ge-3h', 1, 'REQUIRED'],
+    expect(m.templates.map((t) => [t.scenarioId, t.count, t.undecidableInvariants.join(',')])).toEqual([
+      ['shape-failed-deposit-seen', 1, 'INV-05'],
+      ['shape-failed-no-deposit-seen', 1, 'INV-05'],
+      ['shape-late-success-proc-ge-30m', 1, 'INV-05,INV-08'],
+      ['shape-refund-amount-less-than-min-amount-out', 2, ''],
+      ['shape-refund-intent-submit-failed-proc-ge-15m', 1, ''],
+      ['shape-refund-no-liquidity', 1, ''],
+      ['shape-refund-none-reported', 1, ''],
+      ['shape-refund-partial-deposit', 1, ''],
+      ['shape-stuck-incd-ge-3h', 1, 'INV-05,INV-06'],
+      ['shape-stuck-proc-ge-3h', 1, 'INV-05,INV-06'],
     ]);
+    expect(m.templates.find((t) => t.scenarioId === 'shape-late-success-proc-ge-30m')).toMatchObject({
+      observedStatuses: ['PROCESSING', 'SUCCESS'],
+      scriptedStatuses: ['PROCESSING', 'SUCCESS'],
+    });
     expect(Object.keys(corpus.files).sort()).toEqual(m.templates.map((t) => t.file).sort());
     expect(m.manifestDigest).toMatch(/^sha256:[0-9a-f]{64}$/);
   });
@@ -135,7 +140,7 @@ describe('M50 import and corpus', () => {
     const repeated = { ...txs[1] };
     const noStatus = { ...txs[2], depositAddress: 'another-address', status: 'SETTLED' };
     const notObject = 'not-a-record';
-    const missingDocumentedField = { ...txs[3], depositAddress: 'third-address' };
+    const missingDocumentedField: Record<string, unknown> = { ...txs[3], depositAddress: 'third-address' };
     delete missingDocumentedField['recipient'];
     const summary = await runImport(
       new RecordingSource({
@@ -151,6 +156,33 @@ describe('M50 import and corpus', () => {
     expect(summary.counts.rejectedShape).toBe(2);
     expect(summary.counts.documentedShapeDeviations).toBe(1);
     expect(summary.counts.incidents).toBe(12);
+  });
+
+  it('stops instead of looping when the cursor does not advance', async () => {
+    const inner = new RecordingSource(fixtureDoc());
+    const notes: string[] = [];
+    // A source that ignores the cursor and answers the first page again and again.
+    const stuckCursor: TransactionSource = {
+      kind: inner.kind,
+      nowMs: () => inner.nowMs(),
+      wait: () => inner.wait(),
+      lookup: (a, m) => inner.lookup(a, m),
+      rateLimitedCount: () => 0,
+      listPage: (q) => inner.listPage({ ...q, cursor: null }),
+    };
+    const summary = await runImport(stuckCursor, {
+      window: WINDOW,
+      stuckAfterSec: 900,
+      recheckAfterSec: 0,
+      pageSize: 5,
+      maxPages: 50,
+      onProgress: (note) => notes.push(note),
+    });
+    expect(summary.counts.pagesRead).toBe(2);
+    expect(summary.counts.truncated).toBe(true);
+    expect(summary.counts.recordsRead).toBe(10);
+    expect(summary.counts.duplicates).toBe(5);
+    expect(notes).toEqual(['page 1: 5 records, 0 held so far', 'page 2: 5 records, 0 held so far']);
   });
 
   it('never lets fixture data carry the mainnet label, or mainnet data any other', async () => {
@@ -174,7 +206,9 @@ describe('M50 import and corpus', () => {
     const verified = verifyCorpusDir(dir);
     expect(verified.manifest.manifestDigest).toBe(corpus.manifest.manifestDigest);
     expect(verified.scenarios).toHaveLength(10);
-    expect(readdirSync(join(dir, 'scenarios')).sort()).toEqual(corpus.manifest.templates.map((t) => t.file.slice(10)).sort());
+    expect(readdirSync(join(dir, 'scenarios')).sort()).toEqual(
+      corpus.manifest.templates.map((t) => t.file.slice(10)).sort(),
+    );
     // A second write refuses to overwrite an imported corpus unless asked to.
     expect(code(() => writeCorpusDir(dir, corpus))).toBe('RS_EXPORT_OVERWRITE_DENIED');
     writeCorpusDir(dir, corpus, { replace: true });
@@ -219,7 +253,29 @@ describe('M50 import and corpus', () => {
       expect(out.cases).toHaveLength(10);
       const view = new ImportJournal(store).getCorpus(out.corpusRevisionId);
       expect(view.label).toBe('explorer-shape-fixture');
-      expect(view.cases.map((c) => c.gatePolicy).filter((p) => p === 'ADVISORY')).toHaveLength(1);
+      expect(view.cases.every((c) => c.gatePolicy === 'REQUIRED')).toBe(true);
+      // An invariant a class cannot decide is not required for its cases, and that is reported.
+      const required = Object.fromEntries(
+        view.cases.map((c, i) => [out.cases[i]!.scenarioId, c.requiredInvariants]),
+      );
+      expect(required['shape-refund-no-liquidity']).toEqual(['INV-03', 'INV-05']);
+      expect(required['shape-stuck-proc-ge-3h']).toEqual(['INV-03']);
+      expect(required['shape-failed-deposit-seen']).toEqual(['INV-03']);
+      expect(out.cases.find((c) => c.scenarioId === 'shape-stuck-proc-ge-3h')?.notRequired).toEqual([
+        'INV-05',
+      ]);
+      // Asking for everything keeps every requested invariant required for every case.
+      const all = registerObservedCorpus(store, dir, {
+        requiredInvariants: ['INV-03', 'INV-05'],
+        severity: 'HIGH',
+        requireAll: true,
+      });
+      expect(all.corpusRevisionId).not.toBe(out.corpusRevisionId);
+      expect(all.cases.every((c) => c.requiredInvariants.join(',') === 'INV-03,INV-05')).toBe(true);
+      // A case must keep at least one required invariant.
+      expect(
+        code(() => registerObservedCorpus(store, dir, { requiredInvariants: ['INV-05'], severity: 'HIGH' })),
+      ).toBe('RS_CLI_USAGE');
       for (const [i, c] of out.cases.entries()) {
         const row = store.getScenarioRevision(c.scenarioRevisionId);
         expect(row?.['scenario_stable_id']).toBe(corpus.manifest.templates[i]!.scenarioId);
@@ -228,7 +284,10 @@ describe('M50 import and corpus', () => {
         expect(row?.['revision_digest']).toBe(corpus.manifest.templates[i]!.revisionDigest);
       }
       // Registration is idempotent: the same corpus content is the same corpus revision.
-      const again = registerObservedCorpus(store, dir, { requiredInvariants: ['INV-03', 'INV-05'], severity: 'HIGH' });
+      const again = registerObservedCorpus(store, dir, {
+        requiredInvariants: ['INV-03', 'INV-05'],
+        severity: 'HIGH',
+      });
       expect(again.corpusRevisionId).toBe(out.corpusRevisionId);
     } finally {
       store.close();

@@ -13,6 +13,7 @@ import {
   renderScenario,
   scenarioIdFor,
   scriptedStatusesOf,
+  undecidableInvariantsOf,
   type RenderContext,
 } from '../src/index.ts';
 
@@ -36,13 +37,50 @@ describe('M50 scenario templates', () => {
     // Combinations that cannot be observed are not descriptors.
     const bad = [
       { class: 'STUCK', heldStatus: null, refundReason: null, delay: 'ge-1h', depositObserved: true },
-      { class: 'STUCK', heldStatus: 'PROCESSING', refundReason: null, delay: 'not-observed', depositObserved: true },
-      { class: 'REFUNDED', heldStatus: null, refundReason: null, delay: 'not-observed', depositObserved: true },
+      {
+        class: 'STUCK',
+        heldStatus: 'PROCESSING',
+        refundReason: null,
+        delay: 'not-observed',
+        depositObserved: true,
+      },
+      {
+        class: 'REFUNDED',
+        heldStatus: null,
+        refundReason: null,
+        delay: 'not-observed',
+        depositObserved: true,
+      },
       { class: 'REFUNDED', heldStatus: null, refundReason: 'UNKNOWN', delay: 'ge-1h', depositObserved: true },
-      { class: 'FAILED', heldStatus: null, refundReason: 'UNKNOWN', delay: 'not-observed', depositObserved: true },
-      { class: 'LATE_SUCCESS', heldStatus: 'PROCESSING', refundReason: null, delay: 'ge-45m', depositObserved: true },
-      { class: 'REFUNDED', heldStatus: null, refundReason: 'whatever.near', delay: 'not-observed', depositObserved: true },
-      { class: 'REFUNDED', heldStatus: null, refundReason: 'UNKNOWN', delay: 'not-observed', depositObserved: true, note: 'x' },
+      {
+        class: 'FAILED',
+        heldStatus: null,
+        refundReason: 'UNKNOWN',
+        delay: 'not-observed',
+        depositObserved: true,
+      },
+      {
+        class: 'LATE_SUCCESS',
+        heldStatus: 'PROCESSING',
+        refundReason: null,
+        delay: 'ge-45m',
+        depositObserved: true,
+      },
+      {
+        class: 'REFUNDED',
+        heldStatus: null,
+        refundReason: 'whatever.near',
+        delay: 'not-observed',
+        depositObserved: true,
+      },
+      {
+        class: 'REFUNDED',
+        heldStatus: null,
+        refundReason: 'UNKNOWN',
+        delay: 'not-observed',
+        depositObserved: true,
+        note: 'x',
+      },
     ];
     for (const d of bad) expect(TemplateDescriptor.safeParse(d).success, JSON.stringify(d)).toBe(false);
   });
@@ -55,13 +93,25 @@ describe('M50 scenario templates', () => {
     }
     expect(
       scenarioIdFor(
-        { class: 'LATE_SUCCESS', heldStatus: 'PROCESSING', refundReason: null, delay: 'ge-30m', depositObserved: true },
+        {
+          class: 'LATE_SUCCESS',
+          heldStatus: 'PROCESSING',
+          refundReason: null,
+          delay: 'ge-30m',
+          depositObserved: true,
+        },
         'obs',
       ),
     ).toBe('obs-late-success-proc-ge-30m');
     expect(
       scenarioIdFor(
-        { class: 'REFUNDED', heldStatus: null, refundReason: 'NO_LIQUIDITY', delay: 'not-observed', depositObserved: true },
+        {
+          class: 'REFUNDED',
+          heldStatus: null,
+          refundReason: 'NO_LIQUIDITY',
+          delay: 'not-observed',
+          depositObserved: true,
+        },
         'shape',
       ),
     ).toBe('shape-refund-no-liquidity');
@@ -102,7 +152,9 @@ describe('M50 scenario templates', () => {
       expect(s.expectedOutcomes.normalizedOutcome ?? '').not.toMatch(/_PROVEN$/);
       expect(s.forbiddenBehaviors).toContain('SECOND_COMMIT_UNDER_UNCERTAINTY');
       expect(s.forbiddenBehaviors).toContain('EFFECT_RELEASE_BEFORE_COMPLETION');
-      expect(s.sourceProvenance.locator).toBe('intents-explorer-api:/api/v0/transactions#mainnet-observed-2026-11');
+      expect(s.sourceProvenance.locator).toBe(
+        'intents-explorer-api:/api/v0/transactions#mainnet-observed-2026-11',
+      );
       expect(source).not.toMatch(/\.near|0x[0-9a-f]{4}/i);
     }
   });
@@ -110,7 +162,13 @@ describe('M50 scenario templates', () => {
   it('scripts the held status, the delay lower bound and the reported terminal', () => {
     const late = parseSource(
       renderScenario(
-        { class: 'LATE_SUCCESS', heldStatus: 'PROCESSING', refundReason: null, delay: 'ge-3h', depositObserved: true },
+        {
+          class: 'LATE_SUCCESS',
+          heldStatus: 'PROCESSING',
+          refundReason: null,
+          delay: 'ge-3h',
+          depositObserved: true,
+        },
         LIVE,
       ),
     );
@@ -121,7 +179,13 @@ describe('M50 scenario templates', () => {
 
     const refund = parseSource(
       renderScenario(
-        { class: 'REFUNDED', heldStatus: 'PROCESSING', refundReason: 'NO_LIQUIDITY', delay: 'ge-15m', depositObserved: true },
+        {
+          class: 'REFUNDED',
+          heldStatus: 'PROCESSING',
+          refundReason: 'NO_LIQUIDITY',
+          delay: 'ge-15m',
+          depositObserved: true,
+        },
         LIVE,
       ),
     );
@@ -133,7 +197,13 @@ describe('M50 scenario templates', () => {
 
     const partial = parseSource(
       renderScenario(
-        { class: 'REFUNDED', heldStatus: null, refundReason: 'PARTIAL_DEPOSIT', delay: 'not-observed', depositObserved: true },
+        {
+          class: 'REFUNDED',
+          heldStatus: null,
+          refundReason: 'PARTIAL_DEPOSIT',
+          delay: 'not-observed',
+          depositObserved: true,
+        },
         LIVE,
       ),
     );
@@ -141,7 +211,13 @@ describe('M50 scenario templates', () => {
 
     const stuck = parseSource(
       renderScenario(
-        { class: 'STUCK', heldStatus: 'PROCESSING', refundReason: null, delay: 'ge-24h', depositObserved: true },
+        {
+          class: 'STUCK',
+          heldStatus: 'PROCESSING',
+          refundReason: null,
+          delay: 'ge-24h',
+          depositObserved: true,
+        },
         LIVE,
       ),
     );
@@ -151,7 +227,13 @@ describe('M50 scenario templates', () => {
 
     const failed = parseSource(
       renderScenario(
-        { class: 'FAILED', heldStatus: null, refundReason: null, delay: 'not-observed', depositObserved: false },
+        {
+          class: 'FAILED',
+          heldStatus: null,
+          refundReason: null,
+          delay: 'not-observed',
+          depositObserved: false,
+        },
         LIVE,
       ),
     );
@@ -179,5 +261,33 @@ describe('M50 scenario templates', () => {
     // Only the terminal was seen; the INCOMPLETE_DEPOSIT step before it is the documented lifecycle.
     expect(observedStatusesOf(r)).toEqual(['REFUNDED']);
     expect(scriptedStatusesOf(r)).toEqual(['INCOMPLETE_DEPOSIT', 'REFUNDED']);
+  });
+
+  it('names, per class, the invariants the observation cannot decide', () => {
+    const of = (cls: string) =>
+      undecidableInvariantsOf(all.find((d) => d.class === cls) as (typeof all)[number]).join(',');
+    expect(of('REFUNDED')).toBe('');
+    expect(of('FAILED')).toBe('INV-05');
+    expect(of('STUCK')).toBe('INV-05,INV-06');
+    expect(of('LATE_SUCCESS')).toBe('INV-05,INV-08');
+  });
+
+  it('a failed swap with a deposit keeps the value held and not visible, never lost or refunded', () => {
+    const failed = parseSource(
+      renderScenario(
+        {
+          class: 'FAILED',
+          heldStatus: null,
+          refundReason: null,
+          delay: 'not-observed',
+          depositObserved: true,
+        },
+        LIVE,
+      ),
+    );
+    expect(failed.groundTruthEvents.map((e) => [e.fact, e.amount, e.visibility ?? 'VISIBLE'])).toEqual([
+      ['ORIGIN_DEPOSIT', '1000000', 'VISIBLE'],
+      ['LOCKED_VALUE', '1000000', 'PRIVATE'],
+    ]);
   });
 });

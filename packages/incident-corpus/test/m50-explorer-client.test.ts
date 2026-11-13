@@ -47,7 +47,8 @@ async function codeOf(p: Promise<unknown>): Promise<{ code: string; text: string
   try {
     await p;
   } catch (e) {
-    if (e instanceof RouteSpecError) return { code: e.code, text: `${e.message} ${JSON.stringify(e.details)}` };
+    if (e instanceof RouteSpecError)
+      return { code: e.code, text: `${e.message} ${JSON.stringify(e.details)}` };
     throw e;
   }
   return { code: 'NO_ERROR', text: '' };
@@ -164,9 +165,16 @@ describe('M50 Explorer HTTP source', () => {
     expect((await codeOf(source().listPage(query()))).code).toBe('RS_HOST_REJECTED');
     clock += 10_000;
     server.failNext = 500;
-    const upstream = await codeOf(source().listPage(query()));
+    const upstream = await codeOf(source({ maxTransientRetries: 0 }).listPage(query()));
     expect(upstream.code).toBe('RS_IMPORT_BLOCKED');
     expect(upstream.text).toContain('500');
+    clock += 10_000;
+    // By default one 5xx answer is retried after the normal spacing, and the read then succeeds.
+    server.failNext = 503;
+    const before = server.seen.length;
+    expect(await source().listPage(query())).toHaveLength(5);
+    expect(server.seen.slice(before).map((r) => r.status)).toEqual([503, 200]);
+    expect(server.seen.at(-1)!.atMs - server.seen.at(-2)!.atMs).toBeGreaterThanOrEqual(5000);
     clock += 10_000;
     server.bodyNext = { data: [] };
     expect((await codeOf(source().listPage(query()))).code).toBe('RS_SCHEMA_INVALID');
@@ -196,7 +204,11 @@ describe('M50 Explorer HTTP source', () => {
     expect(EXPLORER_JWT_ENV).toBe('ROUTESPEC_EXPLORER_JWT');
     expect(env[EXPLORER_JWT_ENV]).toBeUndefined();
     expect(env['OTHER']).toBe('kept');
-    for (const text of [String(token), JSON.stringify({ token }), inspect(token, { depth: 5, showHidden: true })]) {
+    for (const text of [
+      String(token),
+      JSON.stringify({ token }),
+      inspect(token, { depth: 5, showHidden: true }),
+    ]) {
       expect(text).not.toContain(TOKEN);
       expect(text).not.toContain('dGVzdC1wYXlsb2Fk');
     }

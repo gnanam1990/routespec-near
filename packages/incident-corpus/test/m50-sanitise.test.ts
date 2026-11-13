@@ -201,7 +201,14 @@ describe('M50 sanitisation', () => {
             window: WINDOW,
             stuckAfterSec: 900,
             recheckAfterSec: 0,
-            statuses: ['SUCCESS', 'FAILED', 'INCOMPLETE_DEPOSIT', 'PENDING_DEPOSIT', 'PROCESSING', 'REFUNDED'],
+            statuses: [
+              'SUCCESS',
+              'FAILED',
+              'INCOMPLETE_DEPOSIT',
+              'PENDING_DEPOSIT',
+              'PROCESSING',
+              'REFUNDED',
+            ],
           },
         );
         const corpus = buildCorpus(summary, { label: 'explorer-shape-fixture' });

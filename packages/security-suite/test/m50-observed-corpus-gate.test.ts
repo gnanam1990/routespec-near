@@ -22,7 +22,7 @@ import {
   type ExplorerRecording,
 } from '@routespec/incident-corpus';
 import { GateJournal, RouteSpecStore } from '@routespec/store';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
   LIVE_INVARIANTS,
@@ -40,7 +40,7 @@ const RECORDING = fileURLToPath(
 
 let tmp: ReturnType<typeof tempDir>;
 let corpusDir: string;
-let templates: Array<{ scenarioId: string; gatePolicy: string }>;
+let templates: Array<{ scenarioId: string }>;
 
 beforeAll(async () => {
   tmp = tempDir('routespec-m50-gate-');
@@ -53,12 +53,13 @@ beforeAll(async () => {
   const corpus = buildCorpus(summary, { label: 'explorer-shape-fixture' });
   corpusDir = join(tmp.dir, 'corpus');
   writeCorpusDir(corpusDir, corpus);
-  templates = corpus.manifest.templates.map((t) => ({ scenarioId: t.scenarioId, gatePolicy: t.gatePolicy }));
+  templates = corpus.manifest.templates.map((t) => ({ scenarioId: t.scenarioId }));
 });
 afterAll(() => tmp?.cleanup());
 
 /** Project, build, effect manifest and policy, the registered corpus, and a gate over it. */
 function setup(dataDir: string, build: SubjectBuild): Journal & { cases: number } {
+  mkdirSync(dataDir, { recursive: true });
   const store = RouteSpecStore.open({ path: join(dataDir, 'journal.db') });
   try {
     const { projectId } = store.createProject({ name: `m50 ${build}`, idempotencyKey: `m50-${build}` });
@@ -144,33 +145,68 @@ function setup(dataDir: string, build: SubjectBuild): Journal & { cases: number 
 }
 
 interface ReportCase {
-  scenarioStableId: string;
-  executionLifecycle: string;
-  verdict: string;
-  gatePolicy: string;
+  ordinal: number;
+  required: boolean;
+  lifecycle: string;
+  caseVerdict: string;
+  contribution: string;
+  findings: string[];
 }
 
+async function runCorpus(build: SubjectBuild) {
+  const j = setup(join(tmp.dir, build), build);
+  const run = await runGateWithSubjects(j);
+  expect(run.json, run.stdout + run.stderr).not.toBeNull();
+  const report = run.json?.['report'] as { decision: string; cases: ReportCase[] };
+  const byScenario = Object.fromEntries(
+    report.cases.map((c) => [templates[c.ordinal]?.scenarioId ?? String(c.ordinal), c]),
+  );
+  return { j, run, report, byScenario };
+}
+
+const SCENARIOS = [
+  'shape-failed-deposit-seen',
+  'shape-failed-no-deposit-seen',
+  'shape-late-success-proc-ge-30m',
+  'shape-refund-amount-less-than-min-amount-out',
+  'shape-refund-intent-submit-failed-proc-ge-15m',
+  'shape-refund-no-liquidity',
+  'shape-refund-none-reported',
+  'shape-refund-partial-deposit',
+  'shape-stuck-incd-ge-3h',
+  'shape-stuck-proc-ge-3h',
+];
+
 describe('M50: the gate runs the observed-incident corpus', () => {
-  it('executes every case of the corpus against the reconciling client and decides from the kernel', async () => {
-    const j = setup(join(tmp.dir, 'reconciling'), 'reconciling-client');
+  it('runs all ten cases against a client that keeps reading status: PASS', async () => {
+    const { j, run, report, byScenario } = await runCorpus('reconciling-client');
+    expect(templates.map((t) => t.scenarioId)).toEqual(SCENARIOS);
     expect(j.cases).toBe(10);
-    const run = await runGateWithSubjects(j);
-    expect(run.json, run.stdout + run.stderr).not.toBeNull();
     expect(run.handoffs).toBe(10);
-    const report = run.json?.['report'] as {
-      decision: string;
-      corpusRevisionId: string;
-      cases: ReportCase[];
-    };
-    expect(report.corpusRevisionId).toBe(j.corpusRevisionId);
     expect(report.cases).toHaveLength(10);
-    expect(report.cases.map((c) => c.scenarioStableId)).toEqual(templates.map((t) => t.scenarioId));
-    for (const c of report.cases) expect(c.executionLifecycle, c.scenarioStableId).toBe('COMPLETED');
-    const verdicts = Object.fromEntries(report.cases.map((c) => [c.scenarioStableId, c.verdict]));
-    expect(verdicts).toMatchSnapshot('reconciling-client verdicts');
-    expect(report.decision).toMatchSnapshot('reconciling-client decision');
-    expect(run.exitCode).toMatchSnapshot('reconciling-client exit code');
-    // No case of this client is a FAIL: it never resubmits and releases nothing early.
-    expect(Object.values(verdicts)).not.toContain('FAIL');
+    for (const id of SCENARIOS) {
+      expect(byScenario[id], id).toMatchObject({
+        required: true,
+        lifecycle: 'COMPLETED',
+        caseVerdict: 'PASS',
+      });
+    }
+    expect(report.decision).toBe('PASS');
+    expect(run.exitCode).toBe(0);
+  });
+
+  it('a client that stops reading status early never sees the late success: REVIEW on that case only', async () => {
+    const { run, report, byScenario } = await runCorpus('impatient-client');
+    expect(run.handoffs).toBe(10);
+    for (const id of SCENARIOS) expect(byScenario[id]?.lifecycle, id).toBe('COMPLETED');
+    const late = byScenario['shape-late-success-proc-ge-30m'] as ReportCase;
+    expect(late.caseVerdict).toBe('REVIEW');
+    expect(late.findings).toContain('INVARIANT_REVIEW:INV-06');
+    expect(late.findings).toContain('MISSING:INV-06:ACCEPTED_TERMINAL_STATUS');
+    for (const id of SCENARIOS.filter((s) => s !== 'shape-late-success-proc-ge-30m')) {
+      expect(byScenario[id]?.caseVerdict, id).toBe('PASS');
+    }
+    expect(report.decision).toBe('REVIEW');
+    expect(run.exitCode).toBe(3);
   });
 });

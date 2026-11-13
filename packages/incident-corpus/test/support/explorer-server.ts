@@ -47,10 +47,19 @@ export async function startExplorerFixtureServer(options: {
     failNext: null,
     redirectNext: null,
     bodyNext: undefined,
-    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+    close: () =>
+      new Promise<void>((resolve) => {
+        server.close(() => resolve());
+        server.closeAllConnections();
+      }),
   };
-  const reply = (res: ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}) => {
-    res.writeHead(status, { 'content-type': 'application/json', ...headers });
+  const reply = (
+    res: ServerResponse,
+    status: number,
+    body: unknown,
+    headers: Record<string, string> = {},
+  ) => {
+    res.writeHead(status, { 'content-type': 'application/json', connection: 'close', ...headers });
     res.end(JSON.stringify(body));
     return status;
   };
@@ -66,7 +75,7 @@ export async function startExplorerFixtureServer(options: {
     if (state.redirectNext !== null) {
       const location = state.redirectNext;
       state.redirectNext = null;
-      res.writeHead(302, { location });
+      res.writeHead(302, { location, connection: 'close' });
       res.end();
       return 302;
     }
@@ -92,7 +101,10 @@ export async function startExplorerFixtureServer(options: {
     lastAccepted = now;
     const limit = Number(q.get('numberOfTransactions') ?? '50');
     if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
-      return reply(res, 400, { status: 400, error: { code: 'BAD_REQUEST', message: 'numberOfTransactions' } });
+      return reply(res, 400, {
+        status: 400,
+        error: { code: 'BAD_REQUEST', message: 'numberOfTransactions' },
+      });
     }
     const statuses = (q.get('statuses') ?? 'FAILED,PROCESSING,REFUNDED,SUCCESS').split(',');
     const start = q.get('startTimestamp');
@@ -114,7 +126,9 @@ export async function startExplorerFixtureServer(options: {
     const lastAddress = q.get('lastDepositAddress');
     if (lastAddress !== null) {
       const lastMemo = q.get('lastDepositMemo');
-      const at = rows.findIndex((t) => t['depositAddress'] === lastAddress && (t['depositMemo'] ?? null) === lastMemo);
+      const at = rows.findIndex(
+        (t) => t['depositAddress'] === lastAddress && (t['depositMemo'] ?? null) === lastMemo,
+      );
       rows = at === -1 ? [] : rows.slice(at + 1);
     }
     return reply(res, 200, rows.slice(0, limit));

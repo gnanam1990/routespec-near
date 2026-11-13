@@ -22,7 +22,7 @@ function run(
   args: string[],
   env: Record<string, string | undefined> = {},
 ): Promise<{ exitCode: number | null; stdout: string; stderr: string; json: Record<string, unknown> }> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const merged: Record<string, string> = {};
     for (const [k, v] of Object.entries({ ...process.env, ROUTESPEC_EXPLORER_JWT: undefined, ...env })) {
       if (v !== undefined) merged[k] = v;
@@ -36,11 +36,15 @@ function run(
     child.stdout.on('data', (c: Buffer) => (stdout += c.toString('utf8')));
     child.stderr.on('data', (c: Buffer) => (stderr += c.toString('utf8')));
     child.on('close', (exitCode) => {
-      expect(stdout.trim().split('\n'), stdout + stderr).toHaveLength(1);
-      const json = JSON.parse(stdout) as Record<string, unknown>;
-      expect(json['exitCode']).toBe(exitCode);
-      expect(json['ok']).toBe(exitCode === 0);
-      resolve({ exitCode, stdout, stderr, json });
+      try {
+        expect(stdout.trim().split('\n'), stdout + stderr).toHaveLength(1);
+        const json = JSON.parse(stdout) as Record<string, unknown>;
+        expect(json['exitCode']).toBe(exitCode);
+        expect(json['ok']).toBe(exitCode === 0);
+        resolve({ exitCode, stdout, stderr, json });
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
     });
   });
 }
@@ -49,7 +53,15 @@ const errorCode = (r: { json: Record<string, unknown> }) => (r.json['error'] as 
 describe('M50 routespec-incidents command', () => {
   it('builds, verifies and registers the shape-fixture corpus', async () => {
     const out = join(root, 'fixture-corpus');
-    const built = await run(['build-fixture', '--recording', FIXTURE_PATH, '--out', out, '--recheck-after-sec', '3600']);
+    const built = await run([
+      'build-fixture',
+      '--recording',
+      FIXTURE_PATH,
+      '--out',
+      out,
+      '--recheck-after-sec',
+      '3600',
+    ]);
     expect(built.exitCode, built.stdout + built.stderr).toBe(0);
     expect(built.json).toMatchObject({
       command: 'build-fixture',
@@ -59,12 +71,18 @@ describe('M50 routespec-incidents command', () => {
       templates: 10,
       counts: { recordsRead: 12, incidents: 11 },
     });
-    const manifest = JSON.parse(readFileSync(join(out, 'manifest.json'), 'utf8')) as { manifestDigest: string };
+    const manifest = JSON.parse(readFileSync(join(out, 'manifest.json'), 'utf8')) as {
+      manifestDigest: string;
+    };
     expect(built.json['manifestDigest']).toBe(manifest.manifestDigest);
 
     const verified = await run(['verify', '--corpus', out]);
     expect(verified.exitCode).toBe(0);
-    expect(verified.json).toMatchObject({ valid: true, templates: 10, manifestDigest: manifest.manifestDigest });
+    expect(verified.json).toMatchObject({
+      valid: true,
+      templates: 10,
+      manifestDigest: manifest.manifestDigest,
+    });
 
     const data = join(root, 'data');
     const registered = await run(['register', '--corpus', out, '--data', data]);

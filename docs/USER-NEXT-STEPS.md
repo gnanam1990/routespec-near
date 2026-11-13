@@ -205,3 +205,10 @@ Nothing is deployed yet. The steps, with exact PowerShell commands, are in
 5. Optional: configure the two secrets and three variables so the `routespec-certificate`
    workflow publishes on every PASS on `main`; record the first green run.
 6. Mainnet: the same steps with a mainnet account, after the contract audit.
+
+## 10. Certified badge and verify page (M49)
+
+After the first certificate is published (section 9), enable GitHub Pages with GitHub Actions as
+the source and run the `routespec-pages` workflow; optionally pin the attester key with the
+`ROUTESPEC_BADGE_ATTESTERS` variable. Exact commands: `docs/runbooks/certified-badge.md`. Until
+then the badge says "unverified" and the page says the registry account does not exist.

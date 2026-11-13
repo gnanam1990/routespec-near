@@ -9,7 +9,7 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig({
   test: {
-    include: ['packages/*/sandbox-test/**/*.sandbox.test.ts'],
+    include: ['packages/*/sandbox-test/**/*.sandbox.test.ts', 'apps/*/sandbox-test/**/*.sandbox.test.ts'],
     globalSetup: ['packages/registry/sandbox-test/global-setup.ts'],
     pool: 'forks',
     fileParallelism: false,

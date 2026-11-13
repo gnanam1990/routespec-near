@@ -2,7 +2,7 @@
   "name": "@routespec/registry",
   "version": "0.0.0",
   "private": true,
-  "description": "RouteSpec release certificates: signing payload, Ed25519 attester keys, a minimal NEAR JSON-RPC client, the routespec-registry contract client, and the release aggregation over on-chain certificates (M47).",
+  "description": "RouteSpec release certificates: signing payload, Ed25519 attester keys, a minimal NEAR JSON-RPC client, the routespec-registry contract client, and the release aggregation over on-chain certificates (M47), and the browser verification core of the verify page (M49).",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -13,6 +13,10 @@
     "./sandbox": {
       "types": "./src/sandbox.ts",
       "default": "./src/sandbox.ts"
+    },
+    "./browser": {
+      "types": "./src/browser.ts",
+      "default": "./src/browser.ts"
     }
   },
   "dependencies": {

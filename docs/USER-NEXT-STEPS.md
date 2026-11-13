@@ -195,7 +195,7 @@ Nothing is deployed yet. The steps, with exact PowerShell commands, are in
 `docs/runbooks/release-certificates.md`:
 
 1. Build the deployable wasm (`pnpm run registry:reproduce`) and check that its SHA-256 is
-   `ac402706a329d72c6ef98829dde5077d1c5596eb8f127bf99ce7087c407368d7`.
+   `bc6d8b9dcf69e94fb5d4ef74182da92b394a0de4562a4b5e35d2b60a8807b656`.
 2. Create `gnanam1990-routespec.testnet`, deploy and initialise in one transaction, and check
    `get_info`.
 3. Create an attester key (`certificate keygen`) and enrol its public key.

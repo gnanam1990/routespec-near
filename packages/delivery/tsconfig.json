@@ -9,5 +9,11 @@
     "noEmit": true,
     "rewriteRelativeImportExtensions": false
   },
-  "include": ["src/**/*.ts", "e2e/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "e2e/**/*.ts",
+    "test/**/*.ts",
+    "third-party-test/**/*.ts",
+    "../../examples/third-party/**/*.ts"
+  ]
 }

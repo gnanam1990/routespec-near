@@ -1,0 +1,25 @@
+{
+  "schema": "routespec.third-party-pins/1",
+  "sources": [
+    {
+      "id": "one-click-sdk-basic-swap-flow",
+      "repository": "https://github.com/defuse-protocol/one-click-sdk-typescript",
+      "standing": "OFFICIAL",
+      "standingNote": "The official 1Click TypeScript SDK repository of the defuse-protocol organisation; this is its own example.",
+      "commit": "ae8b24e064785c8cba8081263e03e52fed4de089",
+      "licence": { "spdx": "ISC", "file": "LICENSE", "holder": "NEAR Foundation" },
+      "entry": "examples/basic-swap-flow.ts",
+      "files": [
+        {
+          "path": "LICENSE",
+          "sha256": "sha256:ed5bc1f813e5c4c9ae229d45ca0851058153658d6a575bc679228996701a2e82"
+        },
+        {
+          "path": "examples/basic-swap-flow.ts",
+          "sha256": "sha256:0ef6232597e52f9184ba9215a8966de12605aed8be043bfa118585cdead22c1f"
+        }
+      ],
+      "allowedImports": ["@defuse-protocol/one-click-sdk-typescript"]
+    }
+  ]
+}

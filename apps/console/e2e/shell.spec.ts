@@ -107,6 +107,22 @@ for (const width of [375, 768, 1024, 1440]) {
   });
 }
 
+test('the Gate summary defaults to the most recent gate run and says which run it shows', async ({
+  page,
+}) => {
+  await open(page, '/projects/proj-alpha/releases');
+  // The matrix lists gate runs oldest first; the newest fixture run is gr-running (v1.6.0-rc.1).
+  await expect(page.getByRole('heading', { name: 'Gate summary — v1.6.0-rc.1' })).toBeVisible();
+  const basis = page.locator('[data-summary-basis]');
+  await expect(basis).toHaveAttribute('data-summary-basis', 'MOST_RECENT');
+  await expect(basis).toContainText('Showing the most recent gate run.');
+  await expect(basis).toContainText('gr-running');
+  await page.getByRole('button', { name: 'v1.4.0' }).click();
+  await expect(page.getByRole('heading', { name: 'Gate summary — v1.4.0' })).toBeVisible();
+  await expect(basis).toHaveAttribute('data-summary-basis', 'SELECTED');
+  await expect(basis).toContainText('gr-fail');
+});
+
 test('browser Back restores the selected matrix row', async ({ page }) => {
   await open(page, '/projects/proj-alpha/releases');
   await page.getByRole('button', { name: 'v1.4.1' }).click();

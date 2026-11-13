@@ -31,10 +31,18 @@ fn payload_is_line_based_with_the_domain_first() {
 #[test]
 fn no_field_can_smuggle_a_line_or_a_second_field() {
     for project in ["a\nverdict:FAIL", "a\rb", "a b", "a:b", "a\u{0}b"] {
-        assert_eq!(validate(&CertificateFields { project, ..base() }), Err(CertificateError::Project), "{project:?}");
+        assert_eq!(
+            validate(&CertificateFields { project, ..base() }),
+            Err(CertificateError::Project),
+            "{project:?}"
+        );
     }
     for registry in ["a\nb.near", "a b.near", "-a.near", "a.near.", "a__b.near"] {
-        assert_eq!(validate(&CertificateFields { registry, ..base() }), Err(CertificateError::Registry), "{registry:?}");
+        assert_eq!(
+            validate(&CertificateFields { registry, ..base() }),
+            Err(CertificateError::Registry),
+            "{registry:?}"
+        );
     }
 }
 
@@ -65,9 +73,15 @@ fn timestamp_window() {
     let now = 1_794_528_000_000u64;
     assert_eq!(check_timestamp(now, now), Ok(()));
     assert_eq!(check_timestamp(now + MAX_FUTURE_SKEW_MS, now), Ok(()));
-    assert_eq!(check_timestamp(now + MAX_FUTURE_SKEW_MS + 1, now), Err(CertificateError::TimestampFuture));
+    assert_eq!(
+        check_timestamp(now + MAX_FUTURE_SKEW_MS + 1, now),
+        Err(CertificateError::TimestampFuture)
+    );
     assert_eq!(check_timestamp(now - MAX_AGE_MS, now), Ok(()));
-    assert_eq!(check_timestamp(now - MAX_AGE_MS - 1, now), Err(CertificateError::TimestampStale));
+    assert_eq!(
+        check_timestamp(now - MAX_AGE_MS - 1, now),
+        Err(CertificateError::TimestampStale)
+    );
     assert_eq!(check_timestamp(u64::MAX, now), Err(CertificateError::TimestampFuture));
     assert_eq!(check_timestamp(1, u64::MAX), Err(CertificateError::TimestampStale));
 }

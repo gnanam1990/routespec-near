@@ -39,33 +39,69 @@ fn payload_bytes_match_the_shared_vectors() {
     for v in list {
         let payload = signing_payload(&fields(v)).unwrap_or_else(|e| panic!("{}: {:?}", v["name"], e));
         assert_eq!(payload, v["payloadUtf8"].as_str().unwrap().as_bytes(), "{}", v["name"]);
-        assert_eq!(hex::encode(Sha256::digest(&payload)), v["payloadSha256"].as_str().unwrap(), "{}", v["name"]);
+        assert_eq!(
+            hex::encode(Sha256::digest(&payload)),
+            v["payloadSha256"].as_str().unwrap(),
+            "{}",
+            v["name"]
+        );
     }
 }
 
 #[test]
 fn recorded_signatures_verify_and_any_changed_field_breaks_them() {
     let doc = vectors();
-    let key_bytes: [u8; 32] = hex::decode(doc["attesterPublicKeyHex"].as_str().unwrap()).unwrap().try_into().unwrap();
+    let key_bytes: [u8; 32] = hex::decode(doc["attesterPublicKeyHex"].as_str().unwrap())
+        .unwrap()
+        .try_into()
+        .unwrap();
     let key = VerifyingKey::from_bytes(&key_bytes).unwrap();
     for v in doc["vectors"].as_array().unwrap() {
         let f = fields(v);
-        let signature_bytes: [u8; 64] = hex::decode(v["signatureHex"].as_str().unwrap()).unwrap().try_into().unwrap();
+        let signature_bytes: [u8; 64] = hex::decode(v["signatureHex"].as_str().unwrap())
+            .unwrap()
+            .try_into()
+            .unwrap();
         let signature = Signature::from_bytes(&signature_bytes);
-        key.verify(&signing_payload(&f).unwrap(), &signature).unwrap_or_else(|_| panic!("{}", v["name"]));
+        key.verify(&signing_payload(&f).unwrap(), &signature)
+            .unwrap_or_else(|_| panic!("{}", v["name"]));
 
         let other_digest = "sha256:0000000000000000000000000000000000000000000000000000000000000001";
         let other_commit = "0000000000000000000000000000000000000001";
         let other_verdict = if f.verdict == "PASS" { "FAIL" } else { "PASS" };
         let tampered = [
-            CertificateFields { registry: "other-registry.testnet", ..f },
-            CertificateFields { project: "someone/else", ..f },
-            CertificateFields { bundle_digest: other_digest, ..f },
-            CertificateFields { verdict: other_verdict, ..f },
-            CertificateFields { corpus_digest: other_digest, ..f },
-            CertificateFields { artifact_digest: other_digest, ..f },
-            CertificateFields { commit: other_commit, ..f },
-            CertificateFields { timestamp_ms: if f.timestamp_ms == 1 { 2 } else { f.timestamp_ms - 1 }, ..f },
+            CertificateFields {
+                registry: "other-registry.testnet",
+                ..f
+            },
+            CertificateFields {
+                project: "someone/else",
+                ..f
+            },
+            CertificateFields {
+                bundle_digest: other_digest,
+                ..f
+            },
+            CertificateFields {
+                verdict: other_verdict,
+                ..f
+            },
+            CertificateFields {
+                corpus_digest: other_digest,
+                ..f
+            },
+            CertificateFields {
+                artifact_digest: other_digest,
+                ..f
+            },
+            CertificateFields {
+                commit: other_commit,
+                ..f
+            },
+            CertificateFields {
+                timestamp_ms: if f.timestamp_ms == 1 { 2 } else { f.timestamp_ms - 1 },
+                ..f
+            },
         ];
         for (i, t) in tampered.iter().enumerate() {
             let payload = signing_payload(t).unwrap();

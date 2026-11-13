@@ -311,6 +311,21 @@ export class NearRpc {
     return { value, blockHeight: r['block_height'], blockHash: String(r['block_hash'] ?? '') };
   }
 
+  /** The code hash (base58 of the SHA-256 of the deployed wasm) of an account. */
+  async codeHash(accountId: string): Promise<string> {
+    const { result, error } = await this.request('query', {
+      request_type: 'view_account',
+      finality: this.finality,
+      account_id: accountId,
+    });
+    if (error !== undefined) rejected(error, 'UNKNOWN_ACCOUNT');
+    const hash = obj(result)?.['code_hash'];
+    if (typeof hash !== 'string' || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(hash)) {
+      unavailable('The account query returned an unexpected shape.');
+    }
+    return hash;
+  }
+
   /** The current nonce of an access key and a recent block hash to anchor a transaction. */
   async accessKey(
     accountId: string,

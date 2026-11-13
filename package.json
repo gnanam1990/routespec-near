@@ -26,7 +26,11 @@
     "audit:supply-chain": "node --no-warnings packages/hardening/src/audit-cli.ts",
     "test:delivery": "vitest run -c vitest.delivery.config.ts",
     "test:containment": "vitest run -c vitest.containment.config.ts",
-    "delivery:journey": "node --no-warnings packages/delivery/src/journey.ts"
+    "delivery:journey": "node --no-warnings packages/delivery/src/journey.ts",
+    "test:registry": "vitest run -c vitest.registry.config.ts",
+    "registry:build": "node scripts/registry/build.mjs",
+    "registry:test": "cargo test --locked --manifest-path contracts/routespec-registry/Cargo.toml -p routespec-certificate",
+    "registry:reproduce": "node scripts/registry/reproduce.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",

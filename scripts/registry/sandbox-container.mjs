@@ -10,6 +10,7 @@
 // Prints one JSON line when the node is ready: {"ready":true,"rpcPort":3030,...}. The validator
 // account (test.near) is created by `near-sandbox init` with a fresh key in /sandbox; the
 // harness reads that key file from the container. It exists only for the life of the container.
+/* global fetch, setTimeout */
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';

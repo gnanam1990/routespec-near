@@ -6,6 +6,7 @@
 // Usage: pnpm run registry:build
 // The digest of a host build depends on the host (cargo home path, platform). The deployable
 // artifact is the one from `pnpm run registry:reproduce`, built in a pinned container.
+/* global WebAssembly */
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';

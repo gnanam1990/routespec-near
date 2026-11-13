@@ -9,6 +9,7 @@
  *
  * Without a container engine every test reports `NOT_RUN: <reason>`.
  */
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, inject, it, type TestContext } from 'vitest';
@@ -303,6 +304,40 @@ describe('publish and verify', () => {
     ]);
     expect(pinned.exitCode).toBe(0);
     expect(releaseOf(pinned.json).acceptedCertificateIds).toEqual([0]);
+  });
+
+  it('reports the code hash of the registry account and refuses a different contract when one is pinned', async (ctx) => {
+    need(ctx);
+    const wasm = readFileSync((sandbox as { wasmPath: string }).wasmPath);
+    const codeHash = base58Encode(createHash('sha256').update(wasm).digest());
+    const r = await cli([
+      'certificate',
+      'verify',
+      '--digest',
+      pass.bundleDigest,
+      '--code-hash',
+      codeHash,
+      ...chain(),
+    ]);
+    expect(r.exitCode, r.stderr).toBe(0);
+    expect((r.json?.['registry'] as { codeHash: string }).codeHash).toBe(codeHash);
+    const other = base58Encode(createHash('sha256').update('some other contract').digest());
+    for (const command of ['verify', 'revoke-check']) {
+      const refused = await cli([
+        'certificate',
+        command,
+        '--digest',
+        pass.bundleDigest,
+        '--code-hash',
+        other,
+        ...chain(),
+      ]);
+      expect(refused.exitCode, command).toBe(6);
+      expect(errorOf(refused.json)).toMatchObject({
+        code: 'RS_REGISTRY_REJECTED',
+        details: { reason: 'REGISTRY_CODE_HASH_MISMATCH', codeHash },
+      });
+    }
   });
 
   it('is REVIEW when the pinned attester or the pinned project is another one', async (ctx) => {

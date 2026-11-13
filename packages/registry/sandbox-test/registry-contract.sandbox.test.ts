@@ -94,12 +94,10 @@ beforeAll(async () => {
   if (!sandbox.available) return;
   rpc = new NearRpc(sandbox.rpcUrl);
   wasm = new Uint8Array(readFileSync(sandbox.wasmPath));
-  [registryAccount, owner, relayer, stranger] = await Promise.all([
-    Promise.resolve({ accountId: `registry-${suffix}.test.near`, signer: generateSigner() }),
-    Promise.resolve({ accountId: `owner-${suffix}.test.near`, signer: generateSigner() }),
-    Promise.resolve({ accountId: `relayer-${suffix}.test.near`, signer: generateSigner() }),
-    Promise.resolve({ accountId: `stranger-${suffix}.test.near`, signer: generateSigner() }),
-  ]);
+  registryAccount = { accountId: `registry-${suffix}.test.near`, signer: generateSigner() };
+  owner = { accountId: `owner-${suffix}.test.near`, signer: generateSigner() };
+  relayer = { accountId: `relayer-${suffix}.test.near`, signer: generateSigner() };
+  stranger = { accountId: `stranger-${suffix}.test.near`, signer: generateSigner() };
   // One payer key: account creation is sequential so nonces do not collide.
   for (const a of [registryAccount, owner, relayer, stranger]) {
     await createAccount(rpc, sandboxRoot(sandbox), a);

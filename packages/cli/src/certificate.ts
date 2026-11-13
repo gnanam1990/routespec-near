@@ -83,6 +83,7 @@ const CHAIN_FLAGS = {
   registry: { kind: 'string', required: true },
   network: { kind: 'string' },
   rpc: { kind: 'string' },
+  'code-hash': { kind: 'string' },
 } as const;
 
 function registryFromArgs(args: ParsedArgs): string {
@@ -92,7 +93,9 @@ function registryFromArgs(args: ParsedArgs): string {
 }
 
 /** The registry client for `--network` / `--rpc`; with a named network the chain id is checked. */
-async function connect(args: ParsedArgs): Promise<{ client: RegistryClient; network: string | null }> {
+async function connect(
+  args: ParsedArgs,
+): Promise<{ client: RegistryClient; network: string | null; codeHash: string }> {
   const registry = registryFromArgs(args);
   const network = args.strings['network'] ?? null;
   const rpcFlag = args.strings['rpc'] ?? null;
@@ -119,7 +122,20 @@ async function connect(args: ParsedArgs): Promise<{ client: RegistryClient; netw
       },
     );
   }
-  return { client, network };
+  // The deployed code is identified by its hash. Compare it with the digest of the reproducible
+  // build (`pnpm run registry:reproduce`); with --code-hash a different contract is refused.
+  const codeHash = await rpc.codeHash(registry);
+  const expectedHash = args.strings['code-hash'];
+  if (expectedHash !== undefined && expectedHash !== codeHash) {
+    throw new RouteSpecError(
+      'RS_REGISTRY_REJECTED',
+      'The registry account runs different code than expected.',
+      {
+        details: { reason: 'REGISTRY_CODE_HASH_MISMATCH', codeHash },
+      },
+    );
+  }
+  return { client, network, codeHash };
 }
 
 function secretFrom(
@@ -520,7 +536,7 @@ export const CERTIFICATE_COMMANDS: Readonly<Record<string, CertificateCommand>> 
         bundleDigest = bundleDigestFromArgs(args) as string;
       }
 
-      const { client, network } = await connect(args);
+      const { client, network, codeHash } = await connect(args);
       const info = await client.info();
       const { certificates, blockHeight } = await client.certificatesByBundle(bundleDigest);
       const attesters = await attesterStates(client, [
@@ -549,6 +565,7 @@ export const CERTIFICATE_COMMANDS: Readonly<Record<string, CertificateCommand>> 
             network,
             contract: info.contract,
             version: info.version,
+            codeHash,
             ownerId: info.ownerId,
             readAtBlockHeight: blockHeight,
           },
@@ -580,7 +597,7 @@ export const CERTIFICATE_COMMANDS: Readonly<Record<string, CertificateCommand>> 
       const bundleDigest = bundleDigestFromArgs(args);
       const named = attesterFlags(args);
       if (bundleDigest === null && named.length === 0) usage('Give --bundle, --digest, or --attester.');
-      const { client, network } = await connect(args);
+      const { client, network, codeHash } = await connect(args);
       const found =
         bundleDigest === null
           ? null
@@ -627,7 +644,7 @@ export const CERTIFICATE_COMMANDS: Readonly<Record<string, CertificateCommand>> 
         result: {
           status: overall,
           bundleDigest,
-          registry: { accountId: client.accountId, network },
+          registry: { accountId: client.accountId, network, codeHash },
           certificates,
           attesters,
           note: 'A revoked attester can publish nothing new. Whether its earlier certificates still count is the verifier policy: certificate verify treats them as not accepted.',

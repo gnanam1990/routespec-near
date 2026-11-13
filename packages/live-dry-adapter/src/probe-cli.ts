@@ -4,14 +4,18 @@
  *
  *   ROUTESPEC_PROVIDER_JWT=<your token>   (optional; set in your own shell, never on argv)
  *   pnpm --filter @routespec/live-dry-adapter probe:official -- \
- *     --confirm-official-endpoint --request <dry-quote.json> [--ledger <compat.sqlite>]
+ *     --confirm-official-endpoint --request <dry-quote.json> [--ledger <compat.sqlite>] \
+ *     [--debug-echo-diff]
  *
  * The request file must be a quote request with `"dry": true`; the adapter denies anything else
  * before the credential, DNS or a socket. The adapter process reads the token from its own
  * environment after preflight; this command removes the variable from its own environment as
  * soon as the adapter has started. Output is the redacted compatibility record only (label,
  * reason, shape digest, HTTP status, timing, token state); no response value is printed.
- * No retry is made and no settlement is exercised.
+ * No retry is made and no settlement is exercised. `--debug-echo-diff` adds, only when the echoed
+ * request did not match, the redacted field-level diff (field names and value classes; addresses
+ * reduced to "same as the sent recipient/refundTo" or a coarse kind). It is never written to the
+ * ledger.
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -72,6 +76,9 @@ async function main(): Promise<number> {
       responseAssignedAddress: result?.responseAssignedAddress ?? 'NOT_OBSERVED',
       timing: report.probes.at(-1)?.timing ?? null,
       settlementExercised: false,
+      ...(process.argv.includes('--debug-echo-diff') && result?.requestEchoDiff
+        ? { requestEchoDiff: result.requestEchoDiff }
+        : {}),
     };
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
     return result?.compatibility === 'OFFICIAL_ENDPOINT_COMPATIBLE' ? 0 : 1;

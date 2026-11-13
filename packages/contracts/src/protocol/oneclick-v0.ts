@@ -207,6 +207,23 @@ function describeSchema(schema: z.ZodObject<z.ZodRawShape>): Record<string, stri
   );
 }
 
+/**
+ * Request-echo equivalence constants (see "Request-echo equivalence" below). They are validation
+ * rules, like the schemas' refinements, and are not part of the digested profile body: the
+ * profile's field sets, routes and statuses are unchanged, so its integrity digest (and every
+ * golden replay vector that carries it) stays the same.
+ */
+/** Documented defaults of optional request fields the provider may echo when they were omitted. */
+export const ECHO_DOCUMENTED_DEFAULTS: Readonly<Record<string, unknown>> = Object.freeze({
+  depositMode: 'SIMPLE',
+  confidentiality: 'public',
+  quoteWaitingTimeMs: 0,
+  insured: false,
+});
+
+/** Documented provider fee rates (bps) applied when an authenticated or public request omits appFees. */
+export const ECHO_PROVIDER_DEFAULT_FEE_BPS: readonly number[] = Object.freeze([1, 20, 25]);
+
 const profileBody = {
   profileId: ONECLICK_PROFILE_ID,
   sdk: ONECLICK_SDK_PIN,
@@ -296,6 +313,68 @@ export function validateQuoteRequest(input: unknown): ValidatedQuoteRequest {
   };
 }
 
+// ---------------------------------------------------------------------------------------------
+// Request-echo equivalence. The official endpoint echoes the request in `quoteRequest` after its
+// own normalisation (observed by the RP-07 dry probe and documented in the 1Click quote API):
+//   1. `deadline` is re-serialized (milliseconds added); the instant is unchanged.
+//   2. optional fields the client omitted are filled with their documented defaults.
+//   3. an omitted `appFees` becomes the provider's own default fee entry (20 bps with an API
+//      key, 1 bp on stablecoin/same-asset routes, 25 bps without a key) with a provider recipient.
+// Only these are equivalent. Every field the client sent must be echoed unchanged (deadline: same
+// instant), no sent field may be dropped, and nothing else may be added. The provider-defaulted
+// values are response-assigned and are bound into the finalization extensions.
+
+function sameInstant(a: string, b: string): boolean {
+  if (!IsoTime.safeParse(a).success || !IsoTime.safeParse(b).success) return false;
+  const fraction = (t: string) => /\.(\d+)/.exec(t)?.[1] ?? '';
+  // Date.parse is millisecond-precise; reject a sub-millisecond difference rather than round it.
+  if (fraction(a).replace(/0+$/, '').length > 3 || fraction(b).replace(/0+$/, '').length > 3) {
+    return a === b;
+  }
+  const ma = Date.parse(a);
+  const mb = Date.parse(b);
+  return Number.isFinite(ma) && ma === mb;
+}
+
+function isProviderDefaultFee(value: unknown): boolean {
+  if (!Array.isArray(value) || value.length !== 1) return false;
+  const entry = value[0] as { fee?: unknown };
+  return typeof entry.fee === 'number' && ECHO_PROVIDER_DEFAULT_FEE_BPS.includes(entry.fee);
+}
+
+/**
+ * Compare a schema-valid echoed request with the bound one. Returns the provider-defaulted
+ * fields (sorted) when the echo is equivalent, or null for a genuine mismatch.
+ */
+export function equivalentEcho(
+  sent: QuoteRequestMaterial,
+  echoed: QuoteRequestMaterial,
+): Record<string, unknown> | null {
+  const s = sent as Record<string, unknown>;
+  const e = echoed as Record<string, unknown>;
+  const same = (a: unknown, b: unknown) =>
+    digestValue('routespec.oneclick.echo-field/1', a) === digestValue('routespec.oneclick.echo-field/1', b);
+  for (const key of Object.keys(s)) {
+    if (!(key in e)) return null;
+    if (key === 'deadline') {
+      if (!sameInstant(String(s[key]), String(e[key]))) return null;
+    } else if (!same(s[key], e[key])) {
+      return null;
+    }
+  }
+  const defaulted: Record<string, unknown> = {};
+  for (const key of Object.keys(e).sort()) {
+    if (key in s) continue;
+    if (key === 'appFees') {
+      if (!isProviderDefaultFee(e[key])) return null;
+    } else if (!(key in ECHO_DOCUMENTED_DEFAULTS) || !same(ECHO_DOCUMENTED_DEFAULTS[key], e[key])) {
+      return null;
+    }
+    defaulted[key] = e[key];
+  }
+  return defaulted;
+}
+
 export interface QuoteFinalization {
   readonly quoteRequestDigest: Digest;
   readonly correlationId: string;
@@ -353,7 +432,11 @@ export function validateQuoteFinalization(bound: ValidatedQuoteRequest, input: u
   }
   const r = parsed.data;
   const echoed = validateQuoteRequest(r.quoteRequest);
-  if (echoed.quoteRequestDigest !== bound.quoteRequestDigest) {
+  const providerDefaulted =
+    echoed.quoteRequestDigest === bound.quoteRequestDigest
+      ? {}
+      : equivalentEcho(bound.material, echoed.material);
+  if (providerDefaulted === null) {
     throw new RouteSpecError(
       'RS_FINALIZATION_REQUEST_MISMATCH',
       'Quote response echoes a different request.',
@@ -401,6 +484,8 @@ export function validateQuoteFinalization(bound: ValidatedQuoteRequest, input: u
   ] as const) {
     if (q[key] !== undefined) extensions[key] = q[key];
   }
+  if (Object.keys(providerDefaulted).length > 0)
+    extensions['providerDefaultedRequestFields'] = providerDefaulted;
   const signatureDigest = digestValue('routespec.oneclick.quote-signature/1', r.signature);
   const responseDigest = digestValue('routespec.oneclick.quote-response/1', r);
   const finalizationBody = {

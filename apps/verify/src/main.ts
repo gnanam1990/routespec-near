@@ -1,6 +1,11 @@
 /**
  * The verify page. Everything shown comes from `verifyDigestOnChain` (the same decision as
  * `routespec certificate verify --digest`) and is written with `textContent` only.
+ *
+ * The check ledger (five steps) follows the JSON-RPC calls the page actually makes: a fetch
+ * wrapper reads the method of each outgoing request and marks the step it belongs to. A step is
+ * only marked done after the whole verification returned, and an error stops the ledger at the
+ * step whose call was in flight. Nothing on it is simulated.
  */
 import {
   BADGE_STATUS_TEXT,
@@ -12,6 +17,7 @@ import {
   type PageVerification,
 } from '@routespec/registry/browser';
 import { parseConfig, type VerifyPageConfig } from './config.ts';
+import { icon, type IconName } from './icons.ts';
 import {
   inputFromSearch,
   RequestError,
@@ -37,7 +43,9 @@ function el(
   return node;
 }
 
-const TONE: Readonly<Record<BadgeStatus, 'pass' | 'fail' | 'review' | 'neutral'>> = {
+type Tone = 'pass' | 'fail' | 'review' | 'neutral';
+
+const TONE: Readonly<Record<BadgeStatus, Tone>> = {
   CERTIFIED_PASS: 'pass',
   CERTIFIED_FAIL: 'fail',
   CERTIFIED_REVIEW: 'review',
@@ -48,6 +56,27 @@ const TONE: Readonly<Record<BadgeStatus, 'pass' | 'fail' | 'review' | 'neutral'>
   NOT_CERTIFIED: 'neutral',
   REGISTRY_CODE_UNKNOWN: 'review',
   UNVERIFIED: 'neutral',
+};
+
+/** UI-SPEC 4: PASS check, FAIL cross, REVIEW alert, NOT_RUN hollow circle; neutral states say why. */
+const STATUS_ICON: Readonly<Record<BadgeStatus, IconName>> = {
+  CERTIFIED_PASS: 'check',
+  CERTIFIED_FAIL: 'x',
+  CERTIFIED_REVIEW: 'alert',
+  CERTIFIED_NOT_RUN: 'circle',
+  ATTESTER_REVOKED: 'slash',
+  ATTESTERS_DISAGREE: 'alert',
+  NO_CERTIFICATE: 'circle',
+  NOT_CERTIFIED: 'slash',
+  REGISTRY_CODE_UNKNOWN: 'question',
+  UNVERIFIED: 'disconnected',
+};
+
+const VERDICT_ICON: Readonly<Record<string, IconName>> = {
+  PASS: 'check',
+  FAIL: 'x',
+  REVIEW: 'alert',
+  NOT_RUN: 'circle',
 };
 
 const HEADLINE: Readonly<Record<BadgeStatus, string>> = {
@@ -70,6 +99,9 @@ const NOTICE_TEXT: Readonly<Record<Notice, string>> = {
   ATTESTERS_FROM_LINK: 'This link pins the attester keys below; only their certificates count.',
 };
 
+// ---------------------------------------------------------------------------------------------
+// Formatting
+
 function short(text: string, keep = 10): string {
   return text.length <= keep * 2 + 1 ? text : `${text.slice(0, keep)}…${text.slice(-keep)}`;
 }
@@ -81,15 +113,189 @@ function utc(ms: number): string {
     .replace(/\.\d+Z$/, ' UTC');
 }
 
-function dl(rows: Array<[string, Node | string]>): HTMLElement {
+function code(text: string): HTMLElement {
+  return el('code', { class: 'digest' }, text);
+}
+
+/**
+ * A digest in 8-character groups for scanning. The groups are separate spans spaced by CSS, so
+ * the text (copy, screen readers, `textContent`) is the exact digest.
+ */
+function digestText(digest: string): HTMLElement {
+  const [prefix, hex] = digest.includes(':') ? digest.split(':', 2) : ['', digest];
+  const node = el('code', { class: 'digest grouped' });
+  if (prefix !== '' && prefix !== undefined) node.append(el('span', { class: 'algo' }, `${prefix}:`));
+  const body = hex ?? '';
+  for (let i = 0; i < body.length; i += 8) node.append(el('span', { class: 'g' }, body.slice(i, i + 8)));
+  return node;
+}
+
+function sub(text: string): HTMLElement {
+  return el('span', { class: 'sub' }, text);
+}
+
+function facts(rows: Array<[string, Node | string]>): HTMLElement {
   const list = el('dl', { class: 'facts' });
-  for (const [k, v] of rows) list.append(el('dt', {}, k), el('dd', {}, v));
+  for (const [k, v] of rows) list.append(el('div', { class: 'fact' }, el('dt', {}, k), el('dd', {}, v)));
   return list;
 }
 
-function code(text: string, title = text): HTMLElement {
-  return el('code', { title, class: 'digest' }, text);
+function announce(text: string): void {
+  const live = $('copy-status');
+  live.textContent = '';
+  window.setTimeout(() => (live.textContent = text), 30);
 }
+
+function copyButton(value: string, what: string, visibleText: string | null = null): HTMLElement {
+  const button = el(
+    'button',
+    {
+      type: 'button',
+      class: visibleText === null ? 'copy icon-only' : 'copy',
+      'aria-label': `Copy ${what}`,
+      title: `Copy ${what}`,
+    },
+    icon('copy', 16),
+    visibleText === null ? null : el('span', {}, visibleText),
+  );
+  button.addEventListener('click', () => {
+    const done = (ok: boolean): void =>
+      announce(ok ? `Copied the ${what}.` : `Copy is not available here; select the ${what} instead.`);
+    if (navigator.clipboard === undefined) return done(false);
+    navigator.clipboard.writeText(value).then(
+      () => done(true),
+      () => done(false),
+    );
+  });
+  return button;
+}
+
+// ---------------------------------------------------------------------------------------------
+// The check ledger
+
+type Stage = 'digest' | 'network' | 'registry' | 'certificates' | 'signatures';
+type StepState = 'idle' | 'active' | 'done' | 'flag' | 'stopped' | 'skipped';
+
+const STAGES: readonly Stage[] = ['digest', 'network', 'registry', 'certificates', 'signatures'];
+const STAGE_TITLE: Readonly<Record<Stage, string>> = {
+  digest: 'Bundle digest',
+  network: 'Network',
+  registry: 'Registry contract',
+  certificates: 'Certificates',
+  signatures: 'Signatures and attesters',
+};
+const STEP_ICON: Readonly<Record<StepState, IconName>> = {
+  idle: 'circle',
+  active: 'clock',
+  done: 'check',
+  flag: 'alert',
+  stopped: 'x',
+  skipped: 'slash',
+};
+const STEP_STATE_TEXT: Readonly<Record<StepState, string>> = {
+  idle: '',
+  active: 'Reading',
+  done: 'Checked',
+  flag: 'Checked, see note',
+  stopped: 'Stopped here',
+  skipped: 'Not reached',
+};
+
+let current: Stage | null = null;
+let lookingUpProject = false;
+/** The stage of the last call made while looking up a project (its calls also read the node and registry). */
+let lookupCall: Stage | null = null;
+
+function step(stage: Stage): HTMLElement {
+  return document.querySelector<HTMLElement>(`#ledger [data-step="${stage}"]`) as HTMLElement;
+}
+
+function setStep(stage: Stage, state: StepState, out: Array<Node | string> = []): void {
+  const li = step(stage);
+  if (li.getAttribute('data-state') !== state) {
+    li.setAttribute('data-state', state);
+    li.querySelector('.step-icon')?.replaceChildren(icon(STEP_ICON[state], 20));
+    const label = li.querySelector('.step-state') as HTMLElement;
+    label.textContent = STEP_STATE_TEXT[state];
+  }
+  li.querySelector('.step-out')?.replaceChildren(...out);
+}
+
+function ledgerState(state: 'idle' | 'running' | 'done' | 'stopped'): void {
+  $('ledger').setAttribute('data-state', state);
+}
+
+function resetLedger(): void {
+  current = null;
+  for (const s of STAGES) setStep(s, 'idle');
+}
+
+function enter(stage: Stage): void {
+  if (current === stage) return;
+  const from = current === null ? 0 : STAGES.indexOf(current);
+  const to = STAGES.indexOf(stage);
+  for (let i = from; i < to; i++) setStep(STAGES[i] as Stage, 'done');
+  current = stage;
+  setStep(stage, 'active');
+  ledgerState('running');
+  $('placeholder-text').textContent =
+    `Checking: step ${String(to + 1)} of ${String(STAGES.length)}, ${STAGE_TITLE[stage]}.`;
+}
+
+/** Stop the ledger at the step in flight; earlier steps answered, later ones were not reached. */
+function stopAt(stage: Stage, why: string): void {
+  const at = STAGES.indexOf(stage);
+  const digestOpen = current === 'digest' && stage !== 'digest';
+  STAGES.forEach((s, i) => {
+    if (s === 'digest' && digestOpen)
+      setStep(s, 'skipped', [
+        el(
+          'p',
+          { class: 'step-line' },
+          'No digest: the project lookup reads the node and the registry first.',
+        ),
+      ]);
+    else if (i < at) setStep(s, 'done');
+    else if (i === at) setStep(s, 'stopped', [el('p', { class: 'step-note' }, why)]);
+    else setStep(s, 'skipped');
+  });
+  ledgerState('stopped');
+}
+
+/** The stage a JSON-RPC request belongs to, from its own method and view name. */
+function stageOf(body: unknown): Stage | null {
+  if (typeof body !== 'object' || body === null) return null;
+  const b = body as { method?: unknown; params?: { request_type?: unknown; method_name?: unknown } };
+  if (lookingUpProject) {
+    lookupCall = b.method === 'status' ? 'network' : 'registry';
+    return 'digest';
+  }
+  if (b.method === 'status') return 'network';
+  if (b.params?.request_type === 'view_account') return 'registry';
+  switch (b.params?.method_name) {
+    case 'get_info':
+      return 'registry';
+    case 'get_certificates_by_bundle':
+      return 'certificates';
+    case 'get_attester':
+      return 'signatures';
+    default:
+      return null;
+  }
+}
+
+const trackingFetch: typeof fetch = (input, init) => {
+  try {
+    const stage = stageOf(JSON.parse(String(init?.body ?? 'null')));
+    if (stage !== null) enter(stage);
+  } catch {
+    // Not JSON: not a call the ledger follows.
+  }
+  return fetch(input, init);
+};
+
+// ---------------------------------------------------------------------------------------------
+// Result
 
 let config: VerifyPageConfig | null = null;
 let fileDigest: { digest: string; bytes: number; name: string } | null = null;
@@ -100,35 +306,69 @@ function result(): HTMLElement {
 
 function showBusy(text: string): void {
   const r = result();
-  r.hidden = false;
+  r.hidden = true;
   r.setAttribute('aria-busy', 'true');
-  r.replaceChildren(el('p', { class: 'busy', 'data-state': 'busy' }, text));
+  r.replaceChildren();
+  $('placeholder').hidden = false;
+  $('placeholder').setAttribute('data-state', 'busy');
+  $('placeholder-text').textContent = text;
+  $('details').hidden = true;
 }
 
-function showError(message: string, reason: string | null = null): void {
+function showVerdict(node: HTMLElement, ...after: HTMLElement[]): void {
   const r = result();
-  r.hidden = false;
   r.setAttribute('aria-busy', 'false');
-  r.replaceChildren(
+  r.replaceChildren(node, ...after);
+  r.hidden = false;
+  $('placeholder').hidden = true;
+  $('placeholder').removeAttribute('data-state');
+}
+
+function verdictHead(status: BadgeStatus, tone: Tone): HTMLElement {
+  return el(
+    'div',
+    { class: 'verdict-head' },
+    el('span', { class: `verdict-icon tone-${tone}` }, icon(STATUS_ICON[status], 24)),
+    el('p', { class: 'headline' }, HEADLINE[status]),
+  );
+}
+
+function showError(message: string, reason: string | null = null, stage: Stage | null = null): void {
+  if (stage !== null) stopAt(stage, message);
+  const verdict = el(
+    'div',
+    {
+      class: 'verdict tone-neutral',
+      'data-status': 'UNVERIFIED',
+      'data-reason': reason ?? '',
+      role: 'status',
+      tabindex: '-1',
+    },
+    verdictHead('UNVERIFIED', 'neutral'),
+    el('p', { class: 'verdict-text' }, message),
+    reason === null
+      ? null
+      : el('p', { class: 'verdict-meta' }, el('span', { class: 'meta-k' }, 'Reason'), el('code', {}, reason)),
+  );
+  showVerdict(verdict);
+  $('details').hidden = true;
+}
+
+function badgePreview(v: PageVerification, tone: Tone): HTMLElement {
+  return el(
+    'p',
+    { class: 'verdict-badge' },
+    el('span', { class: 'meta-k' }, 'Badge for this result'),
     el(
-      'div',
-      {
-        class: 'verdict tone-neutral',
-        'data-status': 'UNVERIFIED',
-        'data-reason': reason ?? '',
-        role: 'status',
-      },
-      el('p', { class: 'headline' }, HEADLINE.UNVERIFIED),
-      el('p', {}, message),
-      reason === null ? null : el('p', { class: 'reason' }, 'Reason: ', el('code', {}, reason)),
+      'span',
+      { class: 'shield' },
+      el('span', { class: 'shield-label' }, v.badge.label),
+      el('span', { class: `shield-msg tone-${tone}` }, v.badge.message),
     ),
   );
 }
 
 function render(req: ResolvedRequest, v: PageVerification, source: string, extra: string | null): void {
-  const r = result();
-  r.setAttribute('aria-busy', 'false');
-  r.hidden = false;
   const tone = TONE[v.status];
   const verdict = el(
     'div',
@@ -140,39 +380,85 @@ function render(req: ResolvedRequest, v: PageVerification, source: string, extra
       'data-accepted': v.release.acceptedCertificateIds.join(','),
       'data-digest': v.bundleDigest,
       role: 'status',
+      tabindex: '-1',
     },
-    el('p', { class: 'headline' }, HEADLINE[v.status]),
-    el('p', {}, BADGE_STATUS_TEXT[v.status]),
+    verdictHead(v.status, tone),
+    el('p', { class: 'verdict-text' }, BADGE_STATUS_TEXT[v.status]),
     extra === null ? null : el('p', { class: 'reason' }, extra),
+    el(
+      'p',
+      { class: 'verdict-meta' },
+      el(
+        'span',
+        { class: 'meta-pair' },
+        el('span', { class: 'meta-k' }, 'Release decision'),
+        el('code', {}, v.release.decision),
+      ),
+      el('span', { class: 'meta-pair' }, el('span', { class: 'meta-k' }, 'Status'), el('code', {}, v.status)),
+    ),
+    badgePreview(v, tone),
   );
-  const notices = req.notices.map((n) => el('p', { class: 'notice', 'data-notice': n }, NOTICE_TEXT[n]));
+  const notices = req.notices.map((n) =>
+    el('p', { class: 'notice', 'data-notice': n }, icon('info', 16), el('span', {}, NOTICE_TEXT[n])),
+  );
+  showVerdict(verdict, ...notices);
 
+  // The ledger, with what each step read.
   const codeState =
     v.registry.codeHashKnown === null
       ? 'not checked (no known builds configured)'
       : v.registry.codeHashKnown
         ? 'matches a known reproducible build'
         : 'NOT a known reproducible build';
-  const facts = dl([
-    ['Bundle digest', el('span', {}, code(v.bundleDigest), el('span', { class: 'sub' }, source))],
-    ['Registry', code(v.registry.accountId)],
-    ['Network', `${req.network} (node reports chain id "${v.chainId}")`],
-    ['Registry code', el('span', {}, code(v.registry.codeHash), el('span', { class: 'sub' }, codeState))],
-    ['Registry owner', code(v.registry.ownerId)],
-    ['Read at block', String(v.registry.readAtBlockHeight)],
-    [
-      'Trusted attesters',
-      v.trustedAttesters.length === 0
-        ? 'any attester the registry reports enrolled and not revoked'
-        : el(
-            'span',
-            {},
-            ...v.trustedAttesters.map((k) => el('span', { class: 'key' }, code(short(k, 8), k))),
-          ),
-    ],
-    ['Findings', v.release.findings.length === 0 ? 'none' : v.release.findings.join(', ')],
+  current = null;
+  setStep('digest', 'done', [digestText(v.bundleDigest), sub(source === '' ? 'as given' : source)]);
+  setStep('network', 'done', [
+    el('p', { class: 'step-line' }, `${req.network} (node reports chain id "${v.chainId}")`),
   ]);
+  setStep('registry', v.registry.codeHashKnown === false ? 'flag' : 'done', [
+    facts([
+      ['Registry', code(v.registry.accountId)],
+      ['Registry owner', code(v.registry.ownerId)],
+      ['Registry code', el('span', {}, code(v.registry.codeHash), sub(codeState))],
+      ['Version', code(v.registry.version)],
+    ]),
+  ]);
+  const n = v.certificates.length;
+  setStep('certificates', 'done', [
+    el(
+      'p',
+      { class: 'step-line' },
+      n === 0
+        ? 'None for this bundle digest'
+        : `${String(n)} certificate${n === 1 ? '' : 's'} for this bundle digest`,
+    ),
+    sub(`Read at block ${String(v.registry.readAtBlockHeight)}`),
+  ]);
+  const accepted = v.release.acceptedCertificateIds.length;
+  setStep('signatures', n > 0 && accepted === 0 ? 'flag' : 'done', [
+    facts([
+      ['Accepted', n === 0 ? 'nothing to check' : `${String(accepted)} of ${String(n)}`],
+      [
+        'Trusted attesters',
+        v.trustedAttesters.length === 0
+          ? 'any attester the registry reports enrolled and not revoked'
+          : el(
+              'span',
+              { class: 'keys' },
+              ...v.trustedAttesters.map((k) => el('span', { class: 'key' }, code(k))),
+            ),
+      ],
+      [
+        'Findings',
+        v.release.findings.length === 0
+          ? 'none'
+          : el('span', { class: 'codes' }, ...v.release.findings.map((f) => el('code', {}, f))),
+      ],
+    ]),
+  ]);
+  ledgerState('done');
 
+  // Certificates and the link.
   const table = el('table', { class: 'certs' });
   table.append(
     el(
@@ -196,24 +482,55 @@ function render(req: ResolvedRequest, v: PageVerification, source: string, extra
         : s.revoked
           ? `revoked ${s.revokedAtMs === null ? '' : utc(s.revokedAtMs)}`
           : 'enrolled';
+    const verdictTone: Tone =
+      c.verdict === 'PASS'
+        ? 'pass'
+        : c.verdict === 'FAIL'
+          ? 'fail'
+          : c.verdict === 'REVIEW'
+            ? 'review'
+            : 'neutral';
     body.append(
       el(
         'tr',
         { 'data-certificate': String(c.id) },
-        el('td', {}, String(c.id)),
-        el('td', {}, c.verdict),
-        el('td', {}, code(short(c.attester, 8), c.attester)),
+        el('th', { scope: 'row', class: 'num' }, String(c.id)),
+        el(
+          'td',
+          {},
+          el(
+            'span',
+            { class: `vtag tone-${verdictTone}` },
+            icon(VERDICT_ICON[c.verdict] ?? 'question', 16),
+            el('span', {}, c.verdict),
+          ),
+        ),
+        el(
+          'td',
+          {},
+          el(
+            'span',
+            { class: 'key-cell' },
+            el('code', { class: 'digest' }, short(c.attester, 8)),
+            copyButton(c.attester, `attester key of certificate ${String(c.id)}`),
+          ),
+        ),
         el('td', {}, state.trim()),
-        el('td', {}, `${utc(c.publishedAtMs)}, block ${String(c.publishedBlockHeight)}`),
+        el(
+          'td',
+          {},
+          el('span', { class: 'time' }, utc(c.publishedAtMs)),
+          sub(`block ${String(c.publishedBlockHeight)}`),
+        ),
         el('td', {}, c.accepted ? 'yes' : 'no'),
         el('td', {}, c.findings.length === 0 ? '-' : c.findings.join(', ')),
       ),
     );
   }
   table.append(body);
-  const certs =
-    v.certificates.length === 0
-      ? el('p', {}, 'The registry holds no certificate for this bundle digest.')
+  $('certs').replaceChildren(
+    n === 0
+      ? el('p', { class: 'empty' }, 'The registry holds no certificate for this bundle digest.')
       : el(
           'div',
           {
@@ -223,38 +540,59 @@ function render(req: ResolvedRequest, v: PageVerification, source: string, extra
             tabindex: '0',
           },
           table,
-        );
+        ),
+  );
 
   const link = verifyLink(window.location.href, req.network, { digest: v.bundleDigest });
-  r.replaceChildren(
-    verdict,
-    ...notices,
-    el('h2', {}, 'What was read'),
-    facts,
-    el('h2', {}, 'Certificates for this bundle'),
-    certs,
-    el('h2', {}, 'Link to this check'),
-    el('p', {}, el('a', { href: link, 'data-link': 'digest' }, short(link, 40))),
+  $('share').replaceChildren(
+    el('a', { href: link, 'data-link': 'digest', class: 'share-link' }, short(link, 40)),
+    copyButton(link, 'link to this check', 'Copy link'),
   );
+  $('details').hidden = false;
+}
+
+let lookupFailedAt: Stage | null = null;
+
+function lookingUpProjectFailed(): Stage | null {
+  const at = lookupFailedAt;
+  lookupFailedAt = null;
+  return at;
 }
 
 async function run(req: ResolvedRequest, source: string): Promise<void> {
+  lookupFailedAt = null;
+  const button = $<HTMLButtonElement>('verify');
+  button.disabled = true;
+  resetLedger();
   const common = {
     rpcUrl: req.rpcUrl,
     registry: req.registry,
     expectedChainId: req.chainId,
     trustedAttesters: req.trustedAttesters,
+    fetch: trackingFetch,
   };
   try {
     let digest = req.digest;
     let extra: string | null = null;
     if (digest === null && req.project !== null) {
       showBusy(`Looking up the newest certificate of ${req.project}…`);
-      const latest = await latestProjectDigest({ ...common, project: req.project });
+      enter('digest');
+      lookingUpProject = true;
+      lookupCall = null;
+      let latest: Awaited<ReturnType<typeof latestProjectDigest>>;
+      try {
+        latest = await latestProjectDigest({ ...common, project: req.project });
+      } catch (error) {
+        lookupFailedAt = lookupCall;
+        throw error;
+      } finally {
+        lookingUpProject = false;
+      }
       if (latest === null) {
         showError(
           `The registry holds no certificate for the project ${req.project}.`,
           'NO_PROJECT_CERTIFICATE',
+          'digest',
         );
         return;
       }
@@ -263,10 +601,11 @@ async function run(req: ResolvedRequest, source: string): Promise<void> {
       extra = `Project ${req.project}: ${String(latest.projectCertificates)} certificate(s) in the registry.`;
     }
     if (digest === null) {
-      showError('Choose a bundle file, a bundle digest, or a project first.', 'NOTHING_TO_CHECK');
+      showError('Choose a bundle file, a bundle digest, or a project first.', 'NOTHING_TO_CHECK', 'digest');
       return;
     }
     showBusy('Reading the registry and checking signatures…');
+    enter('network');
     const v = await verifyDigestOnChain({
       ...common,
       bundleDigest: digest,
@@ -274,6 +613,8 @@ async function run(req: ResolvedRequest, source: string): Promise<void> {
     });
     render(req, v, source, extra);
   } catch (error) {
+    // A failed project lookup stopped at the node or the registry, not at the digest itself.
+    const at = lookingUpProjectFailed() ?? current ?? 'digest';
     if (error instanceof BrowserVerifyError) {
       const message =
         error.reason === 'UNKNOWN_ACCOUNT'
@@ -281,14 +622,20 @@ async function run(req: ResolvedRequest, source: string): Promise<void> {
           : error.code === 'NETWORK_MISMATCH'
             ? `The RPC endpoint serves the network "${error.reason ?? ''}", not ${req.network}.`
             : error.message;
-      showError(message, error.reason ?? error.code);
+      showError(message, error.reason ?? error.code, at);
     } else
       showError(
         'Something went wrong while checking. Nothing was verified.',
         error instanceof Error ? error.name : null,
+        at,
       );
+  } finally {
+    button.disabled = false;
   }
 }
+
+// ---------------------------------------------------------------------------------------------
+// Form
 
 function formInput(): Parameters<typeof resolveRequest>[1] {
   const value = (id: string): string => ($<HTMLInputElement>(id).value ?? '').trim();
@@ -303,15 +650,22 @@ function formInput(): Parameters<typeof resolveRequest>[1] {
 
 async function onFile(file: File): Promise<void> {
   const out = $('bundle-digest');
+  out.removeAttribute('data-state');
   if (file.size > MAX_BUNDLE_BYTES) {
     fileDigest = null;
+    out.setAttribute('data-state', 'error');
     out.textContent = 'The file is larger than 256 MiB, the bundle size limit.';
     return;
   }
   out.textContent = 'Computing the digest in this browser…';
   const digest = await sha256Digest(new Uint8Array(await file.arrayBuffer()));
   fileDigest = { digest, bytes: file.size, name: file.name };
-  out.replaceChildren('Computed in this browser: ', code(digest), ` (${String(file.size)} bytes)`);
+  out.setAttribute('data-state', 'done');
+  out.replaceChildren(
+    el('span', { class: 'computed-k' }, 'Computed in this browser: '),
+    el('code', { class: 'digest' }, digest),
+    ` (${String(file.size)} bytes)`,
+  );
   $<HTMLInputElement>('digest').value = '';
 }
 
@@ -333,6 +687,8 @@ function fillForm(cfg: VerifyPageConfig, req: ResolvedRequest | null): void {
 }
 
 async function start(): Promise<void> {
+  document.body.append(el('p', { id: 'copy-status', class: 'visually-hidden', 'aria-live': 'polite' }));
+  resetLedger();
   try {
     const response = await fetch('./config.json', { cache: 'no-store', credentials: 'omit' });
     if (!response.ok) throw new Error(`config.json: HTTP ${String(response.status)}`);
@@ -375,6 +731,7 @@ async function start(): Promise<void> {
   $<HTMLInputElement>('digest').addEventListener('input', () => {
     fileDigest = null;
     $('bundle-digest').textContent = '';
+    $('bundle-digest').removeAttribute('data-state');
   });
 
   $<HTMLFormElement>('verify-form').addEventListener('submit', (e) => {
@@ -383,7 +740,14 @@ async function start(): Promise<void> {
     try {
       req = resolveRequest(cfg, formInput());
     } catch (error) {
-      showError(error instanceof RequestError ? error.message : 'The form is not valid.', 'INPUT_INVALID');
+      resetLedger();
+      showError(
+        error instanceof RequestError ? error.message : 'The form is not valid.',
+        'INPUT_INVALID',
+        'digest',
+      );
+      // UI-SPEC 8: a failed submit moves focus to the error, keeping every input as it was.
+      result().querySelector<HTMLElement>('.verdict')?.focus();
       return;
     }
     const source =
@@ -393,7 +757,7 @@ async function start(): Promise<void> {
     void run(req, source);
   });
 
-  if (linkError !== null) showError(linkError, 'LINK_INVALID');
+  if (linkError !== null) showError(linkError, 'LINK_INVALID', 'digest');
   else if (fromLink !== null && (fromLink.digest !== null || fromLink.project !== null)) {
     void run(fromLink, fromLink.digest !== null ? 'from the link' : '');
   }

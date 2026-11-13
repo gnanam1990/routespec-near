@@ -347,13 +347,23 @@ export const IMPORT_STATE_CONTENT: Readonly<Record<ImportState, StatusContent>> 
   },
 };
 
+/**
+ * Joins sentence fragments into prose. Each fragment's own trailing terminal punctuation is
+ * dropped before joining so fragments that already end in a period never produce "..", and the
+ * result always ends with exactly one period.
+ */
+export function joinSentences(parts: readonly string[]): string {
+  const cleaned = parts.map((p) => p.trim().replace(/[\s.;:,]+$/u, '')).filter((p) => p.length > 0);
+  return cleaned.length === 0 ? '' : `${cleaned.join('. ')}.`;
+}
+
 /** Evidence summary: the scope phrase takes precedence because it carries required wording. */
 export function evidenceContent(evidence: EvidenceSummary): StatusContent {
   const cls = EVIDENCE_CLASS_CONTENT[evidence.class];
   const scope = evidence.scope === null ? null : EVIDENCE_SCOPE_CONTENT[evidence.scope];
   const reasons = evidence.reasons.map((r) => EVIDENCE_REASON_TEXT[r]);
   const label = scope === null ? cls.label : `${cls.label} — ${scope.label}`;
-  const description = [scope?.description ?? cls.description, ...reasons].join('. ');
+  const description = joinSentences([scope?.description ?? cls.description, ...reasons]);
   const tone: Tone =
     evidence.scope === 'PRIVATE_NOT_VISIBLE' || evidence.reasons.includes('NOT_VISIBLE')
       ? 'private'
@@ -392,7 +402,7 @@ export function coverageContent(coverage: EffectCoverage): StatusContent {
         : [];
     return {
       label: `${base.label} — incomplete, REVIEW`,
-      description: ['Coverage is incomplete', ...review, ...coverage.missing].join('. '),
+      description: joinSentences(['Coverage is incomplete', ...review, ...coverage.missing]),
       icon: 'pause',
       tone: 'review',
     };

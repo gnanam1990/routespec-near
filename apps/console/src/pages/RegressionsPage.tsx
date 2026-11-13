@@ -17,6 +17,7 @@ import {
   PageHeader,
   ResourceView,
   Section,
+  ScrollRegion,
 } from '../components/ui.tsx';
 import { IMPORT_STATE_CONTENT } from '../content/status-content.ts';
 import { MAX_IMPORT_BYTES, validateImportForm } from '../forms/validation.ts';
@@ -47,12 +48,7 @@ export function RegressionsPage() {
           }
         >
           {(page) => (
-            <div
-              className="table-scroll"
-              role="region"
-              aria-label="Quarantine queue (scrolls horizontally)"
-              tabIndex={0}
-            >
+            <ScrollRegion label="Quarantine queue (scrolls horizontally)">
               <table className="table">
                 <caption className="visually-hidden">{page.total} captures and imports</caption>
                 <thead>
@@ -98,7 +94,7 @@ export function RegressionsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollRegion>
           )}
         </ResourceView>
       </Section>

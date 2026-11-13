@@ -911,6 +911,57 @@ input[type='radio'] {
 }
 
 /* ---------------------------------------------------------------- data */
+/* Frame around a scrollable table: edge shadows signal off-screen columns (see ScrollRegion). */
+.table-scroll-frame {
+  --scroll-fade: color-mix(in srgb, var(--text-primary) 35%, transparent);
+  min-width: 0;
+  max-width: 100%;
+}
+.table-scroll-viewport {
+  position: relative;
+}
+.table-scroll-viewport::before,
+.table-scroll-viewport::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  width: 2.5rem;
+  pointer-events: none;
+  opacity: 0;
+  z-index: calc(var(--layer-raised) + 2);
+  transition: opacity var(--motion-exit) var(--motion-ease);
+}
+.table-scroll-viewport::before {
+  left: 1px;
+  border-radius: var(--radius-card) 0 0 var(--radius-card);
+  box-shadow: inset 16px 0 14px -14px var(--scroll-fade);
+}
+.table-scroll-viewport::after {
+  right: 1px;
+  border-radius: 0 var(--radius-card) var(--radius-card) 0;
+  box-shadow: inset -16px 0 14px -14px var(--scroll-fade);
+}
+.table-scroll-frame[data-more-left='true'] > .table-scroll-viewport::before,
+.table-scroll-frame[data-more-right='true'] > .table-scroll-viewport::after {
+  opacity: 1;
+}
+/* The matrix pins its row header column, so it needs no left-edge shadow. */
+.table-scroll-viewport:has(.table-matrix)::before {
+  display: none;
+}
+.table-scroll-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 1.5rem;
+  margin-top: var(--space-2);
+}
+.table-scroll-hint .icon {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  flex: none;
+}
 .table-scroll {
   /* Positioned so visually-hidden descendants are clipped by this scroller, not the page. */
   position: relative;

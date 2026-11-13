@@ -10,7 +10,7 @@ import {
 import { Icon } from './Icon.tsx';
 import { StatusBadge } from './Status.tsx';
 import { formatUtc } from './Timestamp.tsx';
-import { ResourceView } from './ui.tsx';
+import { ResourceView, ScrollRegion } from './ui.tsx';
 
 const PAGE_SIZES = [50, 100, 200] as const;
 const POLL_MS = 2000;
@@ -178,12 +178,7 @@ export function Timeline({
             page.items.length === 0 ? (
               <p className="muted">No events match this filter.</p>
             ) : view === 'table' ? (
-              <div
-                className="table-scroll"
-                role="region"
-                aria-label="Events table (scrolls horizontally)"
-                tabIndex={0}
-              >
+              <ScrollRegion label="Events table (scrolls horizontally)">
                 <table className="table">
                   <caption className="visually-hidden">{tableCaption}</caption>
                   <thead>
@@ -215,7 +210,7 @@ export function Timeline({
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollRegion>
             ) : (
               <ol className="event-list" aria-label={tableCaption}>
                 {page.items.map((e) => (

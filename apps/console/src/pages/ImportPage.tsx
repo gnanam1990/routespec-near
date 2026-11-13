@@ -17,6 +17,7 @@ import {
   PageHeader,
   ResourceView,
   Section,
+  ScrollRegion,
 } from '../components/ui.tsx';
 import { IMPORT_STATE_CONTENT, VERDICT_CONTENT } from '../content/status-content.ts';
 import { LINEAGE_ROLE_TEXT } from '../content/case-content.ts';
@@ -206,7 +207,7 @@ export function ImportPage() {
                       </Link>
                     </p>
                     {(imp.correctedRuns ?? []).length > 0 ? (
-                      <div className="table-scroll" role="region" aria-label="Corrected runs" tabIndex={0}>
+                      <ScrollRegion label="Corrected runs">
                         <table className="table">
                           <caption className="visually-hidden">Corrected installed-client case runs</caption>
                           <thead>
@@ -242,7 +243,7 @@ export function ImportPage() {
                             ))}
                           </tbody>
                         </table>
-                      </div>
+                      </ScrollRegion>
                     ) : null}
                   </div>
                 ) : null}

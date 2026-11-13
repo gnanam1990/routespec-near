@@ -9,6 +9,9 @@ import './styles/base.css';
 import './styles/components.css';
 import { App } from './app/App.tsx';
 import { ControlClient, takeTokenFromFragment } from './api/client.ts';
+import { trackInputModality } from './app/input-modality.ts';
+
+trackInputModality(document);
 
 const client = new ControlClient();
 // The local service opens the console with `#token=<control token>`; it is moved into memory

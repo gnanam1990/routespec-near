@@ -3,7 +3,7 @@ import { usePageTitle } from '../app/usePageTitle.ts';
 import type { Settings } from '../api/schemas.ts';
 import { StatusBadge } from '../components/Status.tsx';
 import { Timestamp } from '../components/Timestamp.tsx';
-import { KeyValues, Notice, PageHeader, ResourceView, Section } from '../components/ui.tsx';
+import { KeyValues, Notice, PageHeader, ResourceView, Section, ScrollRegion } from '../components/ui.tsx';
 import { COMPATIBILITY_CONTENT } from '../content/status-content.ts';
 
 const PROVIDER_TOKEN_TEXT: Readonly<Record<Settings['providerTokenState'], string>> = {
@@ -46,7 +46,7 @@ export function SettingsPage() {
               </p>
             </Section>
             <Section title="Modes">
-              <div className="table-scroll" role="region" aria-label="Modes" tabIndex={0}>
+              <ScrollRegion label="Modes">
                 <table className="table">
                   <thead>
                     <tr>
@@ -67,7 +67,7 @@ export function SettingsPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollRegion>
             </Section>
             <Section title="Official endpoint compatibility">
               <Notice tone="neutral" icon="link" title="Separate from the local gate">

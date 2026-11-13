@@ -5,7 +5,15 @@ import { usePageTitle } from '../app/usePageTitle.ts';
 import type { CaseRun, ExportPlan, GateRun, Page } from '../api/schemas.ts';
 import { Digest } from '../components/Digest.tsx';
 import { StatusAxisGroup, StatusBadge } from '../components/Status.tsx';
-import { ErrorNotice, KeyValues, Notice, PageHeader, ResourceView, Section } from '../components/ui.tsx';
+import {
+  ErrorNotice,
+  KeyValues,
+  Notice,
+  PageHeader,
+  ResourceView,
+  Section,
+  ScrollRegion,
+} from '../components/ui.tsx';
 import {
   LIFECYCLE_CONTENT,
   VERDICT_CONTENT,
@@ -258,12 +266,7 @@ export function GateRunPage() {
                 {page.total} isolated case run{page.total === 1 ? '' : 's'}, in corpus order. Cases with the
                 same logical job stay isolated.
               </p>
-              <div
-                className="table-scroll"
-                role="region"
-                aria-label="Case runs (scrolls horizontally)"
-                tabIndex={0}
-              >
+              <ScrollRegion label="Case runs (scrolls horizontally)">
                 <table className="table" aria-describedby="cases-count">
                   <thead>
                     <tr>
@@ -322,7 +325,7 @@ export function GateRunPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollRegion>
             </>
           )}
         </ResourceView>

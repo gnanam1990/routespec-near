@@ -66,7 +66,7 @@ figure {
   line-height: var(--h4-leading);
   font-weight: var(--weight-semibold);
 }
-/* Headings that receive route focus keep a visible ring with breathing room around the text. */
+/* Headings that receive route focus show a ring (with breathing room) only for keyboard users. */
 h1[tabindex='-1'],
 h2[tabindex='-1'] {
   border-radius: var(--radius-tag);
@@ -117,6 +117,16 @@ code,
 
 [tabindex='-1']:focus:not(:focus-visible) {
   outline: none;
+}
+
+/*
+ * Programmatic focus targets (tabindex="-1": route headings, error summaries, drawer headings)
+ * are not controls. They keep focus for screen readers but draw no ring unless the last
+ * interaction was the keyboard (see app/input-modality.ts).
+ */
+:root:not([data-input-modality='keyboard']) [tabindex='-1']:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .visually-hidden {

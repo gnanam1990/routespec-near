@@ -1,0 +1,71 @@
+# Scheduled 1Click fidelity matrix (M51, ADR-0027): one token-list read and one `dry: true` quote
+# per route against the official endpoint, at most 40 requests per run and never a retry. Runs on
+# a schedule and on manual dispatch only (never on pull requests, so a fork never sees the
+# secret). The provider JWT is a repository secret that reaches one step as an environment
+# variable; it is never placed on a command line. Permissions are read-only: a failing run stays
+# a failing run and opens no issue, comment or pull request by itself. Only the redacted matrix
+# (routes, HTTP status, compatibility label, response shape digest) is summarised and uploaded;
+# no quote value is written anywhere.
+name: fidelity-matrix
+on:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fidelity-matrix
+  cancel-in-progress: false
+jobs:
+  matrix:
+    name: 1Click fidelity matrix (dry quotes only)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: '22.23.1'
+      - name: Install pinned dependencies
+        shell: bash
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Run the fidelity matrix (dry quotes, hard cap 40 requests)
+        id: matrix
+        shell: bash
+        env:
+          ROUTESPEC_PROVIDER_JWT: ${{ secrets.ROUTESPEC_PROVIDER_JWT }}
+        run: |
+          set +e
+          pnpm --filter @routespec/live-dry-adapter fidelity:matrix -- --confirm-official-endpoint --out-dir "$RUNNER_TEMP/fidelity" > /dev/null
+          echo "exit-code=$?" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Summarise the redacted matrix
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/fidelity/fidelity-matrix.md" ]; then
+            cat "$RUNNER_TEMP/fidelity/fidelity-matrix.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No fidelity matrix was produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload the redacted matrix and the drift badge
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: fidelity-matrix-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/fidelity
+          retention-days: 30
+          if-no-files-found: warn
+      - name: Fail on drift (1) or an inconclusive run (3)
+        shell: bash
+        env:
+          MATRIX_EXIT_CODE: ${{ steps.matrix.outputs.exit-code }}
+        run: |
+          echo "fidelity matrix exit code: ${MATRIX_EXIT_CODE:-missing}"
+          [ "${MATRIX_EXIT_CODE:-1}" = "0" ]

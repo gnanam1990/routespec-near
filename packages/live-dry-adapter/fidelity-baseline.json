@@ -1,0 +1,5 @@
+{
+  "schema": "routespec.fidelity-baseline/1",
+  "profileIntegrityDigest": "sha256:71e0c45dc0c4dbb775ff4271c78ddc17bfa56c1402654fd4c685deb52f4e3d05",
+  "knownResponseShapeDigests": ["sha256:f2c466cf3c383b66fe4526a0c59dbbcd3159ceec7d90fbc0a7dd0ddbe6fe092a"]
+}

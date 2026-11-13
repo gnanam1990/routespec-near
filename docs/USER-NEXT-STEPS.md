@@ -188,3 +188,20 @@ production readiness is blocked.
 2. Keep the sibling-project disclosure from `docs/spec/EVENT-NOTES.md`: RouteSpec and Dockside are
    independent products with separate repositories, code, state, demos, and submissions.
 3. Publishing, posting, making the repository public, and submitting are your actions.
+
+## 9. Release certificate registry (M47)
+
+Nothing is deployed yet. The steps, with exact PowerShell commands, are in
+`docs/runbooks/release-certificates.md`:
+
+1. Build the deployable wasm (`pnpm run registry:reproduce`) and check that its SHA-256 is
+   `ac402706a329d72c6ef98829dde5077d1c5596eb8f127bf99ce7087c407368d7`.
+2. Create `gnanam1990-routespec.testnet`, deploy and initialise in one transaction, and check
+   `get_info`.
+3. Create an attester key (`certificate keygen`) and enrol its public key.
+4. Run the contained journey, sign the certificate of its PASS bundle, submit the envelope, and
+   run `certificate verify`. Record the transaction hash and the certificate id in
+   `docs/status/M47.md`.
+5. Optional: configure the two secrets and three variables so the `routespec-certificate`
+   workflow publishes on every PASS on `main`; record the first green run.
+6. Mainnet: the same steps with a mainnet account, after the contract audit.

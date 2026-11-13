@@ -146,6 +146,42 @@ describe('deployment', () => {
     expect(await registry.projectCertificateCount('org/repo')).toBe(0);
   });
 
+  it('a deployment that was not initialised can only be initialised by its own account', async (ctx) => {
+    need(ctx);
+    const fresh = { accountId: `fresh-${suffix}.test.near`, signer: generateSigner() };
+    await createAccount(rpc, sandboxRoot(sandbox as { rootSecret: string }), fresh);
+    await rpc.sendActions({
+      signerId: fresh.accountId,
+      signer: fresh.signer,
+      receiverId: fresh.accountId,
+      actions: [{ type: 'DeployContract', code: wasm }],
+    });
+    const init = (by: SandboxAccount) =>
+      rpc.sendActions({
+        signerId: by.accountId,
+        signer: by.signer,
+        receiverId: fresh.accountId,
+        actions: [
+          {
+            type: 'FunctionCall',
+            methodName: 'new',
+            args: jsonArgs({ owner_id: by.accountId }),
+            gas: REGISTRY_CALL_GAS,
+            deposit: 0n,
+          },
+        ],
+      });
+    const uninitialised = new RegistryClient(rpc, fresh.accountId);
+    // No state yet: nothing can be read, enrolled or published.
+    await expect(uninitialised.info()).rejects.toMatchObject({ code: 'RS_REGISTRY_REJECTED' });
+    expect(await refusal(uninitialised.enrolAttester(keyA, 'too early', stranger))).not.toBe('ACCEPTED');
+    expect(await refusal(init(stranger))).not.toBe('ACCEPTED');
+    expect(await refusal(init(owner))).not.toBe('ACCEPTED');
+    await expect(uninitialised.info()).rejects.toMatchObject({ code: 'RS_REGISTRY_REJECTED' });
+    await init(fresh);
+    expect((await uninitialised.info()).ownerId).toBe(fresh.accountId);
+  });
+
   it('cannot be initialised again, by anyone', async (ctx) => {
     need(ctx);
     const init = (by: SandboxAccount) =>

@@ -9,6 +9,9 @@ Updated by M42 on 2026-11-13: the real RP-07 official dry probe and the quote-fi
 request-echo equivalence fix (`docs/status/M42.md`).
 Updated by M50 on 2026-11-13: observed-incident corpus and the read-only Explorer importer; the
 live import is pending the owner's Explorer API key (`docs/status/M50.md`).
+Updated by M47 on 2026-11-13: release certificates and the `routespec-registry` contract, tested
+on a local NEAR sandbox node; deployment and the first certificate are owner actions
+(`docs/status/M47.md`).
 
 | Axis                                           | State                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -245,6 +248,27 @@ FAIL). No verdict is set by the journey or the scenario. Asserted by T-055 in
   only after the control or case token is accepted, failures count only in the failure window,
   and console assets have their own counter (ADR-0022 amendment, `docs/status/SEC-routespec-RS-03.md`).
   Remaining limit: a genuine-token holder can still spend the global budgets.
+
+## On-chain release certificates (M47)
+
+State: **PARTIAL**. `routespec certificate keygen|publish|verify|revoke-check`, the
+`routespec-registry` contract (no funds, no payable method), the release aggregation that can
+require a trusted on-chain attester, and the CI certificate step are implemented
+(ADR-0029). Evidence in `docs/status/M47.md`: Rust host tests, TypeScript unit tests, and three
+suites against a real local near-sandbox node (`pnpm run test:registry`), including tamper,
+replay, deposit, and revocation cases. Reproducible wasm
+`sha256:ac402706a329d72c6ef98829dde5077d1c5596eb8f127bf99ce7087c407368d7` (NEAR code hash
+`CbPrvc6jbuVNNg2qVmUDSiPhCGNBZetQAmptQZWyCfxr`). **Not deployed**: testnet and mainnet
+deployment, attester enrolment, and the first published certificate are PENDING owner actions
+(`docs/runbooks/release-certificates.md`). The certificate workflow on GitHub-hosted runners and
+the contract audit are NOT*RUN. Gate evaluation is unchanged and stays networkless; no
+`WORKING*\*` claim changes.
+
+M47 outbound requests: the nearcore sandbox archive from NEAR's release bucket (pinned by
+SHA-256), rustup-init, the Rust toolchain, Debian packages and crates inside the build and
+sandbox containers, crates on the host, and two read-only JSON-RPC calls to
+`https://test.rpc.fastnear.com`. No transaction was sent to NEAR testnet or mainnet and no
+account was created.
 
 ## External action ledger
 

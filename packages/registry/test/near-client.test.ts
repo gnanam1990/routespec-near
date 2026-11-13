@@ -39,6 +39,23 @@ beforeAll(async () => {
       } else if (mode === 'huge') {
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(JSON.stringify({ jsonrpc: '2.0', id: 1, result: 'x'.repeat(5 * 1024 * 1024) }));
+      } else if (mode === 'huge-chunked') {
+        // No content-length: the client has to stop reading by itself.
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.write('{"jsonrpc":"2.0","id":1,"result":"');
+        const block = 'x'.repeat(256 * 1024);
+        let sent = 0;
+        const pump = (): void => {
+          while (sent < 64 && !res.destroyed) {
+            sent++;
+            if (!res.write(block)) {
+              res.once('drain', pump);
+              return;
+            }
+          }
+          if (!res.destroyed) res.end('"}');
+        };
+        pump();
       } else if (mode === 'wrong-shape') {
         res.writeHead(200, { 'content-type': 'application/json' });
         const value = Buffer.from(JSON.stringify({ contract: 'routespec-registry', surprise: true }));
@@ -190,7 +207,7 @@ describe('an endpoint that misbehaves', () => {
   const registry = new RegistryClient(rpc, 'registry.testnet');
 
   it('is reported as unavailable, never as an answer', async () => {
-    for (const m of ['not-json', 'redirect', 'server-error', 'huge', 'drop']) {
+    for (const m of ['not-json', 'redirect', 'server-error', 'huge', 'huge-chunked', 'drop']) {
       mode = m;
       const error = await registry.info().then(
         () => null,

@@ -250,7 +250,7 @@ export class NearRpc {
       });
       const length = Number(response.headers.get('content-length') ?? '0');
       if (length > MAX_RESPONSE_BYTES) unavailable('The RPC response exceeds the size limit.');
-      text = await response.text();
+      text = await boundedText(response);
     } catch (error) {
       if (error instanceof RouteSpecError) throw error;
       unavailable('The NEAR RPC endpoint could not be reached.', {
@@ -416,6 +416,19 @@ export class NearRpc {
       finalExecutionStatus: String(r['final_execution_status'] ?? ''),
     };
   }
+}
+
+/** Read a response body as text, giving up as soon as it exceeds the size limit. */
+async function boundedText(response: Response): Promise<string> {
+  if (response.body === null) return '';
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+    total += chunk.length;
+    if (total > MAX_RESPONSE_BYTES) unavailable('The RPC response exceeds the size limit.');
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks).toString('utf8');
 }
 
 function isTimeout(error: unknown): boolean {

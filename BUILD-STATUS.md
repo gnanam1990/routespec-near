@@ -85,6 +85,7 @@ tests pass for the part this host can run, with a named part BLOCKED or NOT_RUN.
 | M42    | Official dry probe and finalization equivalence (RP-07)    | this stage | VERIFIED_BOUNDED | M42 echo-equivalence contract tests; real-shape classification test; real official dry probe                                                             | one pair and one day only                                                                     | `docs/status/M42.md`         |
 | M48    | Official example clients, pinned and contained             | this stage | PARTIAL          | M48 pin, fetch, loader, and runner tests; real contained run of the official SDK example                                                                 | no invariant evaluated: the example stops at `GET /v0/tokens`, outside the profile            | `docs/status/M48.md`         |
 | M50    | Scenarios from observed incidents (Explorer importer)      | this stage | PARTIAL          | M50 shape, sanitisation, template, import, HTTP-client, command and gate-run tests (42)                                                                  | **live import PENDING** (Explorer API key); committed corpus has 0 records                    | `docs/status/M50.md`         |
+| M54    | Distribution: npm, Marketplace, console demo, judge        | this stage | PARTIAL          | M54 package, Marketplace, workflow and recording tests; `test:distribution` (installed tarball, demo site)                                               | **npm publish, Marketplace listing, Pages deploy PENDING** (owner)                            | `docs/status/M54.md`         |
 
 All 59 canonical tests T-001..T-059 have an owning module above; none is claimed beyond its
 recorded scope. M09a (console shell, `eb10eb5`) is the first stage of M09.
@@ -272,6 +273,18 @@ SHA-256), rustup-init, the Rust toolchain, Debian packages and crates inside the
 sandbox containers, crates on the host, and two read-only JSON-RPC calls to
 `https://test.rpc.fastnear.com`. No transaction was sent to NEAR testnet or mainnet and no
 account was created.
+
+## Distribution (M54)
+
+State: **PARTIAL**. `pnpm run package:npm` builds the compiled, self-contained `routespec@0.1.0`
+npm package (bins `routespec`, `routespec-ci`); the distribution suite installs its tarball
+offline outside the repository and gates the self-gate configuration to PASS with it. The
+Marketplace action (`packages/distribution/marketplace/`, root of a separate repository) installs
+that exact release and runs `npm audit signatures` first. The static read-only console demo is
+recorded from the real control API over a real contained journey (corrected build PASS, hedging
+build FAIL) and ships that run's evidence bundle. `pnpm judge` runs the reviewer checks in one
+command (ADR-0031). Nothing was published: the npm release, the Marketplace listing and the Pages
+deployment are owner actions (`docs/status/M54.md`).
 
 ## External action ledger
 

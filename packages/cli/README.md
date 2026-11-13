@@ -10,8 +10,19 @@ error, 5 internal error or corrupted state, 6 safety policy denial.
 Commands: `project create`, `revision register`, `build register`, `effect manifest`,
 `effect policy`, `scenario validate|add`, `corpus create`, `gate create|run|evaluate|show`,
 `case recover`, `export plan|write|verify`, `probe dry` (always refused here: the live-dry probe is
-a separately authorized adapter), `certificate keygen|publish|verify|revoke-check` (M47). The data
-directory comes from `--data` or `ROUTESPEC_DATA_DIR`.
+a separately authorized adapter), `certificate keygen|publish|verify|revoke-check` (M47),
+`fix patterns|show` (M53). The data directory comes from `--data` or `ROUTESPEC_DATA_DIR`.
+
+## Fix patterns (M53)
+
+`gate run`, `gate evaluate` and `gate show` accept `--fix-out <file.json>`, `--fix-md <file.md>`
+and `--source <client file>`. On FAIL or REVIEW the fix advice (`routespec.fix-advice/1`) links
+each violated invariant to a client-code pattern (reconcile through status, one idempotency key
+per order, no second order while the first is unanswered). With `--source` it also lists the
+official SDK calls found in that file with their lines and a suggested unified diff, and `--sarif`
+then carries those real source locations. The advice is advisory: the gate report, its exit code
+and its digests are unchanged. `fix patterns` lists the catalogue; `fix show --pattern <id>` shows
+one pattern. Decisions: `docs/adr/0031-fix-patterns.md`.
 
 `gate run` hands each case to the reviewed launcher (`runWithLauncher`) over an inherited IPC
 pipe; the caller connects its separately started client to the printed proxy origin. Without a

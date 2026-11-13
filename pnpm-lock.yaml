@@ -126,6 +126,9 @@ importers:
       '@routespec/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@routespec/fix-patterns':
+        specifier: workspace:*
+        version: link:../fix-patterns
       '@routespec/hardening':
         specifier: workspace:*
         version: link:../hardening
@@ -239,6 +242,18 @@ importers:
       '@routespec/scenario':
         specifier: workspace:*
         version: link:../scenario
+
+  packages/fix-patterns:
+    dependencies:
+      '@routespec/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@routespec/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
 
   packages/hardening:
     dependencies:
@@ -363,6 +378,9 @@ importers:
       '@routespec/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@routespec/fix-patterns':
+        specifier: workspace:*
+        version: link:../fix-patterns
       '@routespec/hardening':
         specifier: workspace:*
         version: link:../hardening

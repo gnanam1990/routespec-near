@@ -35,6 +35,9 @@
       "path": "packages/registry"
     },
     {
+      "path": "packages/fix-patterns"
+    },
+    {
       "path": "packages/runner"
     },
     {

@@ -1,0 +1,19 @@
+{
+  "name": "@routespec/fix-patterns",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Fix patterns: violated invariants linked to concrete client code patterns, the SDK usage found in the subject source, and a suggested diff (M53).",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@routespec/contracts": "workspace:*",
+    "@routespec/kernel": "workspace:*",
+    "typescript": "5.9.3"
+  }
+}

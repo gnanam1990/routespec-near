@@ -44,6 +44,12 @@ outputs:
   retention-days:
     description: Bounded retention for the uploaded artifact.
     value: ${{ steps.gate.outputs.retention-days }}
+  certificate-bundle:
+    description: The staged evidence bundle a separate certificate step may certify (empty unless a trusted job staged it).
+    value: ${{ steps.gate.outputs.certificate-bundle }}
+  certificate-journal:
+    description: The journal directory of this run, for the separate certificate step.
+    value: ${{ steps.gate.outputs.certificate-journal }}
 runs:
   using: composite
   steps:

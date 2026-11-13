@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@routespec/proxy": "workspace:*",
+    "@routespec/registry": "workspace:*",
     "@routespec/scenario": "workspace:*",
     "@routespec/store": "workspace:*"
   }

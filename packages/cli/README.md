@@ -10,8 +10,26 @@ error, 5 internal error or corrupted state, 6 safety policy denial.
 Commands: `project create`, `revision register`, `build register`, `effect manifest`,
 `effect policy`, `scenario validate|add`, `corpus create`, `gate create|run|evaluate|show`,
 `case recover`, `export plan|write|verify`, `probe dry` (always refused here: the live-dry probe is
-a separately authorized adapter). The data directory comes from `--data` or `ROUTESPEC_DATA_DIR`.
+a separately authorized adapter), `certificate keygen|publish|verify|revoke-check` (M47). The data
+directory comes from `--data` or `ROUTESPEC_DATA_DIR`.
 
 `gate run` hands each case to the reviewed launcher (`runWithLauncher`) over an inherited IPC
 pipe; the caller connects its separately started client to the printed proxy origin. Without a
 launcher, only `--plan-only` is accepted (zero cases start: NOT_RUN).
+
+## Release certificates (M47)
+
+`certificate publish` verifies an evidence bundle, builds its certificate (bundle digest, gate
+verdict, corpus digest, client artifact digest, commit, timestamp), signs it with an attester
+key, and writes the signed envelope (`--out`) or submits it to the `routespec-registry` contract
+on NEAR (`--submit`). `certificate verify` reads the registry and exits 0 only when the release
+aggregates to PASS: under the default policy `require-onchain-attester` that needs a certificate
+for exactly this bundle from an enrolled, unrevoked attester. `certificate revoke-check` reports
+attester revocations. `certificate keygen` creates an attester key file.
+
+These are the only commands that contact a network, and only the NEAR JSON-RPC endpoint named by
+`--network testnet|mainnet` or `--rpc <https url>`. Gate runs and evaluations stay networkless.
+Secrets come from a key file (`--attester-key`, `--near-key`) or from `ROUTESPEC_ATTESTER_KEY`,
+`ROUTESPEC_NEAR_SIGNER_ACCOUNT` and `ROUTESPEC_NEAR_SIGNER_KEY`; they are never printed. Steps
+and options: `docs/runbooks/release-certificates.md`; decisions:
+`docs/adr/0029-onchain-release-certificates.md`.

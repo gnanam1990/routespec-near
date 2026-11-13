@@ -4,7 +4,7 @@
     "rootDir": ".",
     "outDir": "dist"
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "include": ["src/**/*.ts", "test/**/*.ts", "sandbox-test/**/*.ts"],
   "references": [
     {
       "path": "../contracts"
@@ -26,6 +26,9 @@
     },
     {
       "path": "../cli"
+    },
+    {
+      "path": "../registry"
     }
   ]
 }

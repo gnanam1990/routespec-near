@@ -7,6 +7,7 @@ import { appendFileSync } from 'node:fs';
 import type { ActionResult } from './action.ts';
 
 const SAFE_VALUE = /^[A-Za-z0-9_.:/@+-]{0,200}$/;
+const PATH_OUTPUTS = new Set(['upload-directory', 'certificate-bundle', 'certificate-journal']);
 
 export function outputLines(result: ActionResult): string[] {
   const pairs: Array<[string, string]> = [
@@ -24,11 +25,12 @@ export function outputLines(result: ActionResult): string[] {
     ['upload-directory', result.uploadDirectory ?? ''],
     ['retention-days', String(result.uploads?.retentionDays ?? 0)],
     ['live-dry', result.liveDry],
+    ['certificate-bundle', result.certificate?.bundlePath ?? ''],
+    ['certificate-journal', result.certificate?.journalDirectory ?? ''],
   ];
   return pairs.map(([k, v]) => {
     // Paths can carry spaces on some runners; anything else unexpected is dropped, not escaped.
-    const value =
-      k === 'upload-directory' ? v.replace(/[\r\n]/g, '') : SAFE_VALUE.test(v) ? v : 'UNPRINTABLE';
+    const value = PATH_OUTPUTS.has(k) ? v.replace(/[\r\n]/g, '') : SAFE_VALUE.test(v) ? v : 'UNPRINTABLE';
     return `${k}=${value}`;
   });
 }

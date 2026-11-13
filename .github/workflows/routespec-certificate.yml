@@ -1,0 +1,47 @@
+# Release certificate: on a push to main (never on a pull request), run the RouteSpec gate
+# against the repository's sample subject and, when the decision is PASS and a signer is
+# configured, publish the certificate of the evidence bundle to the routespec-registry contract.
+#
+# Only the last step of this workflow receives secrets: the
+# gate step runs without any. With no signer configured the last step reports SKIPPED_NO_SIGNER
+# and the job stays green. Configure:
+#   secrets  ROUTESPEC_ATTESTER_KEY, ROUTESPEC_NEAR_SIGNER_KEY
+#   variables ROUTESPEC_NEAR_SIGNER_ACCOUNT, ROUTESPEC_REGISTRY_ACCOUNT, ROUTESPEC_REGISTRY_NETWORK
+name: routespec-certificate
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: routespec-certificate-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  certificate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: RouteSpec gate
+        id: gate
+        uses: ./.github/actions/routespec-gate
+        with:
+          config: .github/routespec/routespec.ci.json
+      - name: RouteSpec certificate
+        id: certificate
+        if: ${{ steps.gate.outputs.decision == 'PASS' && steps.gate.outputs.trust == 'TRUSTED' }}
+        uses: ./.github/actions/routespec-certificate
+        with:
+          bundle: ${{ steps.gate.outputs.certificate-bundle }}
+          journal: ${{ steps.gate.outputs.certificate-journal }}
+          decision: ${{ steps.gate.outputs.decision }}
+          project-key: gnanam1990/routespec-near
+          registry: ${{ vars.ROUTESPEC_REGISTRY_ACCOUNT || 'gnanam1990-routespec.testnet' }}
+          network: ${{ vars.ROUTESPEC_REGISTRY_NETWORK || 'testnet' }}
+          attester-key: ${{ secrets.ROUTESPEC_ATTESTER_KEY }}
+          near-signer-account: ${{ vars.ROUTESPEC_NEAR_SIGNER_ACCOUNT }}
+          near-signer-key: ${{ secrets.ROUTESPEC_NEAR_SIGNER_KEY }}

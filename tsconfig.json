@@ -32,6 +32,9 @@
       "path": "packages/regressions"
     },
     {
+      "path": "packages/registry"
+    },
+    {
       "path": "packages/runner"
     },
     {

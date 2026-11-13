@@ -1,0 +1,16 @@
+[package]
+name = "routespec-certificate"
+version = "1.0.0"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "RouteSpec release certificate: field rules and the exact bytes an attester signs (no dependencies)"
+
+[dependencies]
+
+[dev-dependencies]
+serde_json = "=1.0.154"
+hex = "=0.4.3"
+sha2 = "=0.10.9"
+bs58 = { version = "=0.5.1", default-features = false, features = ["alloc"] }
+ed25519-dalek = { version = "=2.2.0", default-features = false, features = ["std"] }

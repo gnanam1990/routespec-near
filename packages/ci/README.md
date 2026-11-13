@@ -8,6 +8,7 @@ Owner module: M10. Status: **VERIFIED_BOUNDED** on win32/x64 for the local actio
 
 ```
 routespec-ci run --config <path-in-workspace> [--workspace <dir>] [--work-dir <dir>]
+routespec-ci certificate --bundle <file> --journal <dir> --decision <decision> --project-key <key> --registry <account> --network testnet
 routespec-ci sbom --lock pnpm-lock.yaml --out sbom.cdx.json
 ```
 
@@ -71,3 +72,32 @@ directly, without the action's step script, removes them from `process.env` only
 Every job keeps its decision and its `CI_CHECK` / `REQUIRED_CHECK_UNVERIFIED` label, always with
 `enforcement-verified=false` and `blocking=false`. CI attestation is `UNAVAILABLE`
 (`HOSTED_ISSUER_CANNOT_BIND_NONCE`); builds stay `USER_ASSERTED_LOCAL`.
+
+## Certificate step (M47)
+
+`routespec-ci certificate` is a separate step after the gate step (composite action
+`.github/actions/routespec-certificate`, workflow `.github/workflows/routespec-certificate.yml`,
+which runs on push to `main` and by hand only). It signs the certificate of the staged evidence
+bundle and submits it to the `routespec-registry` contract. It prints one JSON document
+(`routespec.ci-certificate/1`) and writes the step outputs `certificate-status`,
+`certificate-id`, `certificate-transaction`, `certificate-attester` and
+`certificate-bundle-digest`.
+
+| Situation                                                        | Status                      | Exit  |
+| ---------------------------------------------------------------- | --------------------------- | ----- |
+| gate decision is not PASS                                        | `SKIPPED_DECISION_NOT_PASS` | 0     |
+| job is not trusted (pull request, fork, other ref, other event)  | `SKIPPED_UNTRUSTED_CONTEXT` | 0     |
+| no signer configured                                             | `SKIPPED_NO_SIGNER`         | 0     |
+| signer only partly configured                                    | `FAILED`                    | 4     |
+| certificate submitted                                            | `PUBLISHED`                 | 0     |
+| this attester already published this bundle (rerun)              | `ALREADY_PUBLISHED`         | 0     |
+| registry unreachable / registry refused (unknown or revoked key) | `FAILED`                    | 5 / 6 |
+
+The signer is `ROUTESPEC_ATTESTER_KEY`, `ROUTESPEC_NEAR_SIGNER_ACCOUNT` and
+`ROUTESPEC_NEAR_SIGNER_KEY` in the step environment. The job trust is read from the runner
+environment, never from an input, and the decision is read again from the verified bundle. The
+gate step withholds the two secret values like every other credential, so it never has them in
+its environment block. The gate step's new outputs `certificate-bundle` and `certificate-journal`
+name what the certificate step certifies; they are empty unless a trusted job staged the evidence
+bundle (`uploads.include` must list `evidence-bundle`). Decisions:
+`docs/adr/0029-onchain-release-certificates.md`. Remote runs of this step are **NOT_RUN**.

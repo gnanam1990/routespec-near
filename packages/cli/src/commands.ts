@@ -38,6 +38,7 @@ import { GateJournal, RouteSpecStore, ensurePrivateDataDir } from '@routespec/st
 import { checkLocalPathSyntax } from '@routespec/hardening';
 import { intFlag, usage, type CommandSpec, type ParsedArgs } from './args.ts';
 import { EXIT, exitCodeForError, type ExitCode } from './exit.ts';
+import { CERTIFICATE_COMMANDS } from './certificate.ts';
 import { REVIEW_COMMANDS } from './review.ts';
 
 export interface CommandContext {
@@ -722,6 +723,23 @@ export const COMMANDS: Readonly<Record<string, Command>> = Object.freeze({
         run: (args, ctx) =>
           c.run(args, {
             dataDir: ctx.dataDir,
+            stderr: ctx.stderr,
+            readSource,
+            withStore: (fn) => withStore(ctx.dataDir, fn),
+          }),
+      },
+    ]),
+  ),
+  ...Object.fromEntries(
+    Object.entries(CERTIFICATE_COMMANDS).map(([name, c]): [string, Command] => [
+      name,
+      {
+        spec: c.spec,
+        needsData: c.needsData,
+        run: (args, ctx) =>
+          c.run(args, {
+            dataDir: ctx.dataDir,
+            env: ctx.env,
             stderr: ctx.stderr,
             readSource,
             withStore: (fn) => withStore(ctx.dataDir, fn),

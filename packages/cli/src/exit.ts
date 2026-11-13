@@ -55,6 +55,7 @@ const POLICY_DENIED: readonly ErrorCode[] = [
   'RS_CAPTURE_NOT_RELEASE_EVIDENCE',
   'RS_REVIEW_SIGNATURE_INVALID',
   'RS_REVIEWER_NOT_INDEPENDENT',
+  'RS_REGISTRY_REJECTED',
 ];
 
 const INTERNAL: readonly ErrorCode[] = [
@@ -78,6 +79,7 @@ const INTERNAL: readonly ErrorCode[] = [
   'RS_EXPORT_WRITE_FAILED',
   'RS_BUNDLE_VERIFY_FAILED',
   'RS_INTERCEPTOR_TORN_DOWN',
+  'RS_REGISTRY_UNAVAILABLE',
 ];
 
 /** The exit class of every error code (configuration error unless listed otherwise). */

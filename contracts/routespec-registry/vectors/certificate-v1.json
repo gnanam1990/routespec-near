@@ -1,0 +1,399 @@
+{
+  "schema": "routespec.certificate-vectors/1",
+  "note": "Shared by the Rust crate and the TypeScript package. The signing key was generated once and discarded; only its public key is recorded.",
+  "attesterPublicKeyHex": "2933b05e99b5846ae5c64445f89e2eb1067bc361dc988ffbd8e8e95e6f9e3a05",
+  "vectors": [
+    {
+      "name": "pass-testnet",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "payloadUtf8": "routespec.certificate/1\nregistry:gnanam1990-routespec.testnet\nproject:gnanam1990/routespec-near\nbundle:sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678\nverdict:PASS\ncorpus:sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519\nartifact:sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8\ncommit:95b4887e79a3576ad5913afac657e1698c7d13e5\ntimestamp:1794528000000\n",
+      "payloadSha256": "b01ff4368c8a45c503162e655608270d0ea0cca05861aebaa844d93084c0f753",
+      "signatureHex": "20ee34798fa36d694a81203783daadda4ebead6b22c73972ebfc0e4cd916c9185fd9a1bdd750fe00a166ec93061ee67078f3418efb0813d11e11b176da8b8b0b"
+    },
+    {
+      "name": "fail-verdict",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:50a7a407184a0c5fa74c13aa136a7847756532a8cbd2d41549807cf3eae287b3",
+        "verdict": "FAIL",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "payloadUtf8": "routespec.certificate/1\nregistry:gnanam1990-routespec.testnet\nproject:gnanam1990/routespec-near\nbundle:sha256:50a7a407184a0c5fa74c13aa136a7847756532a8cbd2d41549807cf3eae287b3\nverdict:FAIL\ncorpus:sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519\nartifact:sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8\ncommit:95b4887e79a3576ad5913afac657e1698c7d13e5\ntimestamp:1794528000000\n",
+      "payloadSha256": "071673e4d9cb6d775df842ca5b0b6c0c9bb9fdfa2fd764ac38e141b10f2d2c0d",
+      "signatureHex": "09c1f21ef9ae6aaedd34ec890fa8fde45c74063448fdcf242cfe10a0f3cb300ac72667e9f7198b1386c708f3815fb314cef1a6770f3fab450b71e0fab393650a"
+    },
+    {
+      "name": "review-verdict",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:2ce85640f08213ac55bbe9b21277eea6dd1db62f624229afc8fd7bf4ec006b6d",
+        "verdict": "REVIEW",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "payloadUtf8": "routespec.certificate/1\nregistry:gnanam1990-routespec.testnet\nproject:gnanam1990/routespec-near\nbundle:sha256:2ce85640f08213ac55bbe9b21277eea6dd1db62f624229afc8fd7bf4ec006b6d\nverdict:REVIEW\ncorpus:sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519\nartifact:sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8\ncommit:95b4887e79a3576ad5913afac657e1698c7d13e5\ntimestamp:1794528000000\n",
+      "payloadSha256": "e554d2bfab4dd868fae6c98ca1dda4ec2ec1674aa2d1dadbf88889b7aafd6485",
+      "signatureHex": "3c0cd0b47b35188a1aede97ac112af9488de50e0fe080630449cf18b9faaa7d7ae365928639642092013649c6ee9ecb6e1398f14f796cd39ea306711e5c1ee0d"
+    },
+    {
+      "name": "not-run-verdict",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:88bd90237e7e1577ec782131636f4782c3be06bde393c28a17f3c38c10e1b39c",
+        "verdict": "NOT_RUN",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "payloadUtf8": "routespec.certificate/1\nregistry:gnanam1990-routespec.testnet\nproject:gnanam1990/routespec-near\nbundle:sha256:88bd90237e7e1577ec782131636f4782c3be06bde393c28a17f3c38c10e1b39c\nverdict:NOT_RUN\ncorpus:sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519\nartifact:sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8\ncommit:95b4887e79a3576ad5913afac657e1698c7d13e5\ntimestamp:1794528000000\n",
+      "payloadSha256": "b2d050e1f197afb2a7c0f2b76db4e980e8a29566a2b9033ef1a9fe94370fd7f3",
+      "signatureHex": "3a7daf4e5ac7ae94dedc29b9a66dae6ecce6f29f6211a46168bb3885d3afd8386bb800503f751d0e65aff33879c9e35172a709e7fee58bd9112c525fa930030c"
+    },
+    {
+      "name": "sha256-commit-short-project",
+      "fields": {
+        "registry": "registry.routespec.near",
+        "project": "a",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "2e7d2c03a9507ae265ecf5b5356885a53393a2029d241394997265a1a25aefc6",
+        "timestampMs": 1
+      },
+      "payloadUtf8": "routespec.certificate/1\nregistry:registry.routespec.near\nproject:a\nbundle:sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678\nverdict:PASS\ncorpus:sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519\nartifact:sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8\ncommit:2e7d2c03a9507ae265ecf5b5356885a53393a2029d241394997265a1a25aefc6\ntimestamp:1\n",
+      "payloadSha256": "4ad55e0bcad0b36d4c7cf84af42e92e4409982a56759929509d3791bbffe2030",
+      "signatureHex": "8adcf5dc6c689fc0d0a21ba32bb0fdb6a4f861f2458512103b2208f4c0533c452f1e4d5df010fb2165005721451e990471bc00bc0c65024a687fbf788016480d"
+    },
+    {
+      "name": "max-timestamp",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "org_1/sub.project-x/y",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 9007199254740991
+      },
+      "payloadUtf8": "routespec.certificate/1\nregistry:gnanam1990-routespec.testnet\nproject:org_1/sub.project-x/y\nbundle:sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678\nverdict:PASS\ncorpus:sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519\nartifact:sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8\ncommit:95b4887e79a3576ad5913afac657e1698c7d13e5\ntimestamp:9007199254740991\n",
+      "payloadSha256": "3e1315ab6a4bfd573b62c007f22c56605cee5568a95b51c8ed326a4fdd0f6df2",
+      "signatureHex": "14494cad90fc7702d2de5a9343565d431e947481419feaa72bd4e6e5efa7ad5e06d40807c39a94e501ee5f6f592749215b133e30ce55603ed372e9d28c67db0e"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "registry-uppercase",
+      "fields": {
+        "registry": "Registry.near",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:registry"
+    },
+    {
+      "name": "registry-too-short",
+      "fields": {
+        "registry": "a",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:registry"
+    },
+    {
+      "name": "registry-double-separator",
+      "fields": {
+        "registry": "a..near",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:registry"
+    },
+    {
+      "name": "registry-newline",
+      "fields": {
+        "registry": "a.near\nproject:x",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:registry"
+    },
+    {
+      "name": "project-empty",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:project"
+    },
+    {
+      "name": "project-newline-injection",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "a\nverdict:PASS",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:project"
+    },
+    {
+      "name": "project-colon",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "a:b",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:project"
+    },
+    {
+      "name": "project-leading-slash",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "/a",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:project"
+    },
+    {
+      "name": "project-too-long",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:project"
+    },
+    {
+      "name": "project-uppercase",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "Org/Repo",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:project"
+    },
+    {
+      "name": "bundle-no-prefix",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:bundle_digest"
+    },
+    {
+      "name": "bundle-uppercase-hex",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:AADCECAEAAADAAACAFAAAAAFAAAAEAAEAADAAAAAAAAEACAEAAAACAAAAABAAAAA",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:bundle_digest"
+    },
+    {
+      "name": "bundle-short",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b9367",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:bundle_digest"
+    },
+    {
+      "name": "verdict-lowercase",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "pass",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:verdict"
+    },
+    {
+      "name": "verdict-unknown",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "UNSUPPORTED",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:verdict"
+    },
+    {
+      "name": "corpus-wrong-algorithm",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha512:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:corpus_digest"
+    },
+    {
+      "name": "artifact-non-hex",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:artifact_digest"
+    },
+    {
+      "name": "commit-abbreviated",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "abc1234",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:commit"
+    },
+    {
+      "name": "commit-uppercase",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "timestampMs": 1794528000000
+      },
+      "error": "RSREG_FIELD_INVALID:commit"
+    },
+    {
+      "name": "timestamp-zero",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 0
+      },
+      "error": "RSREG_FIELD_INVALID:timestamp_ms"
+    },
+    {
+      "name": "timestamp-above-safe-integer",
+      "fields": {
+        "registry": "gnanam1990-routespec.testnet",
+        "project": "gnanam1990/routespec-near",
+        "bundleDigest": "sha256:88dcec4e338d134c6f78073f2829e54e00d2a280082eac4e9235c93143b93678",
+        "verdict": "PASS",
+        "corpusDigest": "sha256:076a2bca828efb9fed345ddba57099ea46f81ea9523748f038e1788c1934e519",
+        "artifactDigest": "sha256:e8805c0583181a1fe68b9884240c87afe99eee434f1b2390f81f92925eac66e8",
+        "commit": "95b4887e79a3576ad5913afac657e1698c7d13e5",
+        "timestampMs": 9007199254740992
+      },
+      "error": "RSREG_FIELD_INVALID:timestamp_ms"
+    }
+  ]
+}

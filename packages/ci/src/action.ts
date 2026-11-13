@@ -106,6 +106,12 @@ export interface ActionResult {
   readonly withheldEnvironment: readonly string[];
   readonly uploads: UploadManifest | null;
   readonly uploadDirectory: string | null;
+  /**
+   * What the separate certificate step needs (M47): the staged, scanned evidence bundle and the
+   * journal of this run. Null unless a trusted job staged the bundle. The gate step itself never
+   * signs or publishes anything and never sees a signer secret.
+   */
+  readonly certificate: { readonly bundlePath: string; readonly journalDirectory: string } | null;
   readonly findings: readonly string[];
   readonly error: { readonly code: string; readonly details: Record<string, string> } | null;
 }
@@ -153,6 +159,7 @@ export async function runAction(options: ActionOptions): Promise<ActionResult> {
   let liveDry: LiveDryState = 'NOT_REQUESTED';
   let uploads: UploadManifest | null = null;
   let uploadDirectory: string | null = null;
+  let certificate: ActionResult['certificate'] = null;
   let exitCode = 5;
   let error: ActionResult['error'] = null;
 
@@ -471,6 +478,10 @@ export async function runAction(options: ActionOptions): Promise<ActionResult> {
       pathMarkers: [workspace, workRoot, homedir()],
     });
     uploadDirectory = staging;
+    const stagedBundle = uploads.staged.find((s) => s.kind === 'evidence-bundle');
+    if (trusted && stagedBundle !== undefined && error === null) {
+      certificate = { bundlePath: join(staging, stagedBundle.name), journalDirectory: data };
+    }
   } catch (e) {
     if (e instanceof CliStepFailed) {
       exitCode = e.outcome.exitCode;
@@ -510,6 +521,7 @@ export async function runAction(options: ActionOptions): Promise<ActionResult> {
     withheldEnvironment: withheld.names,
     uploads,
     uploadDirectory,
+    certificate,
     findings,
     error,
   };

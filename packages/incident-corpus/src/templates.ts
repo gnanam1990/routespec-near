@@ -7,7 +7,7 @@
  * the refund reason. Because the text is a function of the descriptor alone, a corpus directory
  * can be verified by rendering each descriptor again and comparing.
  *
- * Restrictions (ADR-0028). The source of a descriptor is a provider-reported record that
+ * Restrictions (ADR-0029). The source of a descriptor is a provider-reported record that
  * RouteSpec did not reproduce or verify on chain, so every template follows the rules the
  * trace-mapping step applies to `ISSUE_DERIVED_NOT_REPRODUCED` sources: no visible destination
  * credit, no expected SUCCESS, no `*_PROVEN` outcome, both safety behaviours forbidden, and a

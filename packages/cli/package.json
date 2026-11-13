@@ -18,6 +18,7 @@
     "@routespec/contracts": "workspace:*",
     "@routespec/hardening": "workspace:*",
     "@routespec/proxy": "workspace:*",
+    "@routespec/registry": "workspace:*",
     "@routespec/runner": "workspace:*",
     "@routespec/scenario": "workspace:*",
     "@routespec/store": "workspace:*"

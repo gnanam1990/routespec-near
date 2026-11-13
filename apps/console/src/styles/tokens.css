@@ -57,11 +57,39 @@
   --motion-enter: 180ms;
   --motion-ease: cubic-bezier(0.2, 0, 0, 1);
 
+  --motion-settle: 160ms; /* content settling into place after a route or a load (transform only) */
+  --rail-width: 2px; /* evidence-chain and timeline rails */
+
   --header-height: 56px;
   --nav-width: 240px;
   --bottom-nav-height: 64px;
   --prose-width: 72ch;
   --content-max: 1600px;
+}
+
+/*
+ * Instrument band (M62): the header is the same ink surface in both themes so the project,
+ * connection, and theme controls read as one fixed panel above the evidence. Values are the
+ * spec's dark palette, so every pair inside it is already AA-checked.
+ */
+:root {
+  --chrome-bg: #0b1220;
+  --chrome-surface: #111827;
+  --chrome-border: #273449;
+  --chrome-text: #f8fafc;
+  --chrome-muted: #cbd5e1;
+  --chrome-surface-subtle: #182235;
+  --chrome-border-strong: #7c8aa0;
+  --chrome-action: #60a5fa;
+  --chrome-action-hover: #93c5fd;
+  --chrome-action-on: #07111f;
+  --chrome-focus: #93c5fd;
+  --chrome-neutral-surface: #1e293b;
+  --chrome-neutral-border: #475569;
+  --chrome-review-text: #fde68a;
+  --chrome-review-surface: #713f12;
+  --chrome-review-border: #a16207;
+  --verdict-wash: 35%;
 }
 
 /* Light theme (default) */
@@ -159,6 +187,8 @@
     --shadow-modal: 0 24px 48px rgb(0 0 0 / 0.6);
     --scrim: rgb(2 6 23 / 0.7);
     --skeleton: #1e293b;
+    --chrome-bg: #050a14;
+    --verdict-wash: 22%;
   }
 }
 
@@ -207,6 +237,8 @@
   --shadow-modal: 0 24px 48px rgb(0 0 0 / 0.6);
   --scrim: rgb(2 6 23 / 0.7);
   --skeleton: #1e293b;
+  --chrome-bg: #050a14;
+  --verdict-wash: 22%;
 }
 
 /* Forced-colors / high-contrast: rely on system colors; borders keep structure visible. */

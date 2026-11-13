@@ -14,7 +14,9 @@ import {
   type AxisName,
   type StatusContent,
 } from '../content/status-content.ts';
-import type { StatusAxes } from '../api/schemas.ts';
+import type { MatrixRow, StatusAxes } from '../api/schemas.ts';
+
+type Counts = MatrixRow['counts'];
 
 /** Icon + text badge. Meaning never depends on color; the tone only reinforces the text. */
 export function StatusBadge({ content, code }: { content: StatusContent; code?: string }) {
@@ -121,7 +123,7 @@ function AxisItem({ row }: { row: AxisRow }) {
   const [open, setOpen] = useState(false);
   const detailId = useId();
   return (
-    <div className="axis-row" data-axis={row.axis}>
+    <div className="axis-row" data-axis={row.axis} data-tone={row.content.tone}>
       <dt className="axis-name">
         {row.axis}
         <span className="visually-hidden">: {AXIS_DEFINITIONS[row.axis]}</span>
@@ -149,5 +151,46 @@ function AxisItem({ row }: { row: AxisRow }) {
         </div>
       </dd>
     </div>
+  );
+}
+
+const TALLY_SEGMENTS = [
+  { key: 'passed', tone: 'pass' },
+  { key: 'failed', tone: 'fail' },
+  { key: 'review', tone: 'review' },
+  { key: 'unsupportedRequired', tone: 'private' },
+  { key: 'notRun', tone: 'neutral' },
+] as const;
+
+/**
+ * Proportional strip of persisted case counts. Purely a visual summary of the numbers listed
+ * next to it (aria-hidden): every count is also written out as text, so nothing depends on
+ * colour, and no percentage is invented. Drawn as SVG geometry so the strict CSP needs no
+ * inline style.
+ */
+export function CaseTally({ counts }: { counts: Counts }) {
+  const total = TALLY_SEGMENTS.reduce((sum, s) => sum + counts[s.key], 0);
+  let x = 0;
+  return (
+    <svg
+      className="tally"
+      viewBox={`0 0 ${Math.max(total, 1)} 1`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <rect className="tally-track" x={0} y={0} width={Math.max(total, 1)} height={1} />
+      <g className="tally-fill">
+        {TALLY_SEGMENTS.map((s) => {
+          const n = counts[s.key];
+          const rect =
+            n > 0 ? (
+              <rect key={s.key} className={`tally-seg seg-${s.tone}`} x={x} y={0} width={n} height={1} />
+            ) : null;
+          x += n;
+          return rect;
+        })}
+      </g>
+    </svg>
   );
 }

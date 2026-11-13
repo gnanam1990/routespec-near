@@ -3,7 +3,7 @@ import { useResource } from '../app/context.tsx';
 import { usePageTitle } from '../app/usePageTitle.ts';
 import type { Matrix, MatrixRow } from '../api/schemas.ts';
 import { Digest } from '../components/Digest.tsx';
-import { StatusAxisGroup, StatusBadge } from '../components/Status.tsx';
+import { CaseTally, StatusAxisGroup, StatusBadge } from '../components/Status.tsx';
 import { Timestamp } from '../components/Timestamp.tsx';
 import {
   EmptyState,
@@ -212,38 +212,43 @@ function GateSummary({ row, basis, projectId }: { row: MatrixRow; basis: Summary
       ) : null}
       <div className="summary-grid">
         <StatusAxisGroup axes={row} />
-        <div>
-          <h3 className="h3">Counts</h3>
-          <KeyValues
-            items={[
-              ['Passed', <span className="mono num">{row.counts.passed}</span>],
-              ['Failed', <span className="mono num">{row.counts.failed}</span>],
-              ['Review', <span className="mono num">{row.counts.review}</span>],
-              ['Unsupported required', <span className="mono num">{row.counts.unsupportedRequired}</span>],
-              ['Not run', <span className="mono num">{row.counts.notRun}</span>],
-            ]}
-          />
-          <h3 className="h3">Identity</h3>
-          <KeyValues
-            items={[
-              ['Revision', <span className="mono">{row.revisionId}</span>],
-              ['Commit', <span className="mono">{row.commitSha ?? 'none'}</span>],
-              ['Subject build', <span className="mono">{row.buildRevisionId}</span>],
-              ['Artifact', <Digest value={row.artifactDigest} label="artifact digest" />],
-              ['Corpus', <Digest value={row.corpusDigest} label="corpus digest" />],
-              ['Last evaluation', <Timestamp value={row.evaluatedAt} fallback="Not evaluated" />],
-              ['Evidence observed', <Timestamp value={row.evidenceObservedAt} />],
-            ]}
-          />
-          {row.gateRunId ? (
-            <p>
-              <Link
-                to={`/projects/${encodeURIComponent(projectId)}/gate-runs/${encodeURIComponent(row.gateRunId)}`}
-              >
-                Inspect cases for this gate run
-              </Link>
-            </p>
-          ) : null}
+        <div className="summary-side">
+          <div className="summary-block">
+            <h3 className="h3">Counts</h3>
+            <CaseTally counts={row.counts} />
+            <KeyValues
+              items={[
+                ['Passed', <span className="mono num">{row.counts.passed}</span>],
+                ['Failed', <span className="mono num">{row.counts.failed}</span>],
+                ['Review', <span className="mono num">{row.counts.review}</span>],
+                ['Unsupported required', <span className="mono num">{row.counts.unsupportedRequired}</span>],
+                ['Not run', <span className="mono num">{row.counts.notRun}</span>],
+              ]}
+            />
+          </div>
+          <div className="summary-block">
+            <h3 className="h3">Identity</h3>
+            <KeyValues
+              items={[
+                ['Revision', <span className="mono">{row.revisionId}</span>],
+                ['Commit', <span className="mono">{row.commitSha ?? 'none'}</span>],
+                ['Subject build', <span className="mono">{row.buildRevisionId}</span>],
+                ['Artifact', <Digest value={row.artifactDigest} label="artifact digest" />],
+                ['Corpus', <Digest value={row.corpusDigest} label="corpus digest" />],
+                ['Last evaluation', <Timestamp value={row.evaluatedAt} fallback="Not evaluated" />],
+                ['Evidence observed', <Timestamp value={row.evidenceObservedAt} />],
+              ]}
+            />
+            {row.gateRunId ? (
+              <p>
+                <Link
+                  to={`/projects/${encodeURIComponent(projectId)}/gate-runs/${encodeURIComponent(row.gateRunId)}`}
+                >
+                  Inspect cases for this gate run
+                </Link>
+              </p>
+            ) : null}
+          </div>
         </div>
       </div>
     </Section>

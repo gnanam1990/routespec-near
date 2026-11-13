@@ -24,9 +24,30 @@
   align-items: center;
   gap: var(--space-3);
   padding: 0 var(--space-4);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
   min-width: 0;
+  /* Instrument band: the same ink panel in both themes. Controls inside it re-read the shared
+     semantic tokens with the spec's dark values, so badges, selects, and focus stay consistent. */
+  color-scheme: dark;
+  --surface: var(--chrome-surface);
+  --surface-subtle: var(--chrome-surface-subtle);
+  --text-primary: var(--chrome-text);
+  --text-secondary: var(--chrome-muted);
+  --border: var(--chrome-border);
+  --border-strong: var(--chrome-border-strong);
+  --action: var(--chrome-action);
+  --action-hover: var(--chrome-action-hover);
+  --action-on: var(--chrome-action-on);
+  --focus: var(--chrome-focus);
+  --focus-halo: var(--chrome-bg);
+  --neutral-text: var(--chrome-muted);
+  --neutral-surface: var(--chrome-neutral-surface);
+  --neutral-border: var(--chrome-neutral-border);
+  --review-text: var(--chrome-review-text);
+  --review-surface: var(--chrome-review-surface);
+  --review-border: var(--chrome-review-border);
+  background: var(--chrome-bg);
+  color: var(--chrome-text);
+  border-bottom: 1px solid var(--chrome-border);
 }
 .brand {
   display: inline-flex;
@@ -39,6 +60,9 @@
 }
 .brand-mark {
   color: var(--action);
+}
+.app-header .project-select > [aria-hidden='true'] {
+  color: var(--chrome-muted);
 }
 .header-divider {
   width: 1px;
@@ -126,6 +150,38 @@
 .nav-link.is-disabled {
   color: var(--text-secondary);
   cursor: not-allowed;
+}
+.nav-link.active .icon,
+.nav-link.active .nav-step {
+  color: var(--action);
+}
+/* Evidence chain: releases -> gate runs -> operations -> regressions, joined by a rail that
+   runs through the icon column. Decorative; the order is already the list order. */
+.nav-chain {
+  position: relative;
+}
+.nav-chain + .nav-chain::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-3) + 7px);
+  top: -9px;
+  height: 14px;
+  width: var(--rail-width);
+  border-radius: 1px;
+  background: var(--border);
+}
+.nav-step {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  font-weight: var(--weight-regular);
+}
+.nav-aside {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .app-main {
@@ -267,6 +323,15 @@
   .nav-link.active {
     box-shadow: inset 0 3px 0 var(--action);
   }
+  .nav-step,
+  .nav-chain + .nav-chain::before {
+    display: none;
+  }
+  .nav-aside {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
   .app-main {
     padding: var(--space-4);
     padding-bottom: calc(var(--bottom-nav-height) + var(--space-6));
@@ -344,22 +409,26 @@
   margin-top: var(--space-2);
 }
 .summary-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+/* Supporting facts sit under the axis ledger in as many columns as the width allows. */
+.summary-side {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  gap: var(--space-8);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: var(--space-6) var(--space-12);
   align-items: start;
 }
-.summary-grid > div {
+.summary-block {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   min-width: 0;
 }
-.summary-grid > div > .h3 + * {
-  margin-top: calc(-1 * var(--space-1));
-}
-.summary-grid > div > .kv + .h3 {
-  margin-top: var(--space-4);
+.summary-block > .h3 {
+  margin-bottom: 0;
 }
 .side-by-side {
   display: grid;
@@ -370,7 +439,6 @@
   min-width: 0;
 }
 @media (max-width: 1023px) {
-  .summary-grid,
   .side-by-side {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-6);
@@ -705,29 +773,59 @@ input[type='radio'] {
 
 .axis-group {
   min-width: 0;
+  container-type: inline-size;
+  container-name: axes;
 }
+/*
+ * Axis ledger: eight separately named cells (UI-SPEC 6.2). Hairline gaps draw the grid; each
+ * cell carries a tone rule that only repeats what its badge text already says. Source order is
+ * unchanged at every width (execution state, verdict, evidence, ...), so reading and focus
+ * order follow the layout.
+ */
 .axis-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1px;
+  background: var(--border-subtle);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
-  background: var(--surface);
   overflow: hidden;
 }
 .axis-row {
-  display: grid;
-  grid-template-columns: 11rem minmax(0, 1fr);
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  align-items: start;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4) var(--space-4);
+  background: var(--surface);
+  min-width: 0;
 }
-.axis-row + .axis-row {
-  border-top: 1px solid var(--border-subtle);
+.axis-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: var(--rail-width);
+  background: var(--border-subtle);
+}
+.axis-row[data-tone='pass']::before {
+  background: var(--pass-text);
+}
+.axis-row[data-tone='fail']::before {
+  background: var(--fail-text);
+}
+.axis-row[data-tone='review']::before {
+  background: var(--review-text);
+}
+.axis-row[data-tone='private']::before {
+  background: var(--private-text);
 }
 .axis-name {
-  font-weight: var(--weight-semibold);
-  font-size: var(--text-dense);
-  padding-top: 2px;
+  font-weight: var(--weight-medium);
+  font-size: var(--text-label);
+  color: var(--text-secondary);
+  line-height: 1.3;
 }
 .axis-value {
   display: flex;
@@ -756,12 +854,59 @@ input[type='radio'] {
   overflow-wrap: anywhere;
   color: var(--text-secondary);
 }
-@media (max-width: 767px) {
-  .axis-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-1);
+/* The verdict cell leads: its persisted reason reads at body size. */
+.axis-row[data-axis='Verdict'] .axis-detail > span:first-child {
+  color: var(--text-primary);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  max-width: var(--prose-width);
+}
+.axis-row[data-axis='Verdict'][data-tone='fail'] {
+  background: color-mix(in srgb, var(--fail-surface) var(--verdict-wash), var(--surface));
+}
+.axis-row[data-axis='Verdict'][data-tone='review'] {
+  background: color-mix(in srgb, var(--review-surface) var(--verdict-wash), var(--surface));
+}
+.axis-row[data-axis='Verdict'][data-tone='pass'] {
+  background: color-mix(in srgb, var(--pass-surface) var(--verdict-wash), var(--surface));
+}
+@container axes (min-width: 34rem) {
+  .axis-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  /* Compact layout: secondary description behind an operable control; the axis stays visible. */
+  .axis-row[data-axis='Execution state'],
+  .axis-row[data-axis='Verdict'] {
+    grid-column: 1 / -1;
+  }
+}
+@container axes (min-width: 56rem) {
+  .axis-list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .axis-row[data-axis='Execution state'] {
+    grid-column: auto;
+  }
+  .axis-row[data-axis='Verdict'] {
+    grid-column: span 3;
+  }
+  .axis-row[data-axis='Enforcement'],
+  .axis-row[data-axis='Official compatibility'] {
+    grid-column: span 2;
+  }
+}
+@media (max-width: 767px) {
+  /* Compact layout: name and badge share a line; the secondary description sits behind an
+     operable control. Every axis stays visible and separately named. */
+  .axis-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3);
+  }
+  .axis-value {
+    justify-content: flex-end;
+  }
   .axis-more {
     display: inline-flex;
   }
@@ -770,6 +915,38 @@ input[type='radio'] {
   }
   .axis-detail.is-open {
     display: flex;
+  }
+}
+
+/* Case tally: a proportional strip over the persisted counts listed under it. */
+.tally {
+  display: block;
+  width: 100%;
+  height: 12px;
+  border-radius: var(--radius-tag);
+  overflow: hidden;
+}
+.tally-track {
+  fill: var(--neutral-surface);
+}
+.seg-pass {
+  fill: var(--pass-text);
+}
+.seg-fail {
+  fill: var(--fail-text);
+}
+.seg-review {
+  fill: var(--review-text);
+}
+.seg-private {
+  fill: var(--private-text);
+}
+.seg-neutral {
+  fill: var(--neutral-border);
+}
+@media (forced-colors: active) {
+  .tally {
+    display: none;
   }
 }
 
@@ -1024,6 +1201,16 @@ input[type='radio'] {
 .table tr.is-selected > :first-child {
   box-shadow: inset 3px 0 0 var(--action);
 }
+/* Verdict edge: repeats the row's verdict badge (text + icon) as a left rule for scanning. */
+.table tbody tr:not(.is-selected):has(.badge[data-code='FAIL']) > :first-child {
+  box-shadow: inset 3px 0 0 var(--fail-text);
+}
+.table tbody tr:not(.is-selected):has(.badge[data-code='REVIEW']) > :first-child {
+  box-shadow: inset 3px 0 0 var(--review-text);
+}
+.table tbody tr:not(.is-selected):has(.badge[data-code='PASS']) > :first-child {
+  box-shadow: inset 3px 0 0 var(--pass-text);
+}
 /* Record names (scenario, revision) read as one token; the scroller absorbs the width. */
 .table td > a:first-child,
 .table th > a:first-child,
@@ -1147,15 +1334,45 @@ input[type='radio'] {
   background: var(--surface);
   overflow: hidden;
 }
+.event {
+  position: relative;
+}
 .event + .event {
   border-top: 1px solid var(--border-subtle);
+}
+/* Ordered rail through the sequence column; decorative, the sequence number is the text. */
+.event::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-4) + 3px);
+  top: 0;
+  bottom: 0;
+  width: var(--rail-width);
+  background: var(--border-subtle);
+}
+.event:first-child::before {
+  top: 18px;
+}
+.event:last-child::before {
+  bottom: calc(100% - 18px);
+}
+.event::after {
+  content: '';
+  position: absolute;
+  left: var(--space-4);
+  top: 14px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--border-strong);
 }
 .event summary {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-4) var(--space-2) calc(var(--space-4) + 20px);
   min-height: var(--control-height);
   cursor: pointer;
   font-size: var(--text-dense);
@@ -1202,6 +1419,7 @@ input[type='radio'] {
 .phase-list {
   list-style: none;
   padding: 0;
+  counter-reset: phase;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
@@ -1217,8 +1435,21 @@ input[type='radio'] {
   gap: var(--space-2);
   font-size: var(--text-dense);
 }
+.phase {
+  counter-increment: phase;
+  border-top: var(--rail-width) solid var(--border-strong);
+}
 .phase > .h3 {
   margin-bottom: 0;
+}
+/* Phase order is part of the contract (quote, finalization, commit, reconciliation). */
+.phase > .h3::before {
+  content: counter(phase, decimal-leading-zero) / '';
+  margin-right: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: var(--weight-regular);
+  color: var(--text-secondary);
 }
 @media (max-width: 767px) {
   .phase-list {
@@ -1469,4 +1700,91 @@ input[type='radio'] {
   flex-direction: column;
   gap: var(--space-3);
   min-width: 0;
+}
+
+/* ---------------------------------------------------------------- motion (M62) */
+/* Content settles into place when it mounts: transform only, no opacity, so text keeps its full
+   contrast from the first frame and nothing reflows. Reduced motion shows the final state. */
+@media (prefers-reduced-motion: no-preference) {
+  .page-header,
+  .resource > .section,
+  .resource > .summary-grid,
+  .resource > .notice {
+    animation: settle var(--motion-settle) var(--motion-ease);
+  }
+  .tally-fill {
+    transform-box: fill-box;
+    transform-origin: left center;
+    animation: tally-in var(--motion-enter) var(--motion-ease);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-header,
+  .resource > *,
+  .tally-fill,
+  .event,
+  .drawer {
+    animation: none;
+  }
+}
+@keyframes settle {
+  from {
+    transform: translateY(6px);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes tally-in {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* Counts stay label-and-number pairs on phones: short values never need their own line. */
+@media (max-width: 767px) {
+  .tally + .kv {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    gap: var(--space-1) var(--space-4);
+  }
+  .tally + .kv dt {
+    margin-top: 0;
+    font-size: var(--text-dense);
+  }
+}
+
+/* Case run: the four case axes as one ledger row on wide screens. */
+@media (min-width: 768px) {
+  .axis-list.case-axes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1200px) {
+  .axis-list.case-axes {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.case-axes .axis-value > .small {
+  flex-basis: 100%;
+}
+
+/* Scenario lineage rail: joins the stage icons in order; state remains text + icon. */
+.lineage-node {
+  position: relative;
+}
+.lineage-node + .lineage-node::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-4) + 9px);
+  top: -12px;
+  height: 22px;
+  width: var(--rail-width);
+  background: var(--border-subtle);
+}
+.lineage-node > .icon {
+  position: relative;
+  z-index: var(--layer-raised);
 }

@@ -315,6 +315,7 @@ fix branches are `feat/routespec-m20-*` to `feat/routespec-m29-*`, one per findi
   above, zod, yaml, React, react-router, Vite, Vitest, Playwright, axe-core, fast-check,
   TypeScript, ESLint, Prettier, node-forge (test certificates only), and Fontsource fonts. Storage
   uses Node's built-in `node:sqlite`.
+- Development was AI-assisted (coding agents); all code was tested and reviewed in this repository.
 - **Sibling project.** The same lead also entered
   [Dockside](https://github.com/gnanam1990/dockside-near), an independent supplier-trade escrow
   product for importers, suppliers, and named inspectors. RouteSpec and Dockside have separate

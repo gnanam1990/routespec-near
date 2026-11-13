@@ -101,8 +101,10 @@ GateRun; and that everything except the real call is provable without network ac
     in review.
 13. **Real probe.** `src/probe-cli.ts` (`probe:official`) runs the real RP-07 probe only with
     `--confirm-official-endpoint`, a dry request file, and a token the user placed in their own
-    shell. It prints the redacted record only. It was not run in this stage (needs a user JWT and
-    an explicit user action).
+    shell. It prints the redacted record only. It was not run in M07; M42 ran it with the owner's
+    JWT and fixed the quote-finalization request-echo comparison (`docs/status/M42.md`); the
+    record is `OFFICIAL_ENDPOINT_COMPATIBLE`. The echo-equivalence rules are validation logic and
+    do not change the profile integrity digest above.
 
 ## Consequences
 

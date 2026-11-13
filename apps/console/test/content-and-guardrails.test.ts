@@ -28,6 +28,7 @@ import {
   VERDICT_CONTENT,
   coverageContent,
   evidenceContent,
+  joinSentences,
   type StatusContent,
 } from '../src/content/status-content.ts';
 import { validateGateRunForm, validateImportForm, emptyGateRunForm } from '../src/forms/validation.ts';
@@ -118,6 +119,19 @@ describe('status content map', () => {
     expect(
       evidenceContent({ class: 'PROVEN', scope: 'SIMULATED_GROUND_TRUTH', reasons: [] }).label,
     ).toContain('proven within scenario');
+  });
+
+  it('composes descriptions without doubled punctuation', () => {
+    expect(evidenceContent({ class: 'UNKNOWN', scope: null, reasons: ['MISSING'] }).description).toBe(
+      'A required fact is absent. Required evidence is missing.',
+    );
+    expect(joinSentences(['One.', 'Two;', ' Three ', ''])).toBe('One. Two. Three.');
+    const all = [...EVIDENCE_CLASSES].flatMap((cls) =>
+      [null, ...EVIDENCE_SCOPES].map(
+        (scope) => evidenceContent({ class: cls, scope, reasons: [...EVIDENCE_REASONS] }).description,
+      ),
+    );
+    for (const d of all) expect(/\.\.|\.\s*\.|;\./.test(d)).toBe(false);
   });
 
   it('shows incomplete or stale coverage as REVIEW', () => {

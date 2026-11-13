@@ -4,7 +4,7 @@ import { usePageTitle } from '../app/usePageTitle.ts';
 import type { Matrix } from '../api/schemas.ts';
 import { StatusBadge } from '../components/Status.tsx';
 import { Timestamp } from '../components/Timestamp.tsx';
-import { EmptyState, PageHeader, ResourceView, Section } from '../components/ui.tsx';
+import { EmptyState, PageHeader, ResourceView, Section, ScrollRegion } from '../components/ui.tsx';
 import { LIFECYCLE_CONTENT, VERDICT_CONTENT } from '../content/status-content.ts';
 
 /** Gate runs known to the project matrix. Creating a run is a separate, explicit form. */
@@ -36,12 +36,7 @@ export function GateRunsPage() {
       >
         {(matrix) => (
           <Section title="Recorded gate runs">
-            <div
-              className="table-scroll"
-              role="region"
-              aria-label="Gate runs (scrolls horizontally)"
-              tabIndex={0}
-            >
+            <ScrollRegion label="Gate runs (scrolls horizontally)">
               <table className="table">
                 <thead>
                   <tr>
@@ -81,7 +76,7 @@ export function GateRunsPage() {
                     ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollRegion>
           </Section>
         )}
       </ResourceView>

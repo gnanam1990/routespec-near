@@ -8,7 +8,7 @@ import { Icon } from '../components/Icon.tsx';
 import { StatusBadge } from '../components/Status.tsx';
 import { Timestamp } from '../components/Timestamp.tsx';
 import { Timeline } from '../components/Timeline.tsx';
-import { KeyValues, Notice, PageHeader, ResourceView, Section } from '../components/ui.tsx';
+import { KeyValues, Notice, PageHeader, ResourceView, Section, ScrollRegion } from '../components/ui.tsx';
 import {
   EVIDENCE_CLASS_CONTENT,
   EVIDENCE_REASON_TEXT,
@@ -290,12 +290,7 @@ export function OperationPage() {
                     Showing {shown.length} of {op.invariants.length} invariants
                     {filter === 'attention' ? ` (${op.invariants.length - shown.length} hidden)` : ''}.
                   </p>
-                  <div
-                    className="table-scroll"
-                    role="region"
-                    aria-label="Invariants (scrolls horizontally)"
-                    tabIndex={0}
-                  >
+                  <ScrollRegion label="Invariants (scrolls horizontally)">
                     <table className="table">
                       <thead>
                         <tr>
@@ -338,7 +333,7 @@ export function OperationPage() {
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                  </ScrollRegion>
                 </Section>
 
                 <Section title="Timeline">

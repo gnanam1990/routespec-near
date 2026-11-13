@@ -3,6 +3,7 @@ import {
   useEffect,
   useId,
   useRef,
+  useState,
   type ButtonHTMLAttributes,
   type ReactNode,
   type RefObject,
@@ -449,5 +450,63 @@ export function KeyValues({ items }: { items: ReadonlyArray<readonly [string, Re
         </div>
       ))}
     </dl>
+  );
+}
+
+/**
+ * Horizontally scrollable table region. The scroller is a labelled, focusable region so
+ * keyboard users can scroll it with the arrow keys; edge shadows and a short hint show that more
+ * columns sit off-screen, because overlay scrollbars are often invisible until hovered. The page
+ * itself never scrolls horizontally.
+ */
+export function ScrollRegion({ label, children }: { label: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const hintId = useId();
+  const [edges, setEdges] = useState({ left: false, right: false });
+  useEffect(() => {
+    const el = ref.current;
+    if (el === null) return;
+    const update = () => {
+      const left = el.scrollLeft > 1;
+      const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+      setEdges((prev) => (prev.left === left && prev.right === right ? prev : { left, right }));
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    observer?.observe(el);
+    if (el.firstElementChild) observer?.observe(el.firstElementChild);
+    return () => {
+      el.removeEventListener('scroll', update);
+      observer?.disconnect();
+    };
+  }, []);
+  const overflowing = edges.left || edges.right;
+  return (
+    <div
+      className="table-scroll-frame"
+      data-more-left={edges.left ? 'true' : 'false'}
+      data-more-right={edges.right ? 'true' : 'false'}
+    >
+      <div className="table-scroll-viewport">
+        <div
+          ref={ref}
+          className="table-scroll"
+          role="region"
+          aria-label={label}
+          aria-describedby={overflowing ? hintId : undefined}
+          tabIndex={0}
+        >
+          {children}
+        </div>
+      </div>
+      {overflowing ? (
+        <p className="table-scroll-hint small muted" id={hintId}>
+          <Icon name="chevron-right" />
+          {edges.right ? 'More columns to the right.' : 'Showing the last columns.'} Scroll sideways, or focus
+          the table and use the arrow keys.
+        </p>
+      ) : null}
+    </div>
   );
 }

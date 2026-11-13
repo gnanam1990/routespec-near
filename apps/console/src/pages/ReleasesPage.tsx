@@ -5,7 +5,15 @@ import type { Matrix, MatrixRow } from '../api/schemas.ts';
 import { Digest } from '../components/Digest.tsx';
 import { StatusAxisGroup, StatusBadge } from '../components/Status.tsx';
 import { Timestamp } from '../components/Timestamp.tsx';
-import { EmptyState, KeyValues, Notice, PageHeader, ResourceView, Section } from '../components/ui.tsx';
+import {
+  EmptyState,
+  KeyValues,
+  Notice,
+  PageHeader,
+  ResourceView,
+  Section,
+  ScrollRegion,
+} from '../components/ui.tsx';
 import {
   COMPATIBILITY_CONTENT,
   ENFORCEMENT_CONTENT,
@@ -79,12 +87,7 @@ export function ReleasesPage() {
                   {matrix.nextCursor ? ' (more available)' : ''}. Each row is one exact revision, subject
                   build, corpus, and gate run.
                 </p>
-                <div
-                  className="table-scroll"
-                  role="region"
-                  aria-label="Revision matrix (scrolls horizontally)"
-                  tabIndex={0}
-                >
+                <ScrollRegion label="Revision matrix (scrolls horizontally)">
                   <table className="table table-matrix" aria-describedby="matrix-count">
                     <thead>
                       <tr>
@@ -175,7 +178,7 @@ export function ReleasesPage() {
                       })}
                     </tbody>
                   </table>
-                </div>
+                </ScrollRegion>
               </Section>
             </>
           );

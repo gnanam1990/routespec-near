@@ -12,8 +12,10 @@ refusal of ineligible captures as release evidence (RP-08), a signed profile rev
 used by INV-04, and the container-host part of T-036. No `WORKING_*` level is claimed. Exactly
 these remain:
 
-1. **RP-05 — a green clean-checkout run on a real CI service** (section 1). Your GitHub run of
-   the `ci` workflow (fixed by M15) is that evidence; the build did not observe it.
+1. ~~RP-05 — a green clean-checkout run on a real CI service~~ (section 1): **done**. GitHub
+   Actions `ci` [run 43272644091](https://github.com/gnanam1990/routespec-near/actions/runs/43272644091) on `ab9b89f` passed on ubuntu-24.04, windows-2022, and
+   macos-15 (observed by M41 on 2026-11-13). Keep pushing `main` so later commits get their own
+   green runs.
 2. **RP-02/RP-06 — an independent review of the canary interceptor profile** (section 2). The
    journeys review the profile with a locally generated test key held by the same operator,
    which proves the mechanics but not independence.
@@ -123,8 +125,8 @@ transfers are refused before any credential, DNS lookup, or socket.
    journey (`pnpm run delivery:journey -- --work <dir> --out <file> --contained` with the engine
    configured): confined subjects, attested launches, the capture accepted as release evidence,
    the corrected client's gate PASS, and the uncontained capture refused as release evidence.
-   Say on screen that `WORKING_LOCAL` is still not claimed (no real CI run observed, the
-   interceptor profile is reviewed only with a local test key).
+   Say on screen that `WORKING_LOCAL` is still not claimed (the interceptor profile is reviewed
+   only with a local test key).
 2. A safe script: `pnpm run test:delivery`, then start
    `node packages/control-api/src/main.ts --data <dir>/data --console apps/console/dist` on a data
    directory produced by the journey and walk the gate runs, the case, the run operation and

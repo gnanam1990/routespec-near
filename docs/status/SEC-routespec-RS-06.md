@@ -1,6 +1,6 @@
 # SEC RS-06 — Shared scenario proxy keyed connection barriers by step id only: status evidence
 
-- Source: external security audit, finding RS-06 (LOW; likelihood low, impact medium). Verified
+- Source: self-run audit, Cloudflare security-audit skill methodology, finding RS-06 (LOW; likelihood low, impact medium). Verified
   independently on the real proxy before any change.
 - State: **FIXED** on `feat/routespec-m28-proxy-barrier-case-scope` (base `c588307`, `main`
   merged in before the final runs).

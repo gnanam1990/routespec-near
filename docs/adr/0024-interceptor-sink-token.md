@@ -7,7 +7,7 @@
 
 ## Context
 
-An external security audit (finding RS-01, medium) reported that any local process could cause
+A security audit run by the team with Cloudflare's security-audit skill methodology (finding RS-01, medium) reported that any local process could cause
 boundary observations for a running case. The canary interceptor listens on `127.0.0.1` on an
 ephemeral port and accepted `POST /sink/<class>` with no credential. It framed each request as
 ATTEMPTED, then BLOCKED or RELEASED, and sent the frames to its parent over the private IPC pipe

@@ -1,6 +1,6 @@
 # SEC RS-01 — Unauthenticated interceptor sink: status evidence
 
-- Source: external security audit, finding RS-01 (medium). Verified independently on the real code
+- Source: self-run audit, Cloudflare security-audit skill methodology, finding RS-01 (medium). Verified independently on the real code
   with a failing test before any change.
 - State: **FIXED** on `feat/routespec-m23-interceptor-sink-auth` (base `c588307`; `main` merged in
   before the final runs).

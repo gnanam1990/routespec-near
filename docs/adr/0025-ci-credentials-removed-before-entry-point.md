@@ -1,8 +1,11 @@
-# ADR-0022 — CI gate: withheld credentials are removed before the entry point starts
+# ADR-0025 — CI gate: withheld credentials are removed before the entry point starts
 
 - Status: accepted
 - Date: 2026-11-12
-- Module: security follow-up (external automated scan, vuln-0001; amends ADR-0015 decision 5;
+- Numbering: merged as a second ADR-0022 on 2026-11-12, a minute after
+  `0022-auth-failure-budget-not-a-lockout.md`; renumbered to 0025 on 2026-11-13. The content is
+  unchanged.
+- Module: security follow-up (Strix 1.7.0 automated pentest scan, self-run, vuln-0001; amends ADR-0015 decision 5;
   FR-17, NFR-03, INV-11, T-058)
 
 ## Context

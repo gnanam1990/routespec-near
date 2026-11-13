@@ -64,7 +64,7 @@ screenshot, "verified", or "blocking" key is refused with `RS_ENFORCEMENT_CLAIM_
 "Withheld" means the composite action's step shell removes provider secrets and CI credentials
 before the entry point starts, so they are in no environment block of the action process (not
 even `/proc/<pid>/environ`), and passes the values to it over a pipe for the upload leak scan
-only (ADR-0022). The client module runs inside the action process, so withholding cannot contain
+only (ADR-0025). The client module runs inside the action process, so withholding cannot contain
 hostile client code; do not expose provider secrets to the gate step. Running `routespec-ci run`
 directly, without the action's step script, removes them from `process.env` only.
 

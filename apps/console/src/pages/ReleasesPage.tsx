@@ -16,6 +16,7 @@ import {
   coverageContent,
   evidenceContent,
 } from '../content/status-content.ts';
+import { SUMMARY_BASIS_TEXT, summarySelection, type SummaryBasis } from './releases-selection.ts';
 
 export function rowKey(row: MatrixRow): string {
   return `${row.revisionId}|${row.buildRevisionId}|${row.corpusRevisionId}|${row.gateRunId ?? 'none'}`;
@@ -67,10 +68,11 @@ export function ReleasesPage() {
         }
       >
         {(matrix) => {
-          const selected = matrix.rows.find((r) => rowKey(r) === selectedKey) ?? matrix.rows[0] ?? null;
+          const summary = summarySelection(matrix.rows, selectedKey, rowKey, matrix.nextCursor !== null);
+          const selected = summary?.row ?? null;
           return (
             <>
-              {selected ? <GateSummary row={selected} projectId={projectId} /> : null}
+              {summary ? <GateSummary row={summary.row} basis={summary.basis} projectId={projectId} /> : null}
               <Section title="Revision matrix">
                 <p className="small muted" id="matrix-count">
                   {matrix.rows.length} row{matrix.rows.length === 1 ? '' : 's'}
@@ -183,10 +185,13 @@ export function ReleasesPage() {
   );
 }
 
-function GateSummary({ row, projectId }: { row: MatrixRow; projectId: string }) {
+function GateSummary({ row, basis, projectId }: { row: MatrixRow; basis: SummaryBasis; projectId: string }) {
   const done = completedCases(row);
   return (
     <Section title={`Gate summary — ${row.revisionLabel}`}>
+      <p className="small muted" data-summary-basis={basis}>
+        {SUMMARY_BASIS_TEXT[basis]} Gate run <span className="mono">{row.gateRunId ?? 'none'}</span>.
+      </p>
       {row.lifecycle === 'RUNNING' || row.lifecycle === 'EVALUATING' ? (
         <Notice tone="neutral" icon="activity" title="Evaluation in progress" role="status">
           <p>

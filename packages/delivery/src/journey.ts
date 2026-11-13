@@ -47,6 +47,7 @@ import { join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { makeCanary, scanTree, type Canary } from '@routespec/hardening';
 import { CORE_SCENARIO_SOURCES } from '@routespec/scenario';
+import { SLOW_COMMIT_ANSWER, SLOW_COMMIT_ANSWER_SOURCE } from './scenarios.ts';
 import {
   containerCliFromEnv,
   containerToolchainDigest,
@@ -74,6 +75,7 @@ const SINK = 'fulfilment-canary';
 const WAITS_FOR_RECONCILIATION: Readonly<Record<Build, boolean>> = {
   'baseline-client': false,
   'corrected-client': true,
+  'hedging-client': false,
 };
 
 export interface JourneyOptions {
@@ -743,6 +745,35 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
   );
   mark('baselineGateRun', since);
 
+  // --- 2b. A second naive build that FAILs: hedged deposit submission ------------------------
+  // The hedging build places a second order (fresh quote, second deposit submission) while the
+  // first submission is accepted but unanswered. The kernel judges that from the journal as a
+  // second mutation under an unknown commit outcome (INV-03 FAIL); nothing here sets a verdict.
+  since = Date.now();
+  const hedgeScenario = await api('POST', '/scenarios', { projectId, source: SLOW_COMMIT_ANSWER_SOURCE });
+  const hedgeScenarioRevisionId = String(hedgeScenario['scenarioRevisionId']);
+  const hedgeCorpus = await api('POST', '/corpora', {
+    projectId,
+    label: 'hedged-submission-check',
+    cases: [
+      {
+        scenarioRevisionId: hedgeScenarioRevisionId,
+        requiredInvariants: REQUIRED_INVARIANTS,
+        severity: 'HIGH',
+        gatePolicy: 'REQUIRED',
+      },
+    ],
+  });
+  const hedgeCorpusRevisionId = String(hedgeCorpus['corpusRevisionId']);
+  const hedgeGateId = await gate(hedgeCorpusRevisionId, 'hedged submission check');
+  const hedging = await register('hedging-client');
+  // This gate runs only the slow-answer scenario, so its run-level policy names that scenario.
+  hedging.policyDigest = await policyFor(hedging, hedgeScenarioRevisionId);
+  const hedgingRun = await runGate('hedging', hedgeGateId, hedgeCorpusRevisionId, hedging, 'hedging-client', [
+    hedgeScenarioRevisionId,
+  ]);
+  mark('hedgingGateRun', since);
+
   // --- 3. Fenced recovery proof with single SDK calls (separate case, same build) ----------
   since = Date.now();
   const probeGate = await startGateRun(baseGateId, baseCorpusRevisionId, baseline);
@@ -953,6 +984,7 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
         };
       };
       ui['baseline'] = await read(baselineRun.gateRunId);
+      ui['hedging'] = await read(hedgingRun.gateRunId);
       ui['baselinePromoted'] = await read(baselineOnPromoted.gateRunId);
       ui['corrected'] = await read(correctedRun.gateRunId);
       ui['ran'] = true;
@@ -1035,7 +1067,7 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
   // --- 6b. CLI view of the same persisted records (service stopped: single writer) ----------
   since = Date.now();
   const cli: J = {};
-  for (const g of [baselineRun, baselineOnPromoted, correctedRun]) {
+  for (const g of [baselineRun, hedgingRun, baselineOnPromoted, correctedRun]) {
     const r = await runNode(
       root,
       'packages/cli/src/main.ts',
@@ -1123,10 +1155,13 @@ export async function runJourney(options: JourneyOptions): Promise<J> {
       toolchainDigest,
       baseline: { ...baseline, policies: Object.fromEntries(baseline.policies) },
       corrected: { ...corrected, policies: Object.fromEntries(corrected.policies) },
+      hedging: { ...hedging, policies: Object.fromEntries(hedging.policies) },
     },
     containment,
     scenario: { id: SCENARIO, baseScenarioRevisionId, requiredInvariants: REQUIRED_INVARIANTS, sink: SINK },
     baselineRun,
+    hedgingScenario: { id: SLOW_COMMIT_ANSWER, scenarioRevisionId: hedgeScenarioRevisionId },
+    hedgingRun,
     recoveryProof,
     regression: {
       importId,

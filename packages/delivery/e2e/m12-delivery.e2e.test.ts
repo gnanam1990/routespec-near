@@ -273,6 +273,27 @@ describe('T-055 — Full local product journey captures and fixes a real client 
     expect(b.decision).toBe('REVIEW');
   });
 
+  it('a second naive build that hedges its unanswered deposit submission FAILs INV-03 from the journal', () => {
+    const h = journey['hedgingRun'] as Gate;
+    expect(h.cases).toHaveLength(1);
+    const c = h.cases[0] as Case;
+    expect(c.scenarioName).toBe('slow-commit-answer');
+    // The client placed a second order (fresh quote, second deposit) while the first submission
+    // was accepted but unanswered, then cancelled the first: two run operations.
+    expect(c.jobOutcome['result']).toBe('HEDGED');
+    expect(c.jobOutcome['hedgeDepositAddress']).not.toBe(c.jobOutcome['depositAddress']);
+    expect(c.runOperationIds).toHaveLength(2);
+    expect(c.invariants.filter((i) => i.invariantId === 'INV-03').map((i) => i.status)).toEqual(['FAIL']);
+    expect(inv(c, 'INV-01')?.status).toBe('PASS');
+    expect(inv(c, 'INV-02')?.status).toBe('PASS');
+    expect(c.verdict).toBe('FAIL');
+    expect(h.decision).toBe('FAIL');
+    expect(h.apiGateRunVerdict).toBe('FAIL');
+    expect((journey['identity'] as Record<string, J>)['hedging']?.['artifactDigest']).not.toBe(
+      (journey['identity'] as Record<string, J>)['baseline']?.['artifactDigest'],
+    );
+  });
+
   it('fenced recovery revokes the stale token, increments the epoch, and denies a second mutation', () => {
     const r = journey['recoveryProof'] as Record<string, J>;
     expect(r['recover']).toMatchObject({
@@ -344,9 +365,12 @@ describe('T-055 — Full local product journey captures and fixes a real client 
     expect(identity['corrected']?.['buildRevisionId']).not.toBe(identity['baseline']?.['buildRevisionId']);
     const c = journey['correctedRun'] as Gate;
     expect(c.cases.map((x) => x.lineageRole).sort()).toEqual(['CORRECTED', 'PROMOTED_REGRESSION']);
-    const all = [journey['baselineRun'], journey['baselineOnPromoted'], journey['correctedRun']].flatMap(
-      (g) => (g as Gate).cases,
-    );
+    const all = [
+      journey['baselineRun'],
+      journey['hedgingRun'],
+      journey['baselineOnPromoted'],
+      journey['correctedRun'],
+    ].flatMap((g) => (g as Gate).cases);
     // No case, client instance, subject process, or run operation is shared across builds or cases.
     expect(new Set(all.map((x) => x.caseRunId)).size).toBe(all.length);
     expect(new Set(all.map((x) => x.clientInstanceId)).size).toBe(all.length);
@@ -376,6 +400,7 @@ describe('T-055 — Full local product journey captures and fixes a real client 
     expect(ui['ran']).toBe(true);
     const pairs: Array<[string, string]> = [
       ['baselineRun', 'baseline'],
+      ['hedgingRun', 'hedging'],
       ['baselineOnPromoted', 'baselinePromoted'],
       ['correctedRun', 'corrected'],
     ];
@@ -386,13 +411,14 @@ describe('T-055 — Full local product journey captures and fixes a real client 
       expect(ui[uiKey]?.['enforcement'], key).toBe('LOCAL_ADVISORY');
       expect(ui[uiKey]?.['storage'], key).toEqual([]);
     }
-    for (const [label, key] of [
-      ['baseline', 'baselineRun'],
-      ['baseline-promoted', 'baselineOnPromoted'],
-      ['corrected', 'correctedRun'],
+    for (const [label, key, exitCode] of [
+      ['baseline', 'baselineRun', 3],
+      ['hedging', 'hedgingRun', 2],
+      ['baseline-promoted', 'baselineOnPromoted', 3],
+      ['corrected', 'correctedRun', 3],
     ] as const) {
       expect(cli[label]?.['decision'], label).toBe((journey[key] as Gate).decision);
-      expect(cli[label]?.['exitCode'], label).toBe(3);
+      expect(cli[label]?.['exitCode'], label).toBe(exitCode);
       expect(cli[label]?.['enforcementMode'], label).toBe('LOCAL_ADVISORY');
     }
     expect(ui['domHoldsTokens']).toEqual([]);

@@ -1,6 +1,6 @@
 # SEC RS-04 — Import quarantine dropped blocking findings past 512 records: status evidence
 
-- Source: external security audit, finding RS-04 (LOW). Re-confirmed with a failing test on the
+- Source: self-run audit, Cloudflare security-audit skill methodology, finding RS-04 (LOW). Re-confirmed with a failing test on the
   real pipeline and journal before any change.
 - State: **FIXED** on `feat/routespec-m26-import-findings-cap` (base `c588307`, `main` merged in
   before the final runs).

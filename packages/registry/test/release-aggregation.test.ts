@@ -200,6 +200,27 @@ describe('aggregateRelease under REQUIRE_ONCHAIN_ATTESTER', () => {
     expect(unpinned.decision).toBe('PASS');
   });
 
+  it('is REVIEW for a forged certificate under a small-order key, even when enrolled and pinned', () => {
+    // The identity point as a public key: R = identity, s = 0 verifies for any payload.
+    const identity = new Uint8Array(32);
+    identity[0] = 1;
+    const weak = publicKeyText(identity);
+    const forged: OnchainCertificate = {
+      ...onchain(signer, 0),
+      attester: weak,
+      signature: Buffer.concat([Buffer.from(identity), Buffer.alloc(32)]).toString('base64'),
+    };
+    const out = aggregateRelease(
+      input({
+        certificates: [forged],
+        attesters: { [weak]: { ...enrolled(signer), publicKey: weak } },
+        trustedAttesters: [weak],
+      }),
+    );
+    expect(out.decision).toBe('REVIEW');
+    expect(out.certificates[0]?.findings).toEqual(['CERTIFICATE_SIGNATURE_INVALID']);
+  });
+
   it('never upgrades a local FAIL, REVIEW or NOT_RUN', () => {
     for (const decision of ['FAIL', 'REVIEW', 'NOT_RUN'] as const) {
       const passCertificate = aggregateRelease(input({ local: { ...local, decision } }));

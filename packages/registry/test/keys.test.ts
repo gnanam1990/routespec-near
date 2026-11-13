@@ -9,6 +9,7 @@ import {
   base58Decode,
   base58Encode,
   generateSigner,
+  isSmallOrderPublicKey,
   parsePublicKey,
   publicKeyText,
   signerFromSecret,
@@ -141,6 +142,49 @@ describe('secret key formats', () => {
       const text = JSON.stringify([(e as RouteSpecError).message, (e as RouteSpecError).details]);
       expect(text).not.toContain(secret);
       expect(text).not.toContain(secret.slice(0, 12));
+    }
+  });
+});
+
+/**
+ * The seven encodings (each with either sign bit) of the eight Ed25519 points of small order,
+ * the same list libsodium blocks. With such a public key, R = that key and s = 0 verify for any
+ * message under cofactorless verification, so anyone could sign for it.
+ */
+const SMALL_ORDER_KEYS: readonly Uint8Array[] = [
+  '0000000000000000000000000000000000000000000000000000000000000000',
+  '0100000000000000000000000000000000000000000000000000000000000000',
+  '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05',
+  'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a',
+  'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+  'edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+  'eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+].flatMap((hex) => {
+  const plain = new Uint8Array(Buffer.from(hex, 'hex'));
+  const signed = new Uint8Array(plain);
+  signed[31] = (signed[31] as number) ^ 0x80;
+  return [plain, signed];
+});
+
+describe('small-order public keys', () => {
+  it('are recognised in every encoding, and a real key is not', () => {
+    for (const k of SMALL_ORDER_KEYS) expect(isSmallOrderPublicKey(k)).toBe(true);
+    for (let i = 0; i < 50; i++) expect(isSmallOrderPublicKey(generateSigner().publicKey)).toBe(false);
+    expect(isSmallOrderPublicKey(new Uint8Array(31))).toBe(false);
+  });
+
+  it('never verify, so a forged signature for the identity key is refused', () => {
+    const identity = SMALL_ORDER_KEYS[2] as Uint8Array;
+    // R = the identity point, s = 0: valid for every message under cofactorless verification.
+    const forged = Buffer.concat([Buffer.from(identity), Buffer.alloc(32)]);
+    const spki = Buffer.concat([Buffer.from('302a300506032b6570032100', 'hex'), identity]);
+    const nodeKey = createPublicKey({ key: spki, format: 'der', type: 'spki' });
+    // Node itself accepts the forgery, which is why the key has to be refused by RouteSpec.
+    expect(verify(null, Buffer.from('any message'), nodeKey, forged)).toBe(true);
+    for (const k of SMALL_ORDER_KEYS) {
+      expect(
+        verifyEd25519(k, Buffer.from('any message'), Buffer.concat([Buffer.from(k), Buffer.alloc(32)])),
+      ).toBe(false);
     }
   });
 });

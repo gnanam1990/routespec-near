@@ -39,4 +39,12 @@ fixture is not in the repository and no screenshot claims a testnet certificate.
 
 ## Suite record
 
-Recorded after merging `main` into the branch; see the merge commit.
+After merging `main` (already up to date at `796c548`), `pnpm run check` ran on 2026-11-13:
+typecheck, lint, format check and the secret scan pass. The full `vitest run` had 12 failing files
+out of 122 while about 30 other Node processes were running on the host; the failures were
+60-second test timeouts, an elapsed-time bound (27.6 s against 20 s), and a locked journal file,
+all in CLI, control-API, MCP, incident-corpus and security-suite tests this module does not touch.
+Run again serially (`vitest run --no-file-parallelism` on those 12 files) they pass: 60 passed,
+1 skipped. An earlier full run in a quieter moment failed only `t025` and `t057` in the same way;
+both passed alone (`t057` takes 44 s of its 60 s budget on this host). The `apps/verify` tests
+(16) pass.

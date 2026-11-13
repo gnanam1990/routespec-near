@@ -260,3 +260,60 @@ export function denialEnvelope(denial: PolicyDenial, requestId: string) {
     details: { reason: denial.reason, route: denial.route, ...denial.boundary },
   }).toEnvelope(requestId);
 }
+
+// ---------------------------------------------------------------------------------------------
+// Fidelity matrix (M51, ADR-0027): the official token list.
+//
+// A second, separately classified read: a bare `GET /v0/tokens` (no query, no body). It is only
+// consulted by an adapter that was started with an explicit token-list budget; the default
+// classifier above still denies the route. The read is public, so the egress never attaches the
+// provider credential to it (the vault only releases the credential for a dry-quote allowance).
+
+export interface AllowedTokenList {
+  readonly allowed: true;
+  readonly method: 'GET';
+  readonly path: '/v0/tokens';
+  readonly route: 'GET /v0/tokens';
+  readonly strippedInboundHeaders: readonly string[];
+}
+
+const issuedTokenList = new WeakSet<object>();
+
+export function isIssuedTokenListAllowance(value: unknown): value is AllowedTokenList {
+  return typeof value === 'object' && value !== null && issuedTokenList.has(value);
+}
+
+/** Classify a token-list read. Never throws; never touches the network or the credential. */
+export function classifyTokenListRequest(req: InboundRequest): AllowedTokenList | PolicyDenial {
+  const method = typeof req.method === 'string' ? req.method.toUpperCase().slice(0, 16) : '';
+  const stripped = strippedNames(req.headers);
+  const route = 'GET /v0/tokens';
+  const deny = (reason: string, label = route): PolicyDenial =>
+    Object.freeze({
+      allowed: false,
+      code: 'RS_MODE_POLICY_DENIED',
+      reason,
+      route: label,
+      method,
+      strippedInboundHeaders: Object.freeze(stripped),
+      boundary: DENIAL_BOUNDARY,
+    });
+  const target = typeof req.target === 'string' ? req.target : '';
+  const q = target.indexOf('?');
+  const path = q === -1 ? target : target.slice(0, q);
+  if (path !== '/v0/tokens') return deny('NOT_TOKEN_LIST_ROUTE', 'UNLISTED');
+  if (method !== 'GET') return deny('METHOD_NOT_ALLOWLISTED');
+  if (q !== -1) return deny('QUERY_NOT_ALLOWED');
+  const encoding = (header(req.headers, 'content-encoding') ?? 'identity').toLowerCase().trim();
+  if (encoding !== 'identity') return deny('BODY_ENCODED');
+  if (!Buffer.isBuffer(req.body) || req.body.length !== 0) return deny('BODY_NOT_ALLOWED');
+  const allowed: AllowedTokenList = Object.freeze({
+    allowed: true,
+    method: 'GET',
+    path: '/v0/tokens',
+    route,
+    strippedInboundHeaders: Object.freeze(stripped),
+  });
+  issuedTokenList.add(allowed);
+  return allowed;
+}

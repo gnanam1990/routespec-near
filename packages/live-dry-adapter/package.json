@@ -12,7 +12,8 @@
     }
   },
   "scripts": {
-    "probe:official": "node --no-warnings src/probe-cli.ts"
+    "probe:official": "node --no-warnings src/probe-cli.ts",
+    "fidelity:matrix": "node --no-warnings src/matrix-cli.ts"
   },
   "dependencies": {
     "@defuse-protocol/one-click-sdk-typescript": "0.1.26",

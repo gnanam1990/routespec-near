@@ -104,6 +104,8 @@ export async function launchLiveDryAdapter(input: {
   readonly credentialPolicy: CredentialPolicy;
   readonly passProviderJwt?: boolean;
   readonly maxProbes?: number;
+  /** Token-list reads for the fidelity matrix; default 0 keeps the route denied. */
+  readonly maxTokenListFetches?: number;
   readonly ledgerPath?: string | null;
   readonly limits?: Partial<EgressLimits>;
   /** Entry script; defaults to the production entry (main.ts). */
@@ -127,6 +129,7 @@ export async function launchLiveDryAdapter(input: {
     type: 'start',
     credentialPolicy: input.credentialPolicy,
     maxProbes: input.maxProbes ?? 1,
+    maxTokenListFetches: input.maxTokenListFetches ?? 0,
     ledgerPath: input.ledgerPath ?? null,
     limits: input.limits ?? {},
     test: input.test,

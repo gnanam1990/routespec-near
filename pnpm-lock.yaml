@@ -246,6 +246,24 @@ importers:
         specifier: workspace:*
         version: link:../contracts
 
+  packages/incident-corpus:
+    dependencies:
+      '@routespec/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@routespec/hardening':
+        specifier: workspace:*
+        version: link:../hardening
+      '@routespec/scenario':
+        specifier: workspace:*
+        version: link:../scenario
+      '@routespec/store':
+        specifier: workspace:*
+        version: link:../store
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+
   packages/kernel:
     dependencies:
       '@routespec/contracts':
@@ -400,6 +418,9 @@ importers:
       '@routespec/hardening':
         specifier: workspace:*
         version: link:../hardening
+      '@routespec/incident-corpus':
+        specifier: workspace:*
+        version: link:../incident-corpus
       '@routespec/kernel':
         specifier: workspace:*
         version: link:../kernel

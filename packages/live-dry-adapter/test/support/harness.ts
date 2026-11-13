@@ -38,6 +38,7 @@ export function launchTestAdapter(input: {
   jwt?: string;
   credentialPolicy?: 'NONE' | 'OPTIONAL';
   maxProbes?: number;
+  maxTokenListFetches?: number;
   ledgerPath?: string | null;
   extraEnv?: Record<string, string>;
   limits?: Record<string, number>;
@@ -50,6 +51,7 @@ export function launchTestAdapter(input: {
     env,
     credentialPolicy: input.credentialPolicy ?? 'OPTIONAL',
     maxProbes: input.maxProbes ?? 1,
+    maxTokenListFetches: input.maxTokenListFetches ?? 0,
     ledgerPath: input.ledgerPath ?? null,
     limits: input.limits ?? {},
     test: input.test,

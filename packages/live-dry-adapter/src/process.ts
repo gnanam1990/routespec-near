@@ -12,7 +12,8 @@
  * Only then is `ROUTESPEC_PROVIDER_JWT` read into the vault and deleted from the environment.
  *
  * IPC (JSON over the inherited channel only; nothing secret on argv):
- *   parent -> {type:'start', credentialPolicy, maxProbes, ledgerPath, limits?, test?}
+ *   parent -> {type:'start', credentialPolicy, maxProbes, maxTokenListFetches?, ledgerPath, limits?,
+ *              test?}
  *   child  -> {type:'ready', port, probeToken, tokenState, preflight} | {type:'refused', code, reason}
  *   parent -> {type:'report'} | {type:'release'} | {type:'close'}
  *   child  -> {type:'report', report} | {type:'released', tokenState} | {type:'closed', report}
@@ -26,7 +27,7 @@ import { compileUpstreamOrigin } from './address-policy.ts';
 import { ProviderCredentialVault, type CredentialPolicy } from './credential.ts';
 import { DEFAULT_EGRESS_LIMITS, type EgressLimits, type EgressTransport } from './egress.ts';
 import { CompatibilityLedger } from './ledger.ts';
-import { LiveDryAdapter } from './server.ts';
+import { LIVE_DRY_HARD_REQUEST_CAP, LiveDryAdapter } from './server.ts';
 
 /** Profile integrity digest reviewed for this adapter revision; a profile change needs a re-pin. */
 export const PINNED_PROFILE_INTEGRITY_DIGEST =
@@ -50,6 +51,7 @@ export interface StartMessage {
   readonly type: 'start';
   readonly credentialPolicy: CredentialPolicy;
   readonly maxProbes?: number;
+  readonly maxTokenListFetches?: number;
   readonly ledgerPath?: string | null;
   readonly limits?: Partial<EgressLimits>;
   /** Only read by test entries that inject a transport; the production entry ignores it. */
@@ -171,12 +173,24 @@ export function runAdapterProcess(options: RunOptions): void {
             send({ type: 'refused', code: safe.code, reason: 'PROVIDER_CREDENTIAL_INVALID' });
             return;
           }
+          const maxProbes = typeof start.maxProbes === 'number' ? start.maxProbes : 1;
+          const maxTokenListFetches =
+            typeof start.maxTokenListFetches === 'number' ? start.maxTokenListFetches : 0;
+          if (
+            ![maxProbes, maxTokenListFetches].every((n) => Number.isInteger(n) && n >= 0) ||
+            maxProbes + maxTokenListFetches > LIVE_DRY_HARD_REQUEST_CAP
+          ) {
+            vault.release();
+            send({ type: 'refused', code: 'RS_MODE_POLICY_DENIED', reason: 'REQUEST_CAP_EXCEEDED' });
+            return;
+          }
           ledger = typeof start.ledgerPath === 'string' ? new CompatibilityLedger(start.ledgerPath) : null;
           adapter = new LiveDryAdapter({
             vault,
             transport: options.transportFor(start),
             ledger,
-            maxProbes: typeof start.maxProbes === 'number' ? start.maxProbes : 1,
+            maxProbes,
+            maxTokenListFetches,
             limits: { ...DEFAULT_EGRESS_LIMITS, ...(start.limits ?? {}) },
           });
           const address = await adapter.listen();

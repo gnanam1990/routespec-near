@@ -23,6 +23,7 @@ import {
   DEFAULT_EGRESS_LIMITS,
   isSystemTransport,
   sendDryQuote,
+  sendTokenListRequest,
   type EgressCounters,
   type EgressLimits,
   type EgressTiming,
@@ -32,11 +33,18 @@ import type { CompatibilityLedger, DenialEntry, ProbeEntry } from './ledger.ts';
 import {
   LIVE_DRY_MAX_REQUEST_BYTES,
   classifyLiveDryRequest,
+  classifyTokenListRequest,
   denialEnvelope,
   type PolicyDenial,
 } from './policy.ts';
 
 export const PROBE_TOKEN_HEADER = 'x-routespec-probe-token';
+
+/**
+ * Hard upper bound on upstream requests one adapter session may make, dry quotes and token-list
+ * reads together (ADR-0027). A session asking for more does not start.
+ */
+export const LIVE_DRY_HARD_REQUEST_CAP = 40;
 
 const STATUS: Partial<Record<ErrorCode, number>> = {
   RS_MODE_POLICY_DENIED: 403,
@@ -57,6 +65,8 @@ export interface AdapterCounters extends EgressCounters {
   localRejections: number;
   policyDenials: number;
   forwarded: number;
+  /** Token-list reads forwarded (fidelity matrix only; 0 unless a budget was requested). */
+  tokenListForwarded: number;
 }
 
 export interface AdapterOptions {
@@ -64,6 +74,8 @@ export interface AdapterOptions {
   readonly transport: EgressTransport;
   readonly ledger: CompatibilityLedger | null;
   readonly maxProbes?: number;
+  /** Token-list reads allowed in this session. Default 0: the route stays denied. */
+  readonly maxTokenListFetches?: number;
   readonly limits?: EgressLimits;
   /** Defaults to the pinned profile origin; any other value is refused by compileUpstreamOrigin. */
   readonly origin?: string;
@@ -91,6 +103,7 @@ export class LiveDryAdapter {
   readonly #origin: CompiledOrigin;
   readonly #limits: EgressLimits;
   readonly #maxProbes: number;
+  readonly #maxTokenListFetches: number;
   readonly #probeTokenDigest: Buffer;
   readonly probeToken: string;
   readonly counters: AdapterCounters = {
@@ -98,6 +111,7 @@ export class LiveDryAdapter {
     localRejections: 0,
     policyDenials: 0,
     forwarded: 0,
+    tokenListForwarded: 0,
     resolverCalls: 0,
     connectorCalls: 0,
     upstreamRequests: 0,
@@ -115,6 +129,16 @@ export class LiveDryAdapter {
     this.#origin = compileUpstreamOrigin(options.origin ?? 'https://1click.chaindefuser.com');
     this.#limits = options.limits ?? DEFAULT_EGRESS_LIMITS;
     this.#maxProbes = options.maxProbes ?? 1;
+    this.#maxTokenListFetches = options.maxTokenListFetches ?? 0;
+    const budgets = [this.#maxProbes, this.#maxTokenListFetches];
+    if (
+      budgets.some((n) => !Number.isInteger(n) || n < 0) ||
+      this.#maxProbes + this.#maxTokenListFetches > LIVE_DRY_HARD_REQUEST_CAP
+    ) {
+      throw new RouteSpecError('RS_MODE_POLICY_DENIED', 'Session request budget exceeds the hard cap.', {
+        details: { reason: 'REQUEST_CAP_EXCEEDED' },
+      });
+    }
     this.probeToken = `rslp_${randomBytes(32).toString('base64url')}`;
     this.#probeTokenDigest = digest(this.probeToken);
   }
@@ -213,6 +237,83 @@ export class LiveDryAdapter {
     return Buffer.concat(chunks);
   }
 
+  #capReached(): boolean {
+    return this.counters.forwarded + this.counters.tokenListForwarded >= LIVE_DRY_HARD_REQUEST_CAP;
+  }
+
+  /** Fidelity matrix only: one bare token-list read, no credential, nothing written to the ledger. */
+  async #readTokenList(
+    req: IncomingMessage,
+    res: ServerResponse,
+    body: Buffer,
+    requestId: string,
+  ): Promise<void> {
+    const decision = classifyTokenListRequest({
+      method: req.method ?? '',
+      target: req.url ?? '',
+      headers: req.headers,
+      body,
+    });
+    if (!decision.allowed) return this.#deny(res, decision, requestId);
+    if (
+      this.counters.tokenListForwarded >= this.#maxTokenListFetches ||
+      this.#inFlight ||
+      this.#capReached()
+    ) {
+      return this.#deny(
+        res,
+        {
+          allowed: false,
+          code: 'RS_MODE_POLICY_DENIED',
+          reason: 'TOKEN_LIST_BUDGET_EXHAUSTED',
+          route: decision.route,
+          method: decision.method,
+          strippedInboundHeaders: decision.strippedInboundHeaders,
+          boundary: {
+            credentialAttached: false,
+            dnsAttempted: false,
+            socketAttempted: false,
+            upstreamAttempted: false,
+            upstreamClientInvoked: false,
+          },
+        },
+        requestId,
+      );
+    }
+    this.#inFlight = true;
+    this.counters.tokenListForwarded++;
+    const outcome = await sendTokenListRequest({
+      allowance: decision,
+      origin: this.#origin,
+      transport: this.#transport,
+      counters: this.counters,
+      limits: this.#limits,
+    });
+    this.#inFlight = false;
+    if (
+      outcome.kind === 'RESPONSE' &&
+      outcome.status === 200 &&
+      (outcome.contentType ?? '').toLowerCase().startsWith('application/json')
+    ) {
+      res.writeHead(200, {
+        'content-type': 'application/json',
+        'cache-control': 'no-store',
+        'content-length': outcome.body.length,
+      });
+      res.end(outcome.body);
+      return;
+    }
+    const error = new RouteSpecError('RS_MODE_POLICY_DENIED', 'Token list read did not produce a list.', {
+      details: {
+        reason: outcome.kind === 'FAILED' ? outcome.reason : `PROVIDER_HTTP_${outcome.status}`,
+        credentialAttached: false,
+        dnsAttempted: outcome.boundary.dnsAttempted,
+        upstreamAttempted: outcome.boundary.upstreamAttempted,
+      },
+    });
+    this.#reply(res, 502, error.toEnvelope(requestId));
+  }
+
   async #handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const requestId = randomUUID();
     this.counters.requests++;
@@ -232,6 +333,9 @@ export class LiveDryAdapter {
         req.resume();
         return this.#local(res, 'RS_BODY_TOO_LARGE', 'BODY_TOO_LARGE', requestId);
       }
+      if (this.#maxTokenListFetches > 0 && (req.url ?? '').split('?')[0] === '/v0/tokens') {
+        return await this.#readTokenList(req, res, body, requestId);
+      }
       const decision = classifyLiveDryRequest({
         method: req.method ?? '',
         target: req.url ?? '',
@@ -240,7 +344,7 @@ export class LiveDryAdapter {
       });
       if (!decision.allowed) return this.#deny(res, decision, requestId);
 
-      if (this.counters.forwarded >= this.#maxProbes || this.#inFlight) {
+      if (this.counters.forwarded >= this.#maxProbes || this.#inFlight || this.#capReached()) {
         return this.#deny(
           res,
           {

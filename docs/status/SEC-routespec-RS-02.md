@@ -1,6 +1,6 @@
 # SEC routespec RS-02 — contained subject could write to the host control channel
 
-- Source: external security audit, finding RS-02 (severity low: likelihood medium, impact low)
+- Source: self-run audit, Cloudflare security-audit skill methodology, finding RS-02 (severity low: likelihood medium, impact low)
 - Branch: `feat/routespec-m24-containment-stdout-framing`
 - Decision record: ADR-0023 (amends ADR-0019 decision 4)
 

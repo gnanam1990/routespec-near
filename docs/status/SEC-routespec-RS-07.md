@@ -1,6 +1,6 @@
 # SEC RS-07 — Gate aggregation kept PASS for a revoked build attester: status evidence
 
-- Source: external security audit, finding RS-07 (LOW; likelihood low, impact medium; verdict
+- Source: self-run audit, Cloudflare security-audit skill methodology, finding RS-07 (LOW; likelihood low, impact medium; verdict
   integrity only, enforcement is advisory). Re-confirmed with failing tests on the real code
   before any change.
 - State: **FIXED** on `feat/routespec-m29-aggregate-attester-revocation` (`main` merged in before

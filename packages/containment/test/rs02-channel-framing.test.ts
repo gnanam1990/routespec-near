@@ -1,6 +1,7 @@
 /**
- * RS-02 (external security audit): the shim's stdout is the only channel from the container to
- * the host, so only the shim may write frames to it, and the host bounds every frame.
+ * RS-02 (self-run audit, Cloudflare security-audit skill methodology): the shim's stdout is the
+ * only channel from the container to the host, so only the shim may write frames to it, and the
+ * host bounds every frame.
  *
  * These tests run the real `ContainedSubject` and the real `shim.mjs`. Only the container engine
  * is replaced, by a stand-in that runs the shim with its stdio passed through unchanged (as

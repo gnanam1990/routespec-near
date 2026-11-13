@@ -1,5 +1,5 @@
 /**
- * Release aggregation over on-chain certificates (M47, ADR-0027).
+ * Release aggregation over on-chain certificates (M47, ADR-0028).
  *
  * The gate evaluation itself stays networkless and is never changed by anything on chain. This
  * is the step after it: a pure function over (a) the local gate decision read from a verified

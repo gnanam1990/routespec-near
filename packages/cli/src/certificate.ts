@@ -1,5 +1,5 @@
 /**
- * CLI surfaces for on-chain release certificates (M47, ADR-0027).
+ * CLI surfaces for on-chain release certificates (M47, ADR-0028).
  *
  * - `certificate keygen`: create an Ed25519 attester key file; prints only the public key.
  * - `certificate publish`: verify an evidence bundle, build the certificate for it (bundle

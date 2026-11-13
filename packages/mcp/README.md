@@ -17,7 +17,7 @@ Start it with `routespec mcp [--root <dir>] [--work <dir>]` (or `pnpm run mcp`, 
   `exact-retry-same-order`, `release-effects-after-success`, with before and after code.
 - `verify_certificate` — `routespec certificate verify` against the NEAR registry (read-only).
 
-Files read by the tools must be inside `--root`. Decisions: `docs/adr/0031-mcp-server-and-agent-skill.md`.
+Files read by the tools must be inside `--root`. Decisions: `docs/adr/0032-mcp-server-and-agent-skill.md`.
 The skill and the demo: `examples/agent-skill/`. Status: `docs/status/M52.md`.
 
 Tests: `packages/mcp/test` (in `pnpm test`), `packages/mcp/sandbox-test` (in

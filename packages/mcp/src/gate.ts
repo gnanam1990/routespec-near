@@ -9,7 +9,7 @@
  * verdict is stated, expected, or seeded here.
  *
  * Runs are uncontained (`DECLARED_HOOKS_ONLY`): the client runs as a local Node process, the same
- * trust as running its own tests. They are diagnostic, not release evidence (ADR-0031).
+ * trust as running its own tests. They are diagnostic, not release evidence (ADR-0032).
  */
 import { fork, type ChildProcess } from 'node:child_process';
 import { createHash } from 'node:crypto';

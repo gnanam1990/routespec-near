@@ -10,7 +10,7 @@
     "node": ">=22.18.0"
   },
   "scripts": {
-    "typecheck": "tsc -b && tsc -p apps/console/tsconfig.json --noEmit && tsc -p packages/security-suite/tsconfig.json --noEmit && tsc -p packages/delivery/tsconfig.json --noEmit && tsc -p packages/mcp/tsconfig.json --noEmit",
+    "typecheck": "tsc -b && tsc -p apps/console/tsconfig.json --noEmit && tsc -p apps/verify/tsconfig.json --noEmit && tsc -p packages/security-suite/tsconfig.json --noEmit && tsc -p packages/delivery/tsconfig.json --noEmit && tsc -p packages/mcp/tsconfig.json --noEmit",
     "build": "tsc -b",
     "clean": "tsc -b --clean",
     "test": "vitest run",

@@ -1,5 +1,5 @@
 /**
- * Model Context Protocol server over stdio (M52, ADR-0031).
+ * Model Context Protocol server over stdio (M52, ADR-0032).
  *
  * Transport: newline-delimited JSON-RPC 2.0 on stdin/stdout, as the MCP stdio transport
  * defines it. stdout carries protocol messages only; diagnostics go to stderr. Implemented

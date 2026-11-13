@@ -1,0 +1,20 @@
+{
+  "name": "@routespec/verify-page",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Static \"RouteSpec Certified\" verify page (M49): recomputes a bundle digest in the browser and checks the routespec-registry contract over read-only NEAR RPC.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@routespec/registry": "workspace:*",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "vite": "7.3.7"
+  }
+}

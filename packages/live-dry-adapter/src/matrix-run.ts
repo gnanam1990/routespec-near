@@ -1,10 +1,13 @@
 /**
- * Fidelity matrix (M51): one run. Reads the official token list once, selects the routes, sends
- * one dry quote per route through the live-dry adapter, and builds the redacted matrix.
+ * Fidelity matrix (M51): one run. Reads the official token list once, then sends one dry quote
+ * per candidate route through the live-dry adapter until the target number of routes has been
+ * answered with a judgeable (2xx) response or the quote ceiling is reached, and builds the
+ * redacted matrix. A route the endpoint cannot quote (for example no liquidity) stays in the
+ * matrix as UNKNOWN and the next candidate is probed; no request is ever repeated.
  *
  * Request budget: at most `LIVE_DRY_HARD_REQUEST_CAP` (40) upstream requests per run, counted
  * here before every call and enforced again by the adapter session, which is started with exactly
- * this run's budget. Nothing is retried, so a run of N routes makes at most N + 1 requests.
+ * this run's budget: one token-list read plus at most 39 dry quotes.
  */
 import type { ProviderTokenState } from '@routespec/contracts';
 import { profileIdentity, type CompatibilityResult } from './compatibility.ts';
@@ -17,11 +20,29 @@ import {
   type MatrixRow,
 } from './matrix-report.ts';
 import { MATRIX_DEFAULT_ROUTES, buildDryQuoteRequest, selectRoutes } from './matrix-routes.ts';
+import { TOKEN_LIST_MAX_ENTRIES } from './matrix-tokens.ts';
 import { parseTokenList, type ParsedTokenList } from './matrix-tokens.ts';
 import { LIVE_DRY_HARD_REQUEST_CAP, PROBE_TOKEN_HEADER, type AdapterReport } from './server.ts';
 
-/** Most routes one run can probe: the cap minus the token-list read. */
+/** Most dry quotes one run can send: the cap minus the token-list read. */
 export const MATRIX_MAX_ROUTES = LIVE_DRY_HARD_REQUEST_CAP - 1;
+
+/** Ceiling on dry quotes for a run: never below the target, never above 39. */
+export function clampQuoteCeiling(requested: number | undefined, target: number): number {
+  const n = requested === undefined || !Number.isInteger(requested) ? MATRIX_MAX_ROUTES : requested;
+  return Math.min(MATRIX_MAX_ROUTES, Math.max(target, n));
+}
+
+/**
+ * Coarse class of a provider 4xx message. The text itself is provider data and is never kept;
+ * only one of these fixed labels reaches the matrix.
+ */
+export function providerRefusalClass(message: unknown): 'NO_LIQUIDITY' | 'AMOUNT_TOO_LOW' | 'OTHER' {
+  if (typeof message !== 'string') return 'OTHER';
+  if (/no liquidity/i.test(message)) return 'NO_LIQUIDITY';
+  if (/amount is too low/i.test(message)) return 'AMOUNT_TOO_LOW';
+  return 'OTHER';
+}
 
 export function clampRouteCount(requested: number | undefined): number {
   const n = requested === undefined || !Number.isInteger(requested) ? MATRIX_DEFAULT_ROUTES : requested;
@@ -100,10 +121,13 @@ export function adapterMatrixClient(adapter: LaunchedAdapter, sdk: SdkLike): Mat
       const before = (await adapter.report<AdapterReport>()).counters.forwarded;
       const started = Date.now();
       let clientReason = 'RESOLVED';
+      let refusal: string | null = null;
       try {
         await sdk.OneClickService.getQuote(request as never);
       } catch (error) {
         clientReason = httpReason(error);
+        const body = (error as { body?: { message?: unknown } | null } | null)?.body;
+        refusal = providerRefusalClass(body?.message);
       }
       const latencyMs = Date.now() - started;
       const report = await adapter.report<AdapterReport>();
@@ -124,7 +148,13 @@ export function adapterMatrixClient(adapter: LaunchedAdapter, sdk: SdkLike): Mat
         httpStatus: result.httpStatus,
         compatibility: result.compatibility,
         shapeResult: result.shapeResult,
-        reasonCode: result.reasonCode,
+        reasonCode:
+          refusal !== null &&
+          result.httpStatus !== null &&
+          result.httpStatus >= 400 &&
+          result.httpStatus < 500
+            ? `${result.reasonCode}_${refusal}`
+            : result.reasonCode,
         responseShapeDigest: result.responseShapeDigest,
         latencyMs,
       };
@@ -135,13 +165,17 @@ export function adapterMatrixClient(adapter: LaunchedAdapter, sdk: SdkLike): Mat
 export async function runFidelityMatrix(input: {
   readonly client: MatrixClient;
   readonly baseline: FidelityBaseline;
+  /** Target number of routes with a judgeable (2xx) answer. Default 24, at most 39. */
   readonly routes?: number;
+  /** Ceiling on dry quotes sent while reaching the target. Default and maximum 39. */
+  readonly maxQuotes?: number;
   readonly now?: () => Date;
   /** Pause between dry quotes, in milliseconds. */
   readonly pauseMs?: number;
 }): Promise<FidelityMatrix> {
   const now = input.now ?? (() => new Date());
-  const count = clampRouteCount(input.routes);
+  const target = clampRouteCount(input.routes);
+  const ceiling = clampQuoteCeiling(input.maxQuotes, target);
   const budget = new RequestBudget();
   const identity = profileIdentity();
 
@@ -159,12 +193,15 @@ export async function runFidelityMatrix(input: {
 
   const rows: MatrixRow[] = [];
   if (parsed !== null) {
-    for (const route of selectRoutes(parsed.tokens, count)) {
+    let judged = 0;
+    for (const route of selectRoutes(parsed.tokens, TOKEN_LIST_MAX_ENTRIES)) {
+      if (judged >= target || rows.length >= ceiling) break;
       if (rows.length > 0 && (input.pauseMs ?? 0) > 0) {
         await new Promise((resolve) => setTimeout(resolve, input.pauseMs));
       }
       budget.take();
       const seen = await input.client.quote(buildDryQuoteRequest(route, now()));
+      if (seen.shapeResult !== 'NOT_JUDGED') judged++;
       const { assetId: oId, blockchain: oChain, symbol: oSymbol } = route.origin;
       const { assetId: dId, blockchain: dChain, symbol: dSymbol } = route.destination;
       rows.push(
@@ -201,6 +238,8 @@ export async function runFidelityMatrix(input: {
     },
     requests: {
       hardCap: LIVE_DRY_HARD_REQUEST_CAP,
+      targetRoutes: target,
+      quoteCeiling: ceiling,
       tokenListReads: 1,
       dryQuotes: rows.length,
       total: budget.used,

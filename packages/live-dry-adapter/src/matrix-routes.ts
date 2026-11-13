@@ -3,9 +3,11 @@
  *
  * Selection is a pure function of the sanitized token list, so two runs over the same list probe
  * the same routes. The hub is USDC on NEAR. The first two routes are the NEAR pair
- * (wNEAR <-> USDC); then every other chain, in name order, contributes its preferred token
- * (USDC, then USDT, then the lowest asset id), alternating direction into and out of the hub;
- * further rounds take each chain's next token until the requested count is reached.
+ * (wNEAR <-> USDC); then every other chain contributes its preferred token (USDC, then USDT, then
+ * the lowest asset id), alternating direction into and out of the hub; further rounds take each
+ * chain's next token until the requested count is reached. Chains are ordered by how many tokens
+ * the list carries for them (most first, then by name): the list has no liquidity figure, and a
+ * chain with many listed tokens is the better guess for a route that can actually be quoted.
  *
  * Every request is `dry: true`, EXACT_INPUT, about 20 USD of the origin asset, with refund and
  * recipient on the intents side (`refundType`/`recipientType: INTENTS`) to the all-zero implicit
@@ -65,7 +67,9 @@ export function selectRoutes(tokens: readonly MatrixToken[], count: number): Mat
     list.push(t);
     byChain.set(t.blockchain, list);
   }
-  const chains = [...byChain.keys()].sort();
+  const chains = [...byChain.keys()].sort(
+    (a, b) => byChain.get(b)!.length - byChain.get(a)!.length || (a < b ? -1 : a > b ? 1 : 0),
+  );
   for (const chain of chains) {
     byChain.get(chain)!.sort((a, b) => rank(a) - rank(b) || byAssetId(a, b));
   }

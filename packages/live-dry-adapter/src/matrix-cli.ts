@@ -4,11 +4,12 @@
  *
  *   ROUTESPEC_PROVIDER_JWT=<your token>   (optional; set in your own shell, never on argv)
  *   pnpm --filter @routespec/live-dry-adapter fidelity:matrix -- \
- *     --confirm-official-endpoint [--routes <1..39>] [--out-dir <dir>] [--baseline <file>] \
- *     [--pause-ms <0..5000>]
+ *     --confirm-official-endpoint [--routes <1..39>] [--max-quotes <1..39>] [--out-dir <dir>] \
+ *     [--baseline <file>] [--pause-ms <0..5000>]
  *
- * One run reads the official token list once and sends one `dry: true` quote per selected route
- * (24 by default), never more than 40 upstream requests in total and never a retry. The adapter
+ * One run reads the official token list once and sends one `dry: true` quote per candidate route
+ * until `--routes` routes (24 by default) have a judgeable answer or `--max-quotes` (39 by default)
+ * quotes were sent: never more than 40 upstream requests in total and never a retry. The adapter
  * process holds the token; this command removes the variable from its own environment as soon as
  * the adapter has started. Output is the redacted matrix only: routes, HTTP status, compatibility
  * label, reason and response shape digest. No quote value is printed or written.
@@ -23,7 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { PROVIDER_JWT_ENV } from './credential.ts';
 import { launchLiveDryAdapter } from './launch.ts';
 import { exitCodeFor, parseBaseline, renderBadge, renderMatrixMarkdown } from './matrix-report.ts';
-import { adapterMatrixClient, clampRouteCount, runFidelityMatrix } from './matrix-run.ts';
+import { adapterMatrixClient, clampQuoteCeiling, clampRouteCount, runFidelityMatrix } from './matrix-run.ts';
 
 const DEFAULT_BASELINE = fileURLToPath(new URL('../fidelity-baseline.json', import.meta.url));
 
@@ -48,8 +49,9 @@ async function main(): Promise<number> {
   }
   const routesArg = intArg('--routes', 1, 39);
   const pauseArg = intArg('--pause-ms', 0, 5000);
-  if (routesArg === null || pauseArg === null) {
-    process.stderr.write('Usage: --routes takes 1..39 and --pause-ms takes 0..5000.\n');
+  const ceilingArg = intArg('--max-quotes', 1, 39);
+  if (routesArg === null || pauseArg === null || ceilingArg === null) {
+    process.stderr.write('Usage: --routes and --max-quotes take 1..39 and --pause-ms takes 0..5000.\n');
     return 2;
   }
   let baseline;
@@ -62,10 +64,11 @@ async function main(): Promise<number> {
     return 2;
   }
   const routes = clampRouteCount(routesArg);
+  const maxQuotes = clampQuoteCeiling(ceilingArg, routes);
   const adapter = await launchLiveDryAdapter({
     credentialPolicy: 'OPTIONAL',
     passProviderJwt: true,
-    maxProbes: routes,
+    maxProbes: maxQuotes,
     maxTokenListFetches: 1,
     ledgerPath: null,
   });
@@ -76,6 +79,7 @@ async function main(): Promise<number> {
       client: adapterMatrixClient(adapter, sdk as never),
       baseline,
       routes,
+      maxQuotes,
       pauseMs: pauseArg ?? 250,
     });
     const markdown = renderMatrixMarkdown(matrix);

@@ -11,7 +11,8 @@
  * - INCONCLUSIVE / TOKEN_LIST_UNAVAILABLE: no usable token list, so no route was probed.
  * - DRIFT: at least one route answered 2xx with a body that is not the pinned profile shape.
  * - INCONCLUSIVE / FEWER_THAN_MIN_ROUTES_COMPATIBLE: fewer than 20 routes were judged compatible
- *   (provider 4xx/5xx and transport failures are UNKNOWN, not drift).
+ *   (provider 4xx/5xx, such as a route without liquidity, and transport failures are UNKNOWN,
+ *   not drift).
  * - NEW_SHAPE: every judged route fits the profile, but a shape digest is not in the reviewed
  *   baseline (for example an optional field appeared). Review and extend the baseline.
  * - NO_DRIFT: at least 20 routes compatible, every shape digest in the baseline.
@@ -70,6 +71,10 @@ export interface FidelityMatrix {
   };
   readonly requests: {
     readonly hardCap: number;
+    /** Routes with a judgeable (2xx) answer the run aimed for. */
+    readonly targetRoutes: number;
+    /** Most dry quotes the run was allowed to send while reaching the target. */
+    readonly quoteCeiling: number;
     readonly tokenListReads: number;
     readonly dryQuotes: number;
     readonly total: number;
@@ -173,7 +178,7 @@ export function renderMatrixMarkdown(matrix: FidelityMatrix): string {
     `- Endpoint: \`${matrix.origin}\` (transport ${matrix.transportKind}, provider token ${matrix.tokenState})`,
     `- Profile: \`${matrix.profile.protocolProfileId}\` \`${matrix.profile.profileIntegrityDigest}\`, SDK \`${matrix.profile.sdkPackage}@${matrix.profile.sdkVersion}\``,
     `- Verdict: **${matrix.verdict}** (${matrix.verdictReason}): ${c.compatible} compatible, ${c.incompatible} incompatible, ${c.unknown} unknown, ${c.newShapes} with a shape outside the baseline, of ${c.routes} routes`,
-    `- Requests: ${matrix.requests.total} of at most ${matrix.requests.hardCap} (${matrix.requests.tokenListReads} token-list read, ${matrix.requests.dryQuotes} dry quotes)`,
+    `- Requests: ${matrix.requests.total} of at most ${matrix.requests.hardCap} (${matrix.requests.tokenListReads} token-list read, ${matrix.requests.dryQuotes} dry quotes; target ${matrix.requests.targetRoutes} answered routes, ceiling ${matrix.requests.quoteCeiling} quotes)`,
     `- Token list: ${matrix.tokenList.status} (${matrix.tokenList.reasonCode}), ${matrix.tokenList.listed} listed, ${matrix.tokenList.usable} usable, shape ${short(matrix.tokenList.shapeDigest)}`,
     '- Every quote was `dry: true`. No deposit address was requested, nothing was signed, submitted or settled, and no quote value (amount, price, address, signature) is recorded here.',
     '',

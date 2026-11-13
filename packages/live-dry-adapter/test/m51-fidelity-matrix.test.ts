@@ -15,6 +15,8 @@ import {
   LIVE_DRY_HARD_REQUEST_CAP,
   MATRIX_INTENTS_ACCOUNT,
   MATRIX_MAX_ROUTES,
+  clampQuoteCeiling,
+  providerRefusalClass,
   PINNED_PROFILE_INTEGRITY_DIGEST,
   RequestBudget,
   adapterMatrixClient,
@@ -135,6 +137,18 @@ describe('M51 route selection and dry requests', () => {
     ]);
   });
 
+  it('orders chains by how many tokens the list carries for them, then by name', () => {
+    const list = syntheticTokenList(3);
+    list.push(
+      { assetId: 'nep141:extra-a.test', decimals: 6, blockchain: 'chain02', symbol: 'EXA', price: 1 },
+      { assetId: 'nep141:only.test', decimals: 8, blockchain: 'aaa', symbol: 'ONE', price: 50000 },
+    );
+    const routes = selectRoutes(parseTokenList(list).tokens, 6).slice(2);
+    expect(routes.map((r) => (r.origin.blockchain === 'near' ? r.destination : r.origin).blockchain)).toEqual(
+      ['chain02', 'chain00', 'chain01', 'aaa'],
+    );
+  });
+
   it('takes further rounds when there are fewer chains than routes, and returns [] without a hub', () => {
     const { tokens } = parseTokenList(syntheticTokenList(12));
     const routes = selectRoutes(tokens, 24);
@@ -176,6 +190,10 @@ describe('M51 route selection and dry requests', () => {
     expect(clampRouteCount(undefined)).toBe(24);
     expect(clampRouteCount(1000)).toBe(39);
     expect(clampRouteCount(0)).toBe(1);
+    expect(clampQuoteCeiling(undefined, 24)).toBe(39);
+    expect(clampQuoteCeiling(10, 24)).toBe(24);
+    expect(clampQuoteCeiling(1000, 24)).toBe(39);
+    expect(clampQuoteCeiling(30, 24)).toBe(30);
     const budget = new RequestBudget();
     for (let i = 0; i < LIVE_DRY_HARD_REQUEST_CAP; i++) budget.take();
     expect(() => budget.take()).toThrow();
@@ -260,6 +278,82 @@ describe('M51 verdict and baseline', () => {
   });
 });
 
+describe('M51 adaptive probing (scripted client, no network)', () => {
+  const tokens = syntheticTokenList(40);
+  const run = async (refuse: (request: Record<string, unknown>) => boolean, maxQuotes?: number) => {
+    let quotes = 0;
+    const matrix = await runFidelityMatrix({
+      baseline,
+      routes: 24,
+      ...(maxQuotes === undefined ? {} : { maxQuotes }),
+      client: {
+        transportKind: () => Promise.resolve('SYSTEM' as const),
+        tokenState: () => Promise.resolve('OPTIONAL_ABSENT' as const),
+        tokens: () => Promise.resolve({ ok: true as const, value: tokens }),
+        quote: (request) => {
+          quotes++;
+          return Promise.resolve(
+            refuse(request)
+              ? {
+                  forwarded: true,
+                  httpStatus: 400,
+                  compatibility: 'UNKNOWN' as const,
+                  shapeResult: 'NOT_JUDGED' as const,
+                  reasonCode: 'PROVIDER_HTTP_400_NO_LIQUIDITY',
+                  responseShapeDigest: null,
+                  latencyMs: 5,
+                }
+              : {
+                  forwarded: true,
+                  httpStatus: 201,
+                  compatibility: 'OFFICIAL_ENDPOINT_COMPATIBLE' as const,
+                  shapeResult: 'SHAPE_COMPATIBLE' as const,
+                  reasonCode: 'PROFILE_SHAPE_MATCHED',
+                  responseShapeDigest: KNOWN,
+                  latencyMs: 5,
+                },
+          );
+        },
+      },
+    });
+    return { matrix, quotes };
+  };
+  const touches = (request: Record<string, unknown>, chain: string) =>
+    [request['originAsset'], request['destinationAsset']].includes(`nep141:usdc-${chain}.test`);
+
+  it('keeps an unquotable route as UNKNOWN and probes the next candidate until the target is met', async () => {
+    const { matrix, quotes } = await run((r) => ['chain03', 'chain07', 'chain11'].some((c) => touches(r, c)));
+    expect(quotes).toBe(27);
+    expect(matrix.counts).toEqual({ routes: 27, compatible: 24, incompatible: 0, unknown: 3, newShapes: 0 });
+    expect(matrix.verdict).toBe('NO_DRIFT');
+    expect(matrix.requests).toEqual({
+      hardCap: 40,
+      targetRoutes: 24,
+      quoteCeiling: 39,
+      tokenListReads: 1,
+      dryQuotes: 27,
+      total: 28,
+    });
+  });
+
+  it('never sends more than the ceiling, and never more than 39 quotes', async () => {
+    const all = await run(() => true);
+    expect(all.quotes).toBe(39);
+    expect(all.matrix.requests.total).toBe(40);
+    expect(all.matrix).toMatchObject({ verdict: 'INCONCLUSIVE', counts: { compatible: 0, unknown: 39 } });
+    const capped = await run(() => true, 30);
+    expect(capped.quotes).toBe(30);
+    expect(capped.matrix.requests).toMatchObject({ quoteCeiling: 30, total: 31 });
+  });
+
+  it('reduces a provider refusal message to a fixed label', () => {
+    expect(providerRefusalClass('No liquidity available')).toBe('NO_LIQUIDITY');
+    expect(providerRefusalClass('Amount is too low for bridge, try at least 1')).toBe('AMOUNT_TOO_LOW');
+    expect(providerRefusalClass('<script>alert(1)</script> | injected')).toBe('OTHER');
+    expect(providerRefusalClass(undefined)).toBe('OTHER');
+  });
+});
+
 describe('M51 one matrix run through the adapter (loopback upstream, injected transport)', () => {
   const jwt = canaryJwt(3600, 'm51matrix');
   let pki: TestPki;
@@ -271,10 +365,11 @@ describe('M51 one matrix run through the adapter (loopback upstream, injected tr
     pki = createTestPki(PINNED_HOST);
     upstream = await startUpstream(pki.pinned, 'quote');
     upstream.tokens = syntheticTokenList(30);
+    upstream.refuseAssets = ['nep141:usdc-chain05.test'];
     adapter = await launchTestAdapter({
       test: { kind: 'loopback-tls', port: upstream.port, ca: pki.caCert },
       jwt,
-      maxProbes: 24,
+      maxProbes: 25,
       maxTokenListFetches: 1,
     });
     const sdk = await import('@defuse-protocol/one-click-sdk-typescript');
@@ -282,6 +377,7 @@ describe('M51 one matrix run through the adapter (loopback upstream, injected tr
       client: adapterMatrixClient(adapter, sdk as never),
       baseline,
       routes: 24,
+      maxQuotes: 25,
       now: () => new Date('2026-11-13T10:00:00Z'),
     });
     sdk.OpenAPI.HEADERS = undefined;
@@ -291,22 +387,42 @@ describe('M51 one matrix run through the adapter (loopback upstream, injected tr
     await upstream.close();
   });
 
-  it('made one token-list read and one dry quote per route, 25 requests in all', () => {
-    expect(upstream.received).toHaveLength(25);
+  it('made one token-list read and one dry quote per route, 26 requests in all', () => {
+    expect(upstream.received).toHaveLength(26);
     expect(upstream.received[0]).toMatchObject({ method: 'GET', url: '/v0/tokens' });
     expect(upstream.received[0]!.headers['authorization']).toBeUndefined();
     const quotes = upstream.received.slice(1);
     expect(quotes.every((r) => r.method === 'POST' && r.url === '/v0/quote')).toBe(true);
     expect(quotes.every((r) => (JSON.parse(r.body) as { dry: unknown }).dry === true)).toBe(true);
-    expect(new Set(quotes.map((r) => r.body)).size).toBe(24);
-    expect(matrix.requests).toEqual({ hardCap: 40, tokenListReads: 1, dryQuotes: 24, total: 25 });
+    expect(new Set(quotes.map((r) => r.body)).size).toBe(25);
+    expect(matrix.requests).toEqual({
+      hardCap: 40,
+      targetRoutes: 24,
+      quoteCeiling: 25,
+      tokenListReads: 1,
+      dryQuotes: 25,
+      total: 26,
+    });
   });
 
-  it('a 25th quote in the same session is refused by the adapter and reported as not forwarded', async () => {
+  it('a route the upstream refuses stays in the matrix as UNKNOWN with a fixed reason label', () => {
+    const refused = matrix.rows.filter((r) => r.httpStatus === 400);
+    expect(refused).toHaveLength(1);
+    expect(refused[0]).toMatchObject({
+      destination: { blockchain: 'chain05' },
+      compatibility: 'UNKNOWN',
+      shapeResult: 'NOT_JUDGED',
+      reasonCode: 'PROVIDER_HTTP_400_NO_LIQUIDITY',
+      responseShapeDigest: null,
+      baseline: 'NOT_JUDGED',
+    });
+  });
+
+  it('one more quote in the same session is refused by the adapter and reported as not forwarded', async () => {
     const sdk = await import('@defuse-protocol/one-click-sdk-typescript');
     const client = adapterMatrixClient(adapter, sdk as never);
     const { tokens } = parseTokenList(syntheticTokenList(30));
-    const extra = await client.quote(buildDryQuoteRequest(selectRoutes(tokens, 25)[24]!, new Date()));
+    const extra = await client.quote(buildDryQuoteRequest(selectRoutes(tokens, 26)[25]!, new Date()));
     sdk.OpenAPI.HEADERS = undefined;
     expect(extra).toMatchObject({
       forwarded: false,
@@ -314,15 +430,15 @@ describe('M51 one matrix run through the adapter (loopback upstream, injected tr
       reasonCode: 'NOT_FORWARDED_PROBE_BUDGET_EXHAUSTED',
       responseShapeDigest: null,
     });
-    expect(upstream.received).toHaveLength(25);
+    expect(upstream.received).toHaveLength(26);
     const report = await adapter.report<ChildReport>();
-    expect(report.counters).toMatchObject({ forwarded: 24, tokenListForwarded: 1, upstreamRequests: 25 });
+    expect(report.counters).toMatchObject({ forwarded: 25, tokenListForwarded: 1, upstreamRequests: 26 });
   });
 
   it('an injected transport can never yield a compatible row or a passing verdict', () => {
     expect(matrix.transportKind).toBe('INJECTED');
-    expect(matrix.rows).toHaveLength(24);
-    for (const r of matrix.rows) {
+    expect(matrix.rows).toHaveLength(25);
+    for (const r of matrix.rows.filter((x) => x.httpStatus === 200)) {
       expect(r).toMatchObject({
         forwarded: true,
         httpStatus: 200,
@@ -334,11 +450,11 @@ describe('M51 one matrix run through the adapter (loopback upstream, injected tr
       expect(r.responseShapeDigest).toMatch(/^sha256:[0-9a-f]{64}$/);
     }
     expect(matrix).toMatchObject({ verdict: 'INCONCLUSIVE', verdictReason: 'NOT_OFFICIAL_ENDPOINT' });
-    expect(matrix.counts).toEqual({ routes: 24, compatible: 0, incompatible: 0, unknown: 24, newShapes: 0 });
+    expect(matrix.counts).toEqual({ routes: 25, compatible: 0, incompatible: 0, unknown: 25, newShapes: 0 });
     expect(renderBadge(matrix)).toEqual({
       schemaVersion: 1,
       label: '1Click fidelity',
-      message: 'inconclusive, 0/24 routes',
+      message: 'inconclusive, 0/25 routes',
       color: 'lightgrey',
     });
     expect(exitCodeFor(matrix.verdict)).toBe(3);
@@ -362,8 +478,9 @@ describe('M51 one matrix run through the adapter (loopback upstream, injected tr
     expect(all).not.toMatch(/amountOut|depositAddress|correlationId|priceUsd|"price"/);
     expect(markdown).toContain('| 1 | wNEAR (near) | USDC (near) | 200 | UNKNOWN |');
     expect(markdown).toContain('Verdict: **INCONCLUSIVE** (NOT_OFFICIAL_ENDPOINT)');
-    expect(markdown).toContain('Requests: 25 of at most 40');
-    expect(markdown.split('\n').filter((l) => /^\| \d+ \|/.test(l))).toHaveLength(24);
+    expect(markdown).toContain('Requests: 26 of at most 40');
+    expect(all).not.toContain('No liquidity available');
+    expect(markdown.split('\n').filter((l) => /^\| \d+ \|/.test(l))).toHaveLength(25);
   });
 });
 

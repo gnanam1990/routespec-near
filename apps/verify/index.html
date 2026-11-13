@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https: http://127.0.0.1:* http://localhost:*; base-uri 'none'; form-action 'none'; object-src 'none'"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' https: http://127.0.0.1:* http://localhost:*; base-uri 'none'; form-action 'none'; object-src 'none'"
     />
     <meta name="referrer" content="no-referrer" />
+    <meta name="color-scheme" content="light dark" />
     <meta
       name="description"
       content="Check a RouteSpec release certificate: the bundle digest is computed in your browser and the routespec-registry contract on NEAR is read directly."
@@ -18,30 +19,150 @@
   <body>
     <a class="skip" href="#main">Skip to content</a>
     <header class="top">
-      <div class="wrap">
-        <p class="product"><span class="mark" aria-hidden="true"></span>RouteSpec</p>
-        <p class="tag">Release certificate check</p>
+      <div class="wrap top-row">
+        <p class="product">
+          <svg
+            class="mark"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <circle cx="5.5" cy="6" r="2.5" />
+            <circle cx="18.5" cy="18" r="2.5" />
+            <path d="M8 6h6.5a3.5 3.5 0 0 1 0 7h-5a3.5 3.5 0 0 0 0 7H16" />
+          </svg>
+          <span>RouteSpec</span><span class="product-sub">Certified</span>
+        </p>
+        <p class="tag">Release certificate check · read-only · runs in this browser</p>
       </div>
     </header>
-    <main id="main" class="wrap">
-      <h1>Is this release RouteSpec Certified?</h1>
-      <p class="lede">
-        Give the evidence bundle of a release, its digest, or a project. This page computes the bundle digest
-        in your browser, reads the <code>routespec-registry</code> contract on NEAR directly, and checks every
-        certificate signature itself. Nothing is uploaded anywhere.
-      </p>
 
-      <form id="verify-form" class="panel" novalidate>
+    <main id="main" class="wrap layout">
+      <div class="intro">
+        <h1>Is this release RouteSpec Certified?</h1>
+        <p class="lede">
+          Give the evidence bundle of a release, its digest, or a project. This page computes the bundle
+          digest in your browser, reads the <code>routespec-registry</code> contract on NEAR directly, and
+          checks every certificate signature itself. Nothing is uploaded anywhere.
+        </p>
+      </div>
+
+      <section class="check" aria-labelledby="check-title">
+        <h2 id="check-title" class="check-title">Result</h2>
+        <div class="slot">
+          <p id="placeholder" class="placeholder" aria-live="polite">
+            <span class="placeholder-mark" aria-hidden="true"></span>
+            <span id="placeholder-text">No check has run yet. Choose what to check, then run the check.</span>
+          </p>
+          <section id="result" class="result" aria-live="polite" aria-busy="false" hidden></section>
+        </div>
+        <ol id="ledger" class="ledger" aria-label="The checks this page runs" data-state="idle">
+          <li class="step" data-step="digest" data-state="idle">
+            <span class="step-icon" aria-hidden="true"></span>
+            <div class="step-body">
+              <p class="step-head">
+                <span class="step-n">1</span><span class="step-title">Bundle digest</span
+                ><span class="step-state"></span>
+              </p>
+              <p class="step-what">
+                The SHA-256 of the evidence bundle, computed here from the file, or the digest or project you
+                give.
+              </p>
+              <div class="step-out"></div>
+            </div>
+          </li>
+          <li class="step" data-step="network" data-state="idle">
+            <span class="step-icon" aria-hidden="true"></span>
+            <div class="step-body">
+              <p class="step-head">
+                <span class="step-n">2</span><span class="step-title">Network</span
+                ><span class="step-state"></span>
+              </p>
+              <p class="step-what">
+                The NEAR node reports its chain id, which must match the network chosen.
+              </p>
+              <div class="step-out"></div>
+            </div>
+          </li>
+          <li class="step" data-step="registry" data-state="idle">
+            <span class="step-icon" aria-hidden="true"></span>
+            <div class="step-body">
+              <p class="step-head">
+                <span class="step-n">3</span><span class="step-title">Registry contract</span
+                ><span class="step-state"></span>
+              </p>
+              <p class="step-what">
+                The account runs <code>routespec-registry</code>; its code hash is compared with known
+                reproducible builds.
+              </p>
+              <div class="step-out"></div>
+            </div>
+          </li>
+          <li class="step" data-step="certificates" data-state="idle">
+            <span class="step-icon" aria-hidden="true"></span>
+            <div class="step-body">
+              <p class="step-head">
+                <span class="step-n">4</span><span class="step-title">Certificates</span
+                ><span class="step-state"></span>
+              </p>
+              <p class="step-what">Every certificate the registry holds for exactly this bundle digest.</p>
+              <div class="step-out"></div>
+            </div>
+          </li>
+          <li class="step" data-step="signatures" data-state="idle">
+            <span class="step-icon" aria-hidden="true"></span>
+            <div class="step-body">
+              <p class="step-head">
+                <span class="step-n">5</span><span class="step-title">Signatures and attesters</span
+                ><span class="step-state"></span>
+              </p>
+              <p class="step-what">
+                Each Ed25519 signature is checked in this browser; its attester must be enrolled, not revoked,
+                and pinned when keys are pinned.
+              </p>
+              <div class="step-out"></div>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <form id="verify-form" class="request" novalidate>
         <fieldset>
           <legend>What to check</legend>
           <div class="field">
             <label for="bundle-file">Evidence bundle (.tar)</label>
             <div id="drop" class="drop">
-              <input id="bundle-file" name="bundle" type="file" accept=".tar,application/x-tar" />
-              <p class="hint">Or drop the file here. Its bytes stay in this browser.</p>
+              <svg
+                class="drop-icon"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path d="M4 7.5L12 3.5l8 4v9l-8 4-8-4z" />
+                <path d="M4 7.5l8 4 8-4M12 11.5v9" />
+              </svg>
+              <div class="drop-body">
+                <input id="bundle-file" name="bundle" type="file" accept=".tar,application/x-tar" />
+                <p class="hint">Or drop the file here. Its bytes stay in this browser.</p>
+              </div>
             </div>
             <p id="bundle-digest" class="computed" aria-live="polite"></p>
           </div>
+          <p class="or" aria-hidden="true"><span>or</span></p>
           <div class="field">
             <label for="digest">Or a bundle digest</label>
             <input
@@ -53,11 +174,12 @@
               placeholder="sha256:…"
             />
           </div>
+          <p class="or" aria-hidden="true"><span>or</span></p>
           <div class="field">
             <label for="project">Or a project (its newest certificate)</label>
             <input id="project" name="project" type="text" spellcheck="false" autocomplete="off" />
           </div>
-          <div class="field">
+          <div class="field field-network">
             <label for="network">Network</label>
             <select id="network" name="network"></select>
           </div>
@@ -80,23 +202,45 @@
         </fieldset>
       </form>
 
-      <section id="result" class="result" aria-live="polite" aria-busy="false" hidden></section>
+      <section id="details" class="details" aria-labelledby="details-title" hidden>
+        <h2 id="details-title">Certificates for this bundle</h2>
+        <div id="certs"></div>
+        <h2>Link to this check</h2>
+        <div id="share" class="share"></div>
+      </section>
 
-      <section class="about">
-        <h2>What a certificate proves</h2>
-        <p>
-          An attester key that the registry owner enrolled, and has not revoked, signed these values: the
-          bundle digest, the gate verdict, the corpus digest, the client artifact digest, the commit and a
-          timestamp. The signature is checked here, so the RPC endpoint cannot invent a certificate.
-        </p>
-        <p>
-          It does not prove that the gate was run honestly, that the build is the one the commit produces, or
-          that the project blocks releases on it. The RPC endpoint is trusted to report enrolment and
-          revocation; it could hide a certificate. For more assurance, pin the attester key and run
-          <code>routespec certificate verify</code> with the bundle, which also verifies the bundle contents.
-        </p>
+      <section class="about" aria-labelledby="about-title">
+        <h2 id="about-title">What a certificate proves</h2>
+        <div class="about-cols">
+          <div>
+            <h3>It proves</h3>
+            <p>
+              An attester key that the registry owner enrolled, and has not revoked, signed these values: the
+              bundle digest, the gate verdict, the corpus digest, the client artifact digest, the commit and a
+              timestamp. The signature is checked here, so the RPC endpoint cannot invent a certificate.
+            </p>
+          </div>
+          <div>
+            <h3>It does not prove</h3>
+            <p>
+              It does not prove that the gate was run honestly, that the build is the one the commit produces,
+              or that the project blocks releases on it. The RPC endpoint is trusted to report enrolment and
+              revocation; it could hide a certificate. For more assurance, pin the attester key and run
+              <code>routespec certificate verify</code> with the bundle, which also verifies the bundle
+              contents.
+            </p>
+          </div>
+        </div>
       </section>
     </main>
+    <footer class="foot">
+      <div class="wrap">
+        <p>
+          The decision on this page is the one <code>routespec certificate verify --digest</code> reaches,
+          computed by the same code. Read-only view calls; no wallet, no transaction.
+        </p>
+      </div>
+    </footer>
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

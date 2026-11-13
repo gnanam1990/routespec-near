@@ -1,12 +1,275 @@
 # RouteSpec
 
-Local-first, deterministic reliability and release-regression check for applications that
-integrate NEAR Intents 1Click through the official TypeScript SDK. RouteSpec runs your installed
-client against a networkless, protocol-faithful local service, injects deterministic faults
-(for example a commit that is accepted but whose response is lost), records what the client did
-in a durable journal, and lets a pure invariant kernel decide PASS, FAIL, or REVIEW. A failing
-case can be captured, reviewed, and promoted into a regression that the corrected client must
-pass.
+RouteSpec is a local release check for applications that use NEAR Intents 1Click through the
+official TypeScript SDK. It runs your installed client against a networkless, protocol-faithful
+local 1Click service, injects deterministic faults, records what the client did, and returns
+PASS, FAIL, or REVIEW from a pure invariant kernel. A failing case can be captured and promoted
+into a regression that the next build must pass.
+
+Built during NEAR HACKATHON (2026-11). License: MIT ([`LICENSE`](LICENSE)).
+
+## 30-second summary
+
+- **Problem.** A 1Click deposit moves real funds across chains and cannot be undone. The risky
+  moment is when the service accepts a deposit submission but the client never sees the answer
+  (timeout, crash, dropped connection). A naive client resubmits, gives up, or ships the order
+  anyway. There is no Intents testnet, so these paths are hard to test before release.
+- **What RouteSpec does.** It replaces the 1Click endpoint with a loopback simulator during a
+  test, plays an exact fault schedule such as "commit accepted, response lost", and checks the
+  client against eight invariants (for example: reconcile before retrying under uncertainty, and
+  hold protected side effects until accepted completion evidence exists). The result comes with a checksummed evidence bundle and JSON, JUnit,
+  and SARIF reports.
+- **What you will see.** The repository ships two client builds that use the pinned official
+  SDK. The naive build resubmits and gives up without reconciling: its gate result is REVIEW.
+  The corrected build reconciles through the read-only status route: its gate result is PASS
+  when subjects run contained (Docker), and REVIEW without Docker because RouteSpec will not
+  count a client's own hooks as proof of its side effects.
+- **No funds, no keys.** RouteSpec never signs, holds a credential, or moves funds. Everything in
+  the judge path below runs offline on 127.0.0.1.
+
+## Try it in 10 minutes
+
+Needs Node.js 22.18 or later, pnpm 10, and git. No Docker, no account, no API key. Every command
+below was run from a fresh clone of `main` on Windows 11 (Git Bash and PowerShell) on 2026-11-13.
+On Linux and macOS the commands are the same; they were not run on those hosts for this record
+(see [Status](#honest-status)).
+
+**1. Install and build** (about 1 minute)
+
+```sh
+git clone https://github.com/gnanam1990/routespec-near.git routespec
+cd routespec
+corepack enable                    # or: npm install -g pnpm@10.34.9
+pnpm install --frozen-lockfile
+pnpm run build
+pnpm run build:console
+```
+
+See: `pnpm install` ends with `Done`; both builds exit 0 (the console build prints a `dist/`
+file list).
+
+**2. Run the whole product journey** (about 10 seconds)
+
+```sh
+pnpm run delivery:journey -- --work .data/demo --out .data/journey.json --no-ui
+node scripts/journey-summary.mjs .data/journey.json
+```
+
+`.data/` is ignored by git. The journey starts the real control service, registers a project
+and both client builds through the public API, runs each build as its own process, captures the
+failure, promotes it to a regression, reruns, exports a bundle, crashes and restarts the service,
+and verifies the bundle offline. No verdict is hand-written.
+
+See (abridged):
+
+```text
+containment UNCONTAINED
+baseline client, release corpus: gate decision REVIEW
+  case 0 accepted-then-lost-response: client GAVE_UP (resubmissions answered: 401 RS_TOKEN_REVOKED, ...) | INV-03 REVIEW | INV-04 REVIEW | ...
+corrected client, promoted corpus: gate decision REVIEW
+  case 0 accepted-then-lost-response: client RECONCILED | INV-03 PASS | INV-04 REVIEW | effect coverage DECLARED_HOOKS_ONLY | ...
+capture as release evidence: refused 422 RS_CAPTURE_NOT_RELEASE_EVIDENCE (DECLARED_HOOKS_ONLY, ...)
+promoted as DIAGNOSTIC_ONLY
+evidence bundle verified offline: true
+crash recovery: epoch 1 -> 2, stale token RS_TOKEN_REVOKED, second mutation RS_TOKEN_PHASE_DENIED
+```
+
+Read it as: the naive client lost the response, its resubmissions were refused, and it never
+reached an accepted terminal status (INV-03 REVIEW). The corrected client reconciled to
+`SUCCESS` (INV-03 PASS). Both gates stay REVIEW here only because, without containment, the
+side-effect check (INV-04) has nothing but the client's own hooks, and the uncontained capture is
+refused as release evidence. Step 4 shows the contained run where the corrected build passes.
+
+**3. Open the console on the same data**
+
+```sh
+node packages/control-api/src/main.ts --data .data/demo/data --console apps/console/dist --handoff stderr
+```
+
+See: one JSON line with the origin, then `routespec: console http://127.0.0.1:<port>/#token=...`.
+Open that URL (the token is removed from the address bar on load). The Releases page lists four
+gate runs for `release-candidate-1` with Verdict, Evidence, Subject identity ("User-asserted local
+build"), Effect coverage ("Declared hooks only — REVIEW"), and Enforcement ("Local advisory").
+"Open gate run" shows each case with its invariants, run operations, and the export panel. Stop
+the service with Ctrl+C. Reloading the page drops the session by design; start the service again
+for a new link.
+
+**4. Optional: the contained run where the corrected client passes** (about 1 minute, needs Docker)
+
+Docker is needed only for containment. Pull the image once, point RouteSpec at the engine, and
+add `--contained`:
+
+```sh
+docker pull node:22-bookworm-slim
+export ROUTESPEC_CONTAINER_CLI='["docker"]'          # Docker Engine on Linux
+pnpm run delivery:journey -- --work .data/demo-contained --out .data/journey-contained.json --no-ui --contained
+node scripts/journey-summary.mjs .data/journey-contained.json
+```
+
+On Windows with Docker Engine inside WSL 2 (PowerShell):
+
+```powershell
+$env:ROUTESPEC_CONTAINER_CLI = '["wsl.exe","-d","Ubuntu-24.04","-u","root","--exec","docker"]'
+pnpm run delivery:journey -- --work .data/demo-contained --out .data/journey-contained.json --no-ui --contained
+node scripts/journey-summary.mjs .data/journey-contained.json
+```
+
+See:
+
+```text
+containment CONTAINED
+baseline client, release corpus: gate decision REVIEW
+  case 0 accepted-then-lost-response: client GAVE_UP (resubmissions answered: 403 RS_TOKEN_PHASE_DENIED, ...) | INV-03 REVIEW | INV-04 PASS | effect coverage INDEPENDENT_BOUNDARY_INTERCEPT | ...
+corrected client, promoted corpus: gate decision PASS
+  case 0 accepted-then-lost-response: client RECONCILED | INV-03 PASS | INV-04 PASS | effect coverage INDEPENDENT_BOUNDARY_INTERCEPT | case verdict PASS
+capture as release evidence: accepted
+promoted as RELEASE_EVIDENCE
+regression status CORRECTED_RUN_PASSED
+```
+
+Opening the console on `.data/demo-contained/data` (step 3) shows the last gate run as PASS with
+"Trusted launcher attestation" and "Independent boundary". Each subject ran in a container with
+no network except a loopback tunnel to RouteSpec, a read-only root, no capabilities, a seccomp
+filter, and an attested launch. The journey signs the interceptor profile review with a locally
+generated test key, so this PASS is not an independent review (see Status). The WSL 2 variant
+was verified for this record; the plain Linux `["docker"]` variant was not run here. Engine setup:
+[`docs/runbooks/container-containment.md`](docs/runbooks/container-containment.md).
+
+**5. Run the test suite**
+
+```sh
+pnpm run check
+```
+
+See: typecheck, ESLint, Prettier, Vitest, and the repository secret scan; on the fresh clone:
+`Test Files 85 passed | 1 skipped (86)`, `Tests 722 passed | 6 skipped (728)`,
+`secret-scan: clean`. One earlier full run on the same clone had a single timing failure in
+T-042 (an endless chunked body cut-off) under full parallel load; it passed on three isolated
+reruns and on the next full run. Longer suites (`test:delivery`, `test:e2e:real`,
+`test:containment`) are listed under [Verify](#verify).
+
+## Add the RouteSpec gate to your CI
+
+The repository contains a composite GitHub Action,
+[`.github/actions/routespec-gate`](.github/actions/routespec-gate/action.yml). It installs
+RouteSpec's pinned dependencies, removes provider secrets and CI tokens before its entry point
+starts, runs the networkless gate (simulate and replay only), and stages redacted reports
+(JSON, JUnit, SARIF, evidence bundle). The step exits 0 only for a PASS decision.
+
+1. Add a `routespec.ci.json` (schema `routespec.ci-config/1`) to your repository. It names your
+   client module, its artifact files, lockfile, declared effect manifest, scenarios, and required
+   invariants. The repository's own self-gate config is a working example:
+   [`.github/routespec/routespec.ci.json`](.github/routespec/routespec.ci.json).
+2. Add a workflow step, pinned to a reviewed commit of this repository:
+
+   ```yaml
+   permissions:
+     contents: read
+   jobs:
+     routespec:
+       runs-on: ubuntu-24.04
+       steps:
+         - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+           with:
+             persist-credentials: false
+         - id: gate
+           uses: gnanam1990/routespec-near/.github/actions/routespec-gate@<reviewed-commit-sha>
+           with:
+             config: routespec.ci.json
+         - if: ${{ always() && steps.gate.outputs.upload-directory != '' }}
+           uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+           with:
+             name: routespec-gate-${{ github.run_id }}
+             path: ${{ steps.gate.outputs.upload-directory }}
+             retention-days: ${{ steps.gate.outputs.retention-days }}
+   ```
+
+   A reusable-workflow version is in
+   [`docs/ci/routespec-gate.reusable.example.yml`](docs/ci/routespec-gate.reusable.example.yml).
+
+3. Outputs: `conclusion`, `decision`, `exit-code`, `trust`, `enforcement-mode`, `artifact-ready`.
+   Pull-request and fork jobs get no secrets and upload only redacted reports. Enforcement is
+   reported as `CI_CHECK` or `REQUIRED_CHECK_UNVERIFIED`; RouteSpec never claims it blocks a
+   merge. The action does not use containment.
+
+The action's behaviour was tested with a simulated runner environment (T-056, T-058). A run on
+GitHub's hosted runners has not been observed by this build (see Status).
+
+## NEAR integration: exactly what is used
+
+| Used                                                         | How                                                                                                                                                                                                                                                |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NEAR Intents 1Click TypeScript SDK                           | `@defuse-protocol/one-click-sdk-typescript` pinned at `0.1.26` ([ADR-0002](docs/adr/0002-official-1click-sdk-pin.md)). The clients under test call it unchanged; RouteSpec only points its base URL at the loopback proxy.                         |
+| 1Click API protocol (`oneclick-v0` profile)                  | The local service implements `/v0/quote`, `/v0/deposit/submit`, and `/v0/status` and the status lifecycle (`PROCESSING`, `SUCCESS`, `REFUNDED`, `FAILED`, ...) as a data-only model. Unknown routes never pass through.                            |
+| 1Click official endpoint, `dry: true` quotes only (optional) | A separate live-dry adapter can send at most one `dry: true` quote to `https://1click.chaindefuser.com`; committed quotes, deposits, and signatures are refused before any credential, DNS lookup, or socket. **Not run** for this record (RP-07). |
+
+Not used: NEAR smart contracts, NEAR RPC, wallets, signing, chain signatures, testnet or mainnet
+transactions. Nothing ran on NEAR testnet: NEAR Intents has no testnet, and RouteSpec is
+networkless by design. Why NEAR: 1Click settles cross-chain and is irreversible, so a client bug
+around a lost response can double-deliver or deliver on a refund. RouteSpec tests exactly that
+boundary of a NEAR Intents integration before release.
+
+## Honest status
+
+Full record: [`BUILD-STATUS.md`](BUILD-STATUS.md); per-module evidence in
+[`docs/status/`](docs/status/); what only the owner can do:
+[`docs/USER-NEXT-STEPS.md`](docs/USER-NEXT-STEPS.md).
+
+- **Claim level: no `WORKING_*` level is claimed.** `WORKING_LOCAL` still needs (1) a green
+  clean-checkout run on a real CI service and (2) a review of the interceptor profile by a
+  reviewer independent of the operator. The journeys use a locally generated test reviewer key.
+- **What ran:** modules M00–M18 and ten security fixes, merged locally; the uncontained and
+  contained journeys from a fresh clone (above); `pnpm run check`; the console against the real
+  service (Playwright + axe, Chromium); container escape and container-host access tests on
+  Docker Engine in WSL 2. All on Windows 11 x64.
+- **What ran on testnet:** nothing (see NEAR integration).
+- **Not done:** the official `dry: true` probe (needs a user-held 1Click JWT); Linux and macOS
+  host runs; a hosted GitHub Actions run (owner's action, not observed here); Firefox, WebKit,
+  and screen readers; an independent human security review; plain Linux Docker and rootless
+  engines. RouteSpec has no funded mode and no hosted deployment.
+
+## Security
+
+Two external audits were run against this code, and every confirmed finding is fixed. Each fix
+started from a failing test on the real code and has its own evidence record:
+
+- **Automated penetration-test scan**: 3 findings, all fixed —
+  [vuln-0001](docs/status/SEC-routespec-vuln-0001.md) (medium, withheld CI credentials readable
+  through `/proc/<pid>/environ`), [vuln-0002](docs/status/SEC-routespec-vuln-0002.md) (low,
+  credential shapes missed after a word character),
+  [vuln-0003](docs/status/SEC-routespec-vuln-0003.md) (low, auth-failure budget locked out the
+  operator).
+- **Security audit following Cloudflare's open-source security-audit methodology**: 7 findings,
+  all fixed — [RS-01](docs/status/SEC-routespec-RS-01.md) (medium, unauthenticated interceptor
+  sink), [RS-02](docs/status/SEC-routespec-RS-02.md) (contained subject could write to the host
+  control channel), [RS-03](docs/status/SEC-routespec-RS-03.md) (pre-authentication rate budget),
+  [RS-04](docs/status/SEC-routespec-RS-04.md) (quarantine dropped blocking findings past 512),
+  [RS-05](docs/status/SEC-routespec-RS-05.md) (journal readable by other local users),
+  [RS-06](docs/status/SEC-routespec-RS-06.md) (connection barriers keyed by step id only),
+  [RS-07](docs/status/SEC-routespec-RS-07.md) (gate kept PASS for a revoked attester); RS-02 to
+  RS-07 are low.
+
+Known remaining limits are stated in those records (for example, hostile code inside the CI
+action process is not contained). An independent human security review is still NOT_RUN.
+
+## Hackathon disclosure
+
+- **Built during NEAR HACKATHON.** The repository's first commit is 2026-11-11 (import of the
+  RouteSpec specification pack in [`docs/spec/`](docs/spec/START-HERE.md)); all code was written
+  from 2026-11-11 to 2026-11-13. No pre-existing code from any other project is included, so the
+  whole history is the hackathon work.
+- **Third-party libraries** (all from npm, pinned in `pnpm-lock.yaml`): the official 1Click SDK
+  above, zod, yaml, React, react-router, Vite, Vitest, Playwright, axe-core, fast-check,
+  TypeScript, ESLint, Prettier, node-forge (test certificates only), and Fontsource fonts. Storage
+  uses Node's built-in `node:sqlite`.
+- **Sibling project.** The same lead also entered
+  [Dockside](https://github.com/gnanam1990/dockside-near), an independent supplier-trade escrow
+  product for importers, suppliers, and named inspectors. RouteSpec and Dockside have separate
+  repositories, code, state, demos, and submissions; neither is a second submission of the other.
+
+---
+
+The sections below are the detailed engineering reference.
 
 The authoritative specification is the sealed pack in [`docs/spec/`](docs/spec/START-HERE.md).
 This repository implements it module by module (M00–M18).

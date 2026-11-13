@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Networkless loopback scenario proxy, safe recording, redaction, case supervisor, and interceptor channel transport (M02).",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": {

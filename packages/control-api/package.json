@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Loopback-bound authenticated local control API and project/revision/build matrix (M08).",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": {

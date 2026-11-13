@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "End-to-end delivery verification (M12): clean clone install, the full local product journey with the pinned official client, and bundle reproduction (T-054, T-055).",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "devDependencies": {
     "@defuse-protocol/one-click-sdk-typescript": "0.1.26",

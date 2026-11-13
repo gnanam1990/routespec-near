@@ -234,3 +234,19 @@ export function wasmInterface(wasm: Uint8Array): { exports: string[]; imports: s
       .sort(),
   };
 }
+
+/** What the suite's global setup provides to every test file (`inject('registrySandbox')`). */
+export type RegistrySandboxContext =
+  | { readonly available: false; readonly reason: string }
+  | {
+      readonly available: true;
+      readonly rpcUrl: string;
+      readonly rootSecret: string;
+      readonly wasmPath: string;
+    };
+
+declare module 'vitest' {
+  export interface ProvidedContext {
+    registrySandbox: RegistrySandboxContext;
+  }
+}

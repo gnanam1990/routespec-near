@@ -245,6 +245,7 @@ export const CERTIFICATE_COMMANDS: Readonly<Record<string, CertificateCommand>> 
         'attester-key': { kind: 'string' },
         out: { kind: 'string' },
         submit: { kind: 'boolean' },
+        'expect-verdict': { kind: 'string' },
         'near-account': { kind: 'string' },
         'near-key': { kind: 'string' },
         ...CHAIN_FLAGS,
@@ -294,6 +295,18 @@ export const CERTIFICATE_COMMANDS: Readonly<Record<string, CertificateCommand>> 
         throw new RouteSpecError(
           'RS_BUNDLE_VERIFY_FAILED',
           'The bundle manifest names no decision or artifact.',
+        );
+      }
+
+      const expected = args.strings['expect-verdict'];
+      if (expected !== undefined && !(CERTIFICATE_VERDICTS as readonly string[]).includes(expected)) {
+        usage('The expected verdict must be PASS, FAIL, REVIEW or NOT_RUN.');
+      }
+      if (expected !== undefined && expected !== decision) {
+        throw new RouteSpecError(
+          'RS_IDENTITY_MISMATCH',
+          'The bundle decision is not the expected verdict; nothing was signed.',
+          { details: { expected, decision } },
         );
       }
 

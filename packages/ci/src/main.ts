@@ -2,6 +2,8 @@
  * `routespec-ci` entry point.
  *
  *   routespec-ci run --config <path-in-workspace> [--workspace <dir>] [--work-dir <dir>]
+ *   routespec-ci certificate --bundle <file> --journal <dir> --decision <decision> --project-key <key>
+ *     --registry <account> (--network <name> | --rpc <url>)
  *   routespec-ci sbom --lock <pnpm-lock.yaml> --out <file>
  *
  * stdout carries exactly one JSON document; diagnostics go to stderr. `run` exits with the
@@ -15,6 +17,7 @@ import { pathToFileURL } from 'node:url';
 import { RouteSpecError } from '@routespec/contracts';
 import { errorResult } from '@routespec/cli';
 import { runAction } from './action.ts';
+import { runCertificateStep, writeCertificateGithubFiles } from './certificate.ts';
 import { writeGithubFiles } from './outputs.ts';
 import { buildSbom } from './sbom.ts';
 import { parseLauncherWithheld } from './secrets.ts';
@@ -80,6 +83,14 @@ export async function runCi(argv: readonly string[], io: CiIo): Promise<number> 
       io.stdout(`${JSON.stringify(result)}\n`);
       return result.exitCode;
     }
+    if (command === 'certificate') {
+      const result = await runCertificateStep({ env: io.env, flags, stderr: io.stderr });
+      writeCertificateGithubFiles(result, io.env);
+      io.stderr(`routespec-ci: certificate: ${result.status}${result.error ? `: ${result.error.code}` : ''}`);
+      io.stdout(`${JSON.stringify(result)}
+`);
+      return result.exitCode;
+    }
     if (command === 'sbom') {
       const lock = flagString(flags, 'lock');
       const out = flagString(flags, 'out');
@@ -96,7 +107,7 @@ export async function runCi(argv: readonly string[], io: CiIo): Promise<number> 
       );
       return 0;
     }
-    throw new RouteSpecError('RS_CLI_USAGE', 'Unknown command (expected run or sbom).');
+    throw new RouteSpecError('RS_CLI_USAGE', 'Unknown command (expected run, certificate or sbom).');
   } catch (error) {
     const outcome = errorResult(error);
     const e = outcome.result['error'] as { code: string };

@@ -217,7 +217,13 @@ describe('certificate publish (sign only)', () => {
       code: 'RS_IDENTITY_MISMATCH',
       details: { flag: 'commit' },
     });
-    const wrongCorpus = await cli([...base, '--data', tmp.dir, '--corpus-digest', `sha256:${'0'.repeat(64)}`]);
+    const wrongCorpus = await cli([
+      ...base,
+      '--data',
+      tmp.dir,
+      '--corpus-digest',
+      `sha256:${'0'.repeat(64)}`,
+    ]);
     expect(errorOf(wrongCorpus.json)).toMatchObject({
       code: 'RS_IDENTITY_MISMATCH',
       details: { flag: 'corpus-digest' },
@@ -327,7 +333,16 @@ describe('certificate verify and revoke-check refusals that need no chain', () =
       ['certificate', 'verify', '--digest', digest, '--registry', REGISTRY],
       ['certificate', 'verify', '--digest', digest, '--registry', REGISTRY, '--rpc', 'http://example.com'],
       ['certificate', 'verify', '--digest', digest, '--registry', REGISTRY, '--rpc', 'ftp://127.0.0.1'],
-      ['certificate', 'verify', '--digest', digest, '--registry', REGISTRY, '--rpc', 'https://user:pw@example.com'],
+      [
+        'certificate',
+        'verify',
+        '--digest',
+        digest,
+        '--registry',
+        REGISTRY,
+        '--rpc',
+        'https://user:pw@example.com',
+      ],
       ['certificate', 'verify', '--digest', digest, '--registry', REGISTRY, '--network', 'devnet'],
       ['certificate', 'verify', '--digest', 'sha256:abc', '--registry', REGISTRY, '--network', 'testnet'],
       ['certificate', 'verify', '--registry', REGISTRY, '--network', 'testnet'],

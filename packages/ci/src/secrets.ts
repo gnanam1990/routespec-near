@@ -33,6 +33,14 @@ const PROVIDER_SECRET =
 const CI_CREDENTIAL =
   /^(?:GITHUB_TOKEN|GH_TOKEN|ACTIONS_RUNTIME_TOKEN|ACTIONS_ID_TOKEN_REQUEST_TOKEN|ACTIONS_ID_TOKEN_REQUEST_URL|ACTIONS_RESULTS_URL|ACTIONS_RUNTIME_URL|ACTIONS_CACHE_URL|NPM_TOKEN|NODE_AUTH_TOKEN|INPUT_[A-Z0-9_]*(?:TOKEN|SECRET|JWT|PASSWORD|KEY))$/;
 
+/**
+ * Certificate signer secrets (M47): the attester key and the NEAR account key. Only the separate
+ * certificate step may use them; the gate step withholds them like any other credential, so a
+ * workflow that exposes them to the whole job still cannot leak them to the client module's
+ * environment block.
+ */
+const CERTIFICATE_SECRET = /^(?:ROUTESPEC_ATTESTER_KEY|ROUTESPEC_NEAR_SIGNER_KEY)$/;
+
 /** Variables that would let a child process change how it loads code or reaches the network. */
 const PROCESS_STEERING = /^(?:NODE_OPTIONS|HTTPS?_PROXY|https?_proxy|ALL_PROXY|all_proxy|NO_PROXY|no_proxy)$/;
 
@@ -113,12 +121,12 @@ export function childEnvironment(env: Readonly<Record<string, string | undefined
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(env)) {
     if (v === undefined) continue;
-    if (PROVIDER_SECRET.test(k) || CI_CREDENTIAL.test(k) || PROCESS_STEERING.test(k)) continue;
+    if (isWithheldName(k) || PROCESS_STEERING.test(k)) continue;
     out[k] = v;
   }
   return out;
 }
 
 export function isWithheldName(name: string): boolean {
-  return PROVIDER_SECRET.test(name) || CI_CREDENTIAL.test(name);
+  return PROVIDER_SECRET.test(name) || CI_CREDENTIAL.test(name) || CERTIFICATE_SECRET.test(name);
 }

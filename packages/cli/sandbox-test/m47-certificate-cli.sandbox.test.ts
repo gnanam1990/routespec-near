@@ -454,7 +454,13 @@ describe('revoke-check and verification after a revocation', () => {
     ]);
     const byBundle = await cli(['certificate', 'revoke-check', '--bundle', fail.bundlePath, ...chain()]);
     expect(byBundle.json).toMatchObject({ status: 'CLEAR', bundleDigest: fail.bundleDigest });
-    const none = await cli(['certificate', 'revoke-check', '--digest', `sha256:${'34'.repeat(32)}`, ...chain()]);
+    const none = await cli([
+      'certificate',
+      'revoke-check',
+      '--digest',
+      `sha256:${'34'.repeat(32)}`,
+      ...chain(),
+    ]);
     expect(none.exitCode).toBe(3);
     expect(none.json).toMatchObject({ status: 'NO_CERTIFICATE' });
     const unknownKey = await cli([

@@ -1,0 +1,99 @@
+# RouteSpec certificate action (composite). Signs the certificate of the evidence bundle a gate
+# step staged and submits it to the routespec-registry contract on NEAR. It runs only as its own
+# step, after the gate step: the gate step loads the integrator's client module and never
+# receives a signer secret.
+#
+# Security properties (ADR-0027):
+# - every third-party action is pinned to a full commit SHA;
+# - inputs reach the shell only through environment variables, never through an expression
+#   inside a script;
+# - nothing is signed or sent unless the gate decision is PASS, the job is trusted (the trust is
+#   read from the runner environment, not from an input), and all three signer values are set;
+#   the step then exits 0 with a status that says why it did nothing;
+# - the decision is read again from the verified bundle before anything is signed;
+# - the secrets are never printed, written to outputs, or passed as arguments.
+name: RouteSpec certificate
+description: Publish the on-chain release certificate of a PASS gate decision (NEAR registry contract).
+inputs:
+  bundle:
+    description: The certificate-bundle output of the gate step.
+    required: true
+  journal:
+    description: The certificate-journal output of the gate step.
+    required: true
+  decision:
+    description: The decision output of the gate step.
+    required: true
+  project-key:
+    description: Project key recorded in the certificate, for example owner/repository in lower case.
+    required: true
+  registry:
+    description: Account id of the routespec-registry contract.
+    required: true
+  network:
+    description: testnet or mainnet.
+    required: false
+    default: 'testnet'
+  attester-key:
+    description: Attester Ed25519 secret key (a repository secret). Empty means nothing is published.
+    required: false
+    default: ''
+  near-signer-account:
+    description: NEAR account that pays gas for the publish transaction.
+    required: false
+    default: ''
+  near-signer-key:
+    description: Key of that NEAR account (a repository secret).
+    required: false
+    default: ''
+  node-version:
+    description: Exact Node.js version used to run RouteSpec.
+    required: false
+    default: '22.23.1'
+outputs:
+  status:
+    description: PUBLISHED, ALREADY_PUBLISHED, SKIPPED_DECISION_NOT_PASS, SKIPPED_UNTRUSTED_CONTEXT, SKIPPED_NO_SIGNER, or FAILED.
+    value: ${{ steps.certificate.outputs.certificate-status }}
+  certificate-id:
+    description: Position of the certificate in the registry log.
+    value: ${{ steps.certificate.outputs.certificate-id }}
+  transaction:
+    description: Hash of the publish transaction.
+    value: ${{ steps.certificate.outputs.certificate-transaction }}
+  bundle-digest:
+    description: SHA-256 of the certified evidence bundle.
+    value: ${{ steps.certificate.outputs.certificate-bundle-digest }}
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      with:
+        node-version: ${{ inputs.node-version }}
+    - name: Install pinned RouteSpec dependencies
+      shell: bash
+      env:
+        ROUTESPEC_ACTION_ROOT: ${{ github.action_path }}/../../..
+      run: |
+        cd "$ROUTESPEC_ACTION_ROOT"
+        corepack enable
+        pnpm install --frozen-lockfile
+    - name: Publish the RouteSpec certificate
+      id: certificate
+      shell: bash
+      env:
+        ROUTESPEC_ACTION_ROOT: ${{ github.action_path }}/../../..
+        ROUTESPEC_CERT_BUNDLE: ${{ inputs.bundle }}
+        ROUTESPEC_CERT_JOURNAL: ${{ inputs.journal }}
+        ROUTESPEC_CERT_DECISION: ${{ inputs.decision }}
+        ROUTESPEC_CERT_PROJECT: ${{ inputs.project-key }}
+        ROUTESPEC_CERT_REGISTRY: ${{ inputs.registry }}
+        ROUTESPEC_CERT_NETWORK: ${{ inputs.network }}
+        ROUTESPEC_ATTESTER_KEY: ${{ inputs.attester-key }}
+        ROUTESPEC_NEAR_SIGNER_ACCOUNT: ${{ inputs.near-signer-account }}
+        ROUTESPEC_NEAR_SIGNER_KEY: ${{ inputs.near-signer-key }}
+      run: |
+        exec node --no-warnings "$ROUTESPEC_ACTION_ROOT/packages/ci/bin/routespec-ci.mjs" certificate \
+          --bundle="$ROUTESPEC_CERT_BUNDLE" --journal="$ROUTESPEC_CERT_JOURNAL" \
+          --decision="$ROUTESPEC_CERT_DECISION" --project-key="$ROUTESPEC_CERT_PROJECT" \
+          --registry="$ROUTESPEC_CERT_REGISTRY" --network="$ROUTESPEC_CERT_NETWORK"

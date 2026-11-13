@@ -5,21 +5,6 @@
 import type { TestProject } from 'vitest/node';
 import { detectSandboxRuntime, registryWasmPath, startSandbox, stopSandbox } from '../src/sandbox.ts';
 
-export type RegistrySandboxContext =
-  | { readonly available: false; readonly reason: string }
-  | {
-      readonly available: true;
-      readonly rpcUrl: string;
-      readonly rootSecret: string;
-      readonly wasmPath: string;
-    };
-
-declare module 'vitest' {
-  export interface ProvidedContext {
-    registrySandbox: RegistrySandboxContext;
-  }
-}
-
 export default async function setup(project: TestProject): Promise<(() => Promise<void>) | void> {
   const runtime = await detectSandboxRuntime();
   if (!runtime.available) {

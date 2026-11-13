@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Single-writer SQLite WAL journal, migrations, fenced repositories, and recovery (M01).",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": {

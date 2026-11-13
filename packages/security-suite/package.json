@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "M11 security and hardening acceptance tests (T-011, T-036, T-040, T-042; T-036 container-host part in runtime-test, M17) run against the assembled product.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "devDependencies": {
     "@playwright/test": "1.65.0",

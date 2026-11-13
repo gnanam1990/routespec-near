@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "RouteSpec: local-first deterministic reliability release check for NEAR Intents 1Click clients.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.34.9",
   "engines": {

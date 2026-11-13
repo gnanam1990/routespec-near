@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Versioned subject-side adapter that attaches the pinned official 1Click SDK to the RouteSpec loopback proxy (M02).",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": {

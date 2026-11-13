@@ -35,7 +35,10 @@
     "registry:test": "cargo test --locked --manifest-path contracts/routespec-registry/Cargo.toml -p routespec-certificate",
     "registry:reproduce": "node scripts/registry/reproduce.mjs",
     "package:npm": "node --no-warnings packages/distribution/src/npm-package.ts --pack",
-    "test:distribution": "vitest run -c vitest.distribution.config.ts"
+    "test:distribution": "vitest run -c vitest.distribution.config.ts",
+    "demo:console": "node --no-warnings packages/distribution/src/console-demo/build.ts",
+    "demo:record": "node --no-warnings packages/distribution/src/console-demo/record.ts",
+    "judge": "node --no-warnings packages/distribution/src/judge.ts"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",

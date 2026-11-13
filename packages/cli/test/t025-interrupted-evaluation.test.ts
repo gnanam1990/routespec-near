@@ -19,7 +19,8 @@ import { GateJournal, RouteSpecStore } from '@routespec/store';
 import { Subject, quoteBody, runCliProcess, setupJournal, tempDir, type Journal } from './support/product.ts';
 
 const CHILD = fileURLToPath(new URL('./support/runner-child.ts', import.meta.url));
-const LEASE_TTL_MS = 3_000;
+// Long enough that a slow host still starts the early recovery attempt while the lease is held.
+const LEASE_TTL_MS = 10_000;
 
 function runChild(
   journal: Journal,

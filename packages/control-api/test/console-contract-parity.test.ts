@@ -35,7 +35,7 @@ function parses(name: string, value: unknown): void {
 beforeAll(async () => {
   const path = fileURLToPath(new URL('../../../apps/console/src/api/schemas.ts', import.meta.url));
   schemas = (await import(pathToFileURL(path).href)) as Record<string, ZodTypeAny>;
-  h = await startHarness({ leaseTtlMs: 5_000 });
+  h = await startHarness({ leaseTtlMs: 60_000 });
   p = await setupProject(h, 'parity');
 });
 
@@ -67,7 +67,7 @@ describe('console contract parity with the real control API', () => {
     expect((events['items'] as J[]).length).toBeGreaterThan(0);
     parses('zEventPage', events);
     parses('zCaseRunPage', expectOk(await h.api('GET', `/gate-runs/${run.gateRunId}/cases`), 200));
-    h.clock.advance(6_000);
+    h.clock.advance(61_000);
     parses('zRecoveryResult', expectOk(await h.api('POST', `/case-runs/${run.caseRunId}/recover`, {}), 200));
     await subject.close();
     subject = null;

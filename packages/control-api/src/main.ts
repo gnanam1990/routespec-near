@@ -130,7 +130,32 @@ const launcher =
       }
     : null;
 
-const store = RouteSpecStore.open({ path: join(data, 'journal.db') });
+/**
+ * Open the journal. Only one live process may write a data directory. A console that was just
+ * stopped can still hold the writer lock for a moment while it exits, so a lock held by another
+ * process is retried for a few seconds before giving up with a plain message.
+ */
+async function openJournal(path: string): Promise<RouteSpecStore> {
+  const deadline = Date.now() + 8_000;
+  for (;;) {
+    try {
+      return RouteSpecStore.open({ path });
+    } catch (error) {
+      const e = error as { code?: unknown; details?: { holderPid?: unknown } };
+      if (e.code !== 'RS_WRITER_LOCKED' || typeof e.details?.holderPid !== 'number') throw error;
+      if (Date.now() >= deadline) {
+        process.stderr.write(
+          `routespec: RS_WRITER_LOCKED: process ${e.details.holderPid} still has ${data} open; ` +
+            'only one console or CLI process can open a data directory at a time. Stop it and retry.\n',
+        );
+        process.exit(4);
+      }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  }
+}
+
+const store = await openJournal(join(data, 'journal.db'));
 const port = arg('port');
 const host = arg('host');
 const consoleDir = arg('console');

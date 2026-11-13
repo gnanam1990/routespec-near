@@ -93,7 +93,8 @@ export class SubjectProcess {
 
   send(msg: J): Promise<J> {
     const p = this.wait(`${String(msg['type'])}-done`);
-    this.child.send(msg);
+    // A subject that is exiting fails the send asynchronously; `wait` then rejects on its exit.
+    this.child.send(msg, () => undefined);
     return p;
   }
 

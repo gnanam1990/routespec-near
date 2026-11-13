@@ -946,7 +946,7 @@ describe('T-044 — Control mutations are idempotent and schema-strict', () => {
     let p: ProjectSetup;
     let subject: Subject | null = null;
     beforeAll(async () => {
-      h = await startHarness({ leaseTtlMs: 5_000, tokenTtlMs: 600_000 });
+      h = await startHarness({ leaseTtlMs: 60_000, tokenTtlMs: 600_000 });
       p = await setupProject(h, 'life');
     });
     afterAll(async () => {
@@ -1078,7 +1078,7 @@ describe('T-044 — Control mutations are idempotent and schema-strict', () => {
       );
 
       // Lease expiry: fenced recovery revokes the execution token and issues read-only authority.
-      h.clock.advance(6_000);
+      h.clock.advance(61_000);
       const recIdem = key('recover');
       const rec = await h.api('POST', `/case-runs/${caseRunId}/recover`, {}, { idem: recIdem });
       expect(rec.status).toBe(200);

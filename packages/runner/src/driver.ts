@@ -93,7 +93,9 @@ export class IpcCaseDriver implements CaseDriver {
 
   private send(msg: Msg): void {
     if (this.#closed || typeof process.send !== 'function' || !process.connected) return;
-    process.send({ protocol: LAUNCHER_PROTOCOL, ...msg });
+    // A launcher that is going away fails the send asynchronously; its 'disconnect' settles the
+    // pending cases, so the error itself is not a crash of the gate run.
+    process.send({ protocol: LAUNCHER_PROTOCOL, ...msg }, undefined, undefined, () => undefined);
   }
 
   runCase(handoff: CaseHandoff): Promise<CaseDriverOutcome> {

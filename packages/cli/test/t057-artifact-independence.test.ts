@@ -99,6 +99,8 @@ async function evaluate(g: Gate): Promise<{
 }
 
 describe('T-057 — Gate decision is independent of artifact readiness', () => {
+  // About 30 separate CLI processes in sequence: close to a minute on a Windows host by itself,
+  // so this test has its own time budget instead of the suite's 60 s default.
   it('privacy block, write failure, and write success never change any of the four decisions', async () => {
     for (const g of gates) {
       const data = g.journal.dataDir;
@@ -251,7 +253,7 @@ describe('T-057 — Gate decision is independent of artifact readiness', () => {
       expect(manifest['artifactReadiness']).toBe('RECORDED_OUTSIDE_BUNDLE');
       expect(manifest['decisionDigest']).toBe(g.decisionDigest);
     }
-  });
+  }, 240_000);
 
   it('a wrong confirmation digest is a policy denial and leaves readiness unchanged', async () => {
     const g = gates[0]!;

@@ -287,11 +287,13 @@ export class Subject {
   }
   async send(msg: Record<string, unknown>): Promise<Record<string, unknown>> {
     const p = this.wait(`${String(msg['type'])}-done`);
-    this.child.send(msg);
+    // A subject that is exiting fails the send asynchronously; `wait` then rejects on its exit.
+    this.child.send(msg, () => undefined);
     return p;
   }
   push(credentials: LaunchCredentials): void {
-    if (this.child.connected) this.child.send({ type: 'credentials', credentials });
+    // Credentials re-issued after the subject finished race its exit (EPIPE on a slow host).
+    if (this.child.connected) this.child.send({ type: 'credentials', credentials }, () => undefined);
   }
   async close(): Promise<void> {
     if (this.child.exitCode !== null) return;

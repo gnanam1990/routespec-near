@@ -13,7 +13,15 @@
  * The contained run of the real pinned example is `third-party-test/m48-third-party.runtime.test.ts`.
  */
 import { execFileSync, fork, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -270,7 +278,11 @@ interface DriverResult {
   late?: unknown;
 }
 
-function runLoader(files: Record<string, string>, tamper?: { path: string; bytes: string }): DriverResult {
+function runLoader(
+  files: Record<string, string>,
+  tamper?: { path: string; bytes: string },
+  options: { viaLink?: boolean } = {},
+): DriverResult {
   const dir = temp('tree');
   const pinned = Object.entries(files).map(([path, bytes]) => {
     const target = join(dir, ...path.split('/'));
@@ -281,7 +293,10 @@ function runLoader(files: Record<string, string>, tamper?: { path: string; bytes
   if (tamper) writeFileSync(join(dir, ...tamper.path.split('/')), tamper.bytes);
   const pinsFile = join(temp('pins'), 'pins.json');
   writeFileSync(pinsFile, JSON.stringify(doc({ files: pinned })));
-  const r = spawnSync(process.execPath, ['--no-warnings', DRIVER, pinsFile, 'fixture-source', dir], {
+  // The tree named through a directory link, as a macOS temp dir is (/var -> /private/var).
+  const named = options.viaLink ? join(temp('link'), 'tree') : dir;
+  if (options.viaLink) symlinkSync(dir, named, process.platform === 'win32' ? 'junction' : 'dir');
+  const r = spawnSync(process.execPath, ['--no-warnings', DRIVER, pinsFile, 'fixture-source', named], {
     encoding: 'utf8',
     cwd: ROOT,
   });
@@ -344,6 +359,38 @@ describe('M48 confined loader', () => {
     });
     expect(r.ok, r.message).toBe(true);
     expect(r.late).toBe('THIRD_PARTY_IMPORT_DENIED');
+  });
+
+  it('holds a tree named through a directory link to the same rules (macOS temp dirs)', () => {
+    const ok = runLoader(
+      {
+        ...LICENCE,
+        'src/entry.ts': [
+          'import { OpenAPI } from "@defuse-protocol/one-click-sdk-typescript";',
+          'import { describeIt } from "./lib/helper";',
+          '(globalThis as { __m48Fixture?: unknown }).__m48Fixture = { base: OpenAPI.BASE, helper: describeIt(1) };',
+        ].join('\n'),
+        'src/lib/helper.ts': 'export function describeIt(n: number): string { return `helper:${n}`; }\n',
+      },
+      undefined,
+      { viaLink: true },
+    );
+    expect(ok.ok, ok.message).toBe(true);
+    expect(ok.record?.loaded).toEqual(['src/entry.ts', 'src/lib/helper.ts']);
+    expect(ok.fixture).toEqual({ base: 'https://1click.chaindefuser.com', helper: 'helper:1' });
+    for (const specifier of ['node:fs', 'axios', './unpinned']) {
+      const r = runLoader(
+        {
+          ...LICENCE,
+          'src/entry.ts': `import * as x from ${JSON.stringify(specifier)};\n(globalThis as { __m48Fixture?: unknown }).__m48Fixture = typeof x;\n`,
+        },
+        undefined,
+        { viaLink: true },
+      );
+      expect(r.ok).toBe(false);
+      expect(r.code).toBe('THIRD_PARTY_IMPORT_DENIED');
+      expect(r.fixture).toBeNull();
+    }
   });
 
   it('refuses a file whose bytes changed after it was pinned, before any of it runs', () => {

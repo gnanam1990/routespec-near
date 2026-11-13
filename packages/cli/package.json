@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "RouteSpec CLI: gate run/evaluate, reports, exports, stable JSON output and exit codes, and the reviewed launcher adapter (M06).",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "routespec": "./bin/routespec.mjs"

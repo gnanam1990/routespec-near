@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Declarative scenario DSL compiler, virtual clock, seeded PRNG, and deterministic fault scheduler (M03).",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": {

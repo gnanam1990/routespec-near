@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "RouteSpec CI integration: GitHub Action entrypoint, CI trust classification, enforcement cap, fork isolation, redacted upload staging, and SBOM (M10).",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "routespec-ci": "./bin/routespec-ci.mjs"

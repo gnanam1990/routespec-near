@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Closed, versioned RouteSpec protocol/domain contracts, canonical encoding, and digests (M00).",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": {

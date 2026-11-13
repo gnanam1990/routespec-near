@@ -6,7 +6,7 @@
  * - Outbound network modules are confined to egress.ts (resolution, TLS, the one HTTP request);
  *   server.ts may only create the loopback listener; address-policy.ts only uses BlockList/isIP.
  * - The credential value is held only in credential.ts; nothing in src logs to the console, and
- *   only the operator command writes to stdout/stderr. Child processes start only in launch.ts.
+ *   only the two operator commands (probe-cli.ts, matrix-cli.ts) write to stdout/stderr. Child processes start only in launch.ts.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -48,7 +48,9 @@ describe('live-dry adapter boundary audit', () => {
       const src = text(f);
       if (f !== 'credential.ts') expect(src, f).not.toMatch(/#token/);
       expect(src, f).not.toMatch(/console\./);
-      if (f !== 'probe-cli.ts') expect(src, f).not.toMatch(/process\.(stdout|stderr)\.write/);
+      if (f !== 'probe-cli.ts' && f !== 'matrix-cli.ts') {
+        expect(src, f).not.toMatch(/process\.(stdout|stderr)\.write/);
+      }
     }
   });
 });

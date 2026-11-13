@@ -19,5 +19,11 @@ PRESENT_IN_MEMORY | EXPIRED`.
   separate append-only SQLite ledger with no gate-run linkage.
 - `src/main.ts` / `src/launch.ts` — production entry and launcher (sanitized child environment).
 - `src/probe-cli.ts` — operator command for the real RP-07 probe (explicit user action only).
+- `src/matrix-*.ts`, `fidelity-baseline.json` — the fidelity matrix (M51): one opt-in, credential-free
+  read of the official token list, then one `dry: true` quote per route (24 or more), at most 40
+  upstream requests per session, a redacted matrix with a response shape digest per route, and a
+  drift verdict against the reviewed baseline. Command: `fidelity:matrix` (explicit
+  `--confirm-official-endpoint` only). Scheduled job: `.github/workflows/fidelity-matrix.yml`.
 
-Status and evidence: `docs/status/M07.md`. Decisions: `docs/adr/0011-live-dry-adapter.md`.
+Status and evidence: `docs/status/M07.md`, `docs/status/M51.md`. Decisions:
+`docs/adr/0011-live-dry-adapter.md`, `docs/adr/0027-fidelity-matrix-token-list-and-request-cap.md`.

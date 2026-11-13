@@ -1,7 +1,8 @@
 # ADR-0011 — Separately launched live-dry adapter, pinned egress, and the compatibility ledger
 
 - Date: 2026-11-11. Decision owner: RouteSpec engineering (M07 stage), pending user review.
-- Status: ACCEPTED
+- Status: ACCEPTED (decisions 3 and 8 amended for the opt-in fidelity-matrix session by ADR-0027:
+  a bare token-list read without the credential, and a hard cap of 40 upstream requests)
 - Related: FR-03, FR-04, FR-10, FR-16, NFR-08, NFR-12, INV-08, INV-10; module M07 (T-020, T-021,
   T-038); RP-07. Builds on ADR-0002 (official SDK pin), ADR-0003 (canonical digests), ADR-0007
   (networkless proxy and client adapter).

@@ -41,7 +41,7 @@ kernel, the proxy, the adapter, the store, or the CLI's existing commands.
    identity) are therefore not required; the required set is INV-01, 02, 03, 05, 06, 07, 08.
 5. **A reviewed synthetic scenario `slow-deposit-answer`.** The delivery journey's
    `slow-commit-answer` (M41) scripts the second quote and second submission before the
-   provider statuses, so with one schedule cursor a client that never sends them can never reach
+   provider statuses, so with steps consumed strictly in order a client that never sends them can never reach
    a terminal status there. `slow-deposit-answer` is the same fault with the provider statuses
    and ground truth first: a reconciling client reaches SUCCESS, a hedging client still gets its
    second order answered and is judged INV-03 FAIL. It states no expected verdict. The default

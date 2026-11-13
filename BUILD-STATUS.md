@@ -14,6 +14,9 @@ live import is pending the owner's Explorer API key (`docs/status/M50.md`).
 Updated by M47 on 2026-11-13: release certificates and the `routespec-registry` contract, tested
 on a local NEAR sandbox node; deployment and the first certificate are owner actions
 (`docs/status/M47.md`).
+Updated by M52 on 2026-11-13: the MCP server (`routespec mcp`) and a skill for coding agents; a
+scripted agent session shows a real gate FAIL, the reconcile pattern, and a real gate PASS
+(`docs/status/M52.md`).
 
 | Axis                                           | State                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -85,6 +88,7 @@ tests pass for the part this host can run, with a named part BLOCKED or NOT_RUN.
 | M42    | Official dry probe and finalization equivalence (RP-07)    | this stage | VERIFIED_BOUNDED | M42 echo-equivalence contract tests; real-shape classification test; real official dry probe                                                             | one pair and one day only                                                                     | `docs/status/M42.md`         |
 | M48    | Official example clients, pinned and contained             | this stage | PARTIAL          | M48 pin, fetch, loader, and runner tests; real contained run of the official SDK example                                                                 | no invariant evaluated: the example stops at `GET /v0/tokens`, outside the profile            | `docs/status/M48.md`         |
 | M50    | Scenarios from observed incidents (Explorer importer)      | this stage | PARTIAL          | M50 shape, sanitisation, template, import, HTTP-client, command and gate-run tests (42)                                                                  | **live import PENDING** (Explorer API key); committed corpus has 0 records                    | `docs/status/M50.md`         |
+| M52    | Agent skill and MCP server                                 | this stage | VERIFIED_BOUNDED | M52 protocol, tool, gate, skill and demo tests (26); MCP certificate check on a local NEAR sandbox node (2)                                              | MCP gate runs are uncontained (diagnostic); a contained MCP run is not built                  | `docs/status/M52.md`         |
 
 All 59 canonical tests T-001..T-059 have an owning module above; none is claimed beyond its
 recorded scope. M09a (console shell, `eb10eb5`) is the first stage of M09.

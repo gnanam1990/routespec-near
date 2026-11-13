@@ -22,7 +22,7 @@ does not exist.
 Write one badge by hand (read-only RPC call):
 
 ```powershell
-node --no-warnings packages/cli/bin/routespec.mjs certificate badge --project-key gnanam1990/routespec-near --registry gnanam1990-routespec.testnet --network testnet --known-code-hash CbPrvc6jbuVNNg2qVmUDSiPhCGNBZetQAmptQZWyCfxr --write-on-error --out .data\badge-testnet.json
+node --no-warnings packages/cli/bin/routespec.mjs certificate badge --project-key gnanam1990/routespec-near --registry gnanam1990-routespec.testnet --network testnet --known-code-hash DgYXio822TH3CGJqfKU8gDFFSSqmxurWAwG1i4Jhqo5P --write-on-error --out .data\badge-testnet.json
 ```
 
 | Option                     | Effect                                                                     |

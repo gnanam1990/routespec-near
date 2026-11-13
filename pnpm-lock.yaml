@@ -251,6 +251,9 @@ importers:
       '@routespec/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@routespec/runner':
+        specifier: workspace:*
+        version: link:../runner
       '@routespec/scenario':
         specifier: workspace:*
         version: link:../scenario

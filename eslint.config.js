@@ -6,6 +6,7 @@ export default tseslint.config(
   {
     ignores: [
       'docs/spec/**',
+      '.data/**',
       '**/dist/**',
       '**/playwright-report/**',
       '**/test-results/**',

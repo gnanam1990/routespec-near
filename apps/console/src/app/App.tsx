@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router';
 import type { ControlClient } from '../api/client.ts';
+import type { DemoSource } from '../api/static-demo.ts';
 import { ConsoleProvider } from './context.tsx';
 import { Shell } from './Shell.tsx';
 import { ReleasesPage } from '../pages/ReleasesPage.tsx';
@@ -30,10 +31,18 @@ export const ROUTES = [
   '/projects/:projectId/regressions/:importId',
 ] as const;
 
-export function App({ client }: { client: ControlClient }) {
+export function App({
+  client,
+  basename = '',
+  demo = null,
+}: {
+  client: ControlClient;
+  basename?: string;
+  demo?: DemoSource | null;
+}) {
   return (
-    <ConsoleProvider client={client}>
-      <BrowserRouter>
+    <ConsoleProvider client={client} demo={demo}>
+      <BrowserRouter basename={basename}>
         <Shell>
           <Routes>
             <Route path="/" element={<ProjectsPage />} />

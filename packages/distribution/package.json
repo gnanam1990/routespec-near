@@ -9,6 +9,7 @@
     "@playwright/test": "1.65.0",
     "@routespec/cli": "workspace:*",
     "@routespec/contracts": "workspace:*",
-    "@routespec/scenario": "workspace:*"
+    "@routespec/scenario": "workspace:*",
+    "@routespec/runner": "workspace:*"
   }
 }

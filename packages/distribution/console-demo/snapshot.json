@@ -1,0 +1,4709 @@
+{
+ "schema": "routespec.console-demo/1",
+ "source": {
+  "commit": "4fe98d17dbf0b05520532238c6865faf38650fa8",
+  "recordedAt": "2026-11-13T11:11:29.872Z",
+  "containment": "CONTAINED",
+  "platform": "win32/x64",
+  "bundleDigest": "sha256:ba7c391a1987656a1257e4576722c0802cd424c3d27573f5bf2ebdae3987108d",
+  "correctedGateRunId": "3e3dcdce-da6b-4fe4-a74e-615e72454a23",
+  "correctedDecision": "PASS"
+ },
+ "responses": {
+  "GET /gate-runs/3e3dcdce-da6b-4fe4-a74e-615e72454a23": {
+   "status": 200,
+   "body": {
+    "gateRunId": "3e3dcdce-da6b-4fe4-a74e-615e72454a23",
+    "projectId": "332f0475-2601-4214-ad4b-5ad62e50e172",
+    "revisionId": "29af5d04-63ee-4997-9303-b63ed2ea44ab",
+    "mode": "SIMULATE",
+    "lifecycle": "COMPLETED",
+    "verdict": "PASS",
+    "verdictReason": null,
+    "evidence": {
+     "class": "PROVEN",
+     "scope": "SIMULATED_GROUND_TRUTH",
+     "reasons": []
+    },
+    "attestation": {
+     "class": "TRUSTED_LAUNCHER",
+     "attestationId": "1b7471d1-bed0-49ad-9170-8fabe98022e2",
+     "observedAt": "2026-11-13T10:57:23.636Z",
+     "freshness": "FRESH"
+    },
+    "effectCoverage": {
+     "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+     "finding": "COMPLETE",
+     "missing": [],
+     "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+     "interceptorFreshness": "NOT_APPLICABLE",
+     "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+     "interceptorReviewState": "REVIEWED"
+    },
+    "artifactReady": true,
+    "enforcementMode": "LOCAL_ADVISORY",
+    "officialCompatibility": {
+     "status": "NOT_RUN",
+     "recordId": null,
+     "observedAt": null
+    },
+    "evaluatedAt": "2026-11-13T10:57:41.218Z",
+    "evidenceObservedAt": "2026-11-13T10:57:40.786Z",
+    "identity": {
+     "repository": "git+file:packages/regressions/test/support/subject/corrected-client.ts",
+     "commitSha": "4fe98d17dbf0b05520532238c6865faf38650fa8",
+     "dirtyTreeDigest": null,
+     "buildRevisionId": "74bbbbd9-03b7-4d21-9deb-33f92c048f81",
+     "artifactDigest": "sha256:5a7de97b69c3fd26210951e03de0d8189dc4a2a325868cc5d041a5878b31fe71",
+     "effectPolicyDigest": "sha256:87c5a5034d48b9f2de6b5223706a9a32ffa9695975bb0d6852c4674765ec5b1f",
+     "effectManifestDigest": "sha256:b736f6e8c568430ff7ab8878928badc38e6b0e18b75754a9bb459aa06ea86038",
+     "callSiteInventoryDigest": null,
+     "interceptorProfileDigest": "sha256:56e00eba41377364da7dea25e29d259a1b5725680c3729176f84a4189869a56b",
+     "corpusRevisionId": "344f3b3a-2da0-4be0-abbd-64d8be02d6cc",
+     "corpusDigest": "sha256:727dc13a0d62cfe352530448f091db7b2fc720b004677865cf5113e137838884",
+     "evaluatorRevision": "routespec-kernel@1.1.0",
+     "adapterRevision": "routespec-adapter@1.0.0",
+     "protocolProfileId": "oneclick-v0@1.0.0",
+     "configurationDigest": "sha256:0e72218d83e434ff9f41b6dcf9f3f3e31f65cc92027cb66023fd34c94be836e9",
+     "workflowRunId": null,
+     "appRevision": "routespec-control-api@1.0.0"
+    },
+    "interceptorAttestation": null,
+    "parallelism": {
+     "declared": 1,
+     "running": 0,
+     "queued": 0
+    },
+    "counts": {
+     "total": 2,
+     "passed": 2,
+     "failed": 0,
+     "review": 0,
+     "unsupportedRequired": 0,
+     "notRun": 0
+    },
+    "findings": [],
+    "gateId": "f735eee3-1f0a-4bdc-ac68-cdee83295959",
+    "gateEvaluationId": "2febb48b-a7c8-436b-b47d-80ea3b9cfa9b",
+    "identityDigest": "sha256:216b40603d92de5480f2a63e87b93badc01a3dd7d7973427c81ac494351a8fa0",
+    "revision": 6
+   }
+  },
+  "GET /gate-runs/3e3dcdce-da6b-4fe4-a74e-615e72454a23/cases?limit=200": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "caseRunId": "e8759fbe-b94d-457d-90ec-0d73b228caa4",
+      "gateRunId": "3e3dcdce-da6b-4fe4-a74e-615e72454a23",
+      "ordinal": 0,
+      "scenarioRevisionId": "ecaaec1d-598d-4511-8c27-7f2327f9eb39",
+      "scenarioName": "accepted-then-lost-response",
+      "lineageRole": "CORRECTED",
+      "logicalJobLabel": "1 run operation(s)",
+      "lifecycle": "COMPLETED",
+      "verdict": "PASS",
+      "verdictReason": null,
+      "evidence": {
+       "class": "PROVEN",
+       "scope": "SIMULATED_GROUND_TRUTH",
+       "reasons": []
+      },
+      "clientState": "TORN_DOWN",
+      "resetState": "COMPLETE",
+      "token": {
+       "state": "REVOKED",
+       "purpose": "RECONCILIATION_ONLY",
+       "expiresAt": "2026-11-13T11:07:31.330Z"
+      },
+      "fencingEpoch": 2,
+      "effectCoverage": {
+       "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+       "finding": "COMPLETE",
+       "missing": [],
+       "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+       "interceptorFreshness": "FRESH",
+       "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+       "interceptorReviewState": "REVIEWED"
+      },
+      "severity": "HIGH",
+      "requiredInvariants": [
+       "INV-01",
+       "INV-02",
+       "INV-03",
+       "INV-04"
+      ],
+      "queuePosition": null,
+      "recovery": null,
+      "sessionId": "e02e7f76-ad59-4247-adda-399471bef2fd",
+      "runOperationIds": [
+       "edf88177-aec6-45c8-b2a2-b54a33ce6a93"
+      ],
+      "provenance": "SYNTHETIC"
+     },
+     {
+      "caseRunId": "17360e28-14e8-41be-9501-710d3a8c86ef",
+      "gateRunId": "3e3dcdce-da6b-4fe4-a74e-615e72454a23",
+      "ordinal": 1,
+      "scenarioRevisionId": "2f68df4b-3047-491f-aa7a-281c6c759b67",
+      "scenarioName": "regression-accepted-then-lost-response",
+      "lineageRole": "PROMOTED_REGRESSION",
+      "logicalJobLabel": "1 run operation(s)",
+      "lifecycle": "COMPLETED",
+      "verdict": "PASS",
+      "verdictReason": null,
+      "evidence": {
+       "class": "PROVEN",
+       "scope": "SIMULATED_GROUND_TRUTH",
+       "reasons": []
+      },
+      "clientState": "TORN_DOWN",
+      "resetState": "COMPLETE",
+      "token": {
+       "state": "REVOKED",
+       "purpose": "RECONCILIATION_ONLY",
+       "expiresAt": "2026-11-13T11:07:40.093Z"
+      },
+      "fencingEpoch": 2,
+      "effectCoverage": {
+       "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+       "finding": "COMPLETE",
+       "missing": [],
+       "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+       "interceptorFreshness": "FRESH",
+       "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+       "interceptorReviewState": "REVIEWED"
+      },
+      "severity": "HIGH",
+      "requiredInvariants": [
+       "INV-01",
+       "INV-02",
+       "INV-03",
+       "INV-04"
+      ],
+      "queuePosition": null,
+      "recovery": null,
+      "sessionId": "4a4b0002-c590-481f-a835-442f5bb7068c",
+      "runOperationIds": [
+       "d2993bc1-10bf-468f-8f19-c7348fc42bc9"
+      ],
+      "provenance": "INDEPENDENTLY_REPRODUCED"
+     }
+    ],
+    "nextCursor": null,
+    "total": 2
+   }
+  },
+  "GET /gate-runs/5b5ed325-3022-4bb4-a0c9-657cca050c22": {
+   "status": 200,
+   "body": {
+    "gateRunId": "5b5ed325-3022-4bb4-a0c9-657cca050c22",
+    "projectId": "332f0475-2601-4214-ad4b-5ad62e50e172",
+    "revisionId": "29af5d04-63ee-4997-9303-b63ed2ea44ab",
+    "mode": "SIMULATE",
+    "lifecycle": "COMPLETED",
+    "verdict": "REVIEW",
+    "verdictReason": null,
+    "evidence": {
+     "class": "PROVEN",
+     "scope": "SIMULATED_GROUND_TRUTH",
+     "reasons": []
+    },
+    "attestation": {
+     "class": "TRUSTED_LAUNCHER",
+     "attestationId": "98ce9021-826b-4c73-b9ab-18aa3b23bcbe",
+     "observedAt": "2026-11-13T10:56:45.302Z",
+     "freshness": "FRESH"
+    },
+    "effectCoverage": {
+     "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+     "finding": "COMPLETE",
+     "missing": [],
+     "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+     "interceptorFreshness": "NOT_APPLICABLE",
+     "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+     "interceptorReviewState": "REVIEWED"
+    },
+    "artifactReady": null,
+    "enforcementMode": "LOCAL_ADVISORY",
+    "officialCompatibility": {
+     "status": "NOT_RUN",
+     "recordId": null,
+     "observedAt": null
+    },
+    "evaluatedAt": "2026-11-13T10:56:54.495Z",
+    "evidenceObservedAt": "2026-11-13T10:56:54.077Z",
+    "identity": {
+     "repository": "git+file:packages/regressions/test/support/subject/baseline-client.ts",
+     "commitSha": "4fe98d17dbf0b05520532238c6865faf38650fa8",
+     "dirtyTreeDigest": null,
+     "buildRevisionId": "10f1377e-d0ea-4c4b-8b1e-aa87cc0179c0",
+     "artifactDigest": "sha256:dffc2daea4bfc1d908c49af9a50f2e5927ded75f1c656a97911041d92dbed25e",
+     "effectPolicyDigest": "sha256:be4987a78e910ddae95dae8f5a434f8d22a00e38ac342a602c06c59d7e47633c",
+     "effectManifestDigest": "sha256:7b50af406babef0cf47e068ddc4ba9695d5dba27decf7a7576d756f63dc279f3",
+     "callSiteInventoryDigest": null,
+     "interceptorProfileDigest": "sha256:56e00eba41377364da7dea25e29d259a1b5725680c3729176f84a4189869a56b",
+     "corpusRevisionId": "d26b2984-c21d-430e-a8e1-1ede467f6dae",
+     "corpusDigest": "sha256:89294ab1cea97775a5446dff77389b7e0ef98a230825cc06e5d64e5b77f5d397",
+     "evaluatorRevision": "routespec-kernel@1.1.0",
+     "adapterRevision": "routespec-adapter@1.0.0",
+     "protocolProfileId": "oneclick-v0@1.0.0",
+     "configurationDigest": "sha256:0e72218d83e434ff9f41b6dcf9f3f3e31f65cc92027cb66023fd34c94be836e9",
+     "workflowRunId": null,
+     "appRevision": "routespec-control-api@1.0.0"
+    },
+    "interceptorAttestation": null,
+    "parallelism": {
+     "declared": 1,
+     "running": 0,
+     "queued": 0
+    },
+    "counts": {
+     "total": 1,
+     "passed": 0,
+     "failed": 0,
+     "review": 1,
+     "unsupportedRequired": 0,
+     "notRun": 0
+    },
+    "findings": [],
+    "gateId": "5d142e3a-2b87-4dae-8c58-7045a77389cc",
+    "gateEvaluationId": "94dbf778-f8b9-4350-a6ca-50c456b8f4bc",
+    "identityDigest": "sha256:a6415c5f4483d200f30e90f209658f1fad26f0907995ca003b5cef5aba845d88",
+    "revision": 6
+   }
+  },
+  "GET /gate-runs/5b5ed325-3022-4bb4-a0c9-657cca050c22/cases?limit=200": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "caseRunId": "6b9c576f-d237-4ee1-ac82-adada13c72da",
+      "gateRunId": "5b5ed325-3022-4bb4-a0c9-657cca050c22",
+      "ordinal": 0,
+      "scenarioRevisionId": "ecaaec1d-598d-4511-8c27-7f2327f9eb39",
+      "scenarioName": "accepted-then-lost-response",
+      "lineageRole": "BASELINE",
+      "logicalJobLabel": "1 run operation(s)",
+      "lifecycle": "COMPLETED",
+      "verdict": "REVIEW",
+      "verdictReason": null,
+      "evidence": {
+       "class": "PROVEN",
+       "scope": "SIMULATED_GROUND_TRUTH",
+       "reasons": []
+      },
+      "clientState": "TORN_DOWN",
+      "resetState": "COMPLETE",
+      "token": {
+       "state": "REVOKED",
+       "purpose": "RECONCILIATION_ONLY",
+       "expiresAt": "2026-11-13T11:06:53.395Z"
+      },
+      "fencingEpoch": 2,
+      "effectCoverage": {
+       "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+       "finding": "COMPLETE",
+       "missing": [],
+       "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+       "interceptorFreshness": "FRESH",
+       "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+       "interceptorReviewState": "REVIEWED"
+      },
+      "severity": "HIGH",
+      "requiredInvariants": [
+       "INV-01",
+       "INV-02",
+       "INV-03",
+       "INV-04"
+      ],
+      "queuePosition": null,
+      "recovery": null,
+      "sessionId": "0a3ed070-016b-422c-9b2a-93cfaa72f5d5",
+      "runOperationIds": [
+       "3f65ac89-56ef-42c9-9ee9-1e9f65a2e5cf"
+      ],
+      "provenance": "SYNTHETIC"
+     }
+    ],
+    "nextCursor": null,
+    "total": 1
+   }
+  },
+  "GET /gate-runs/8daa5066-bc5c-4b78-b348-20039a83ba66": {
+   "status": 200,
+   "body": {
+    "gateRunId": "8daa5066-bc5c-4b78-b348-20039a83ba66",
+    "projectId": "332f0475-2601-4214-ad4b-5ad62e50e172",
+    "revisionId": "29af5d04-63ee-4997-9303-b63ed2ea44ab",
+    "mode": "SIMULATE",
+    "lifecycle": "COMPLETED",
+    "verdict": "REVIEW",
+    "verdictReason": null,
+    "evidence": {
+     "class": "PROVEN",
+     "scope": "SIMULATED_GROUND_TRUTH",
+     "reasons": []
+    },
+    "attestation": {
+     "class": "TRUSTED_LAUNCHER",
+     "attestationId": "98ce9021-826b-4c73-b9ab-18aa3b23bcbe",
+     "observedAt": "2026-11-13T10:56:45.302Z",
+     "freshness": "FRESH"
+    },
+    "effectCoverage": {
+     "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+     "finding": "COMPLETE",
+     "missing": [],
+     "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+     "interceptorFreshness": "NOT_APPLICABLE",
+     "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+     "interceptorReviewState": "REVIEWED"
+    },
+    "artifactReady": null,
+    "enforcementMode": "LOCAL_ADVISORY",
+    "officialCompatibility": {
+     "status": "NOT_RUN",
+     "recordId": null,
+     "observedAt": null
+    },
+    "evaluatedAt": "2026-11-13T10:57:23.390Z",
+    "evidenceObservedAt": "2026-11-13T10:57:22.961Z",
+    "identity": {
+     "repository": "git+file:packages/regressions/test/support/subject/baseline-client.ts",
+     "commitSha": "4fe98d17dbf0b05520532238c6865faf38650fa8",
+     "dirtyTreeDigest": null,
+     "buildRevisionId": "10f1377e-d0ea-4c4b-8b1e-aa87cc0179c0",
+     "artifactDigest": "sha256:dffc2daea4bfc1d908c49af9a50f2e5927ded75f1c656a97911041d92dbed25e",
+     "effectPolicyDigest": "sha256:be4987a78e910ddae95dae8f5a434f8d22a00e38ac342a602c06c59d7e47633c",
+     "effectManifestDigest": "sha256:7b50af406babef0cf47e068ddc4ba9695d5dba27decf7a7576d756f63dc279f3",
+     "callSiteInventoryDigest": null,
+     "interceptorProfileDigest": "sha256:56e00eba41377364da7dea25e29d259a1b5725680c3729176f84a4189869a56b",
+     "corpusRevisionId": "344f3b3a-2da0-4be0-abbd-64d8be02d6cc",
+     "corpusDigest": "sha256:727dc13a0d62cfe352530448f091db7b2fc720b004677865cf5113e137838884",
+     "evaluatorRevision": "routespec-kernel@1.1.0",
+     "adapterRevision": "routespec-adapter@1.0.0",
+     "protocolProfileId": "oneclick-v0@1.0.0",
+     "configurationDigest": "sha256:0e72218d83e434ff9f41b6dcf9f3f3e31f65cc92027cb66023fd34c94be836e9",
+     "workflowRunId": null,
+     "appRevision": "routespec-control-api@1.0.0"
+    },
+    "interceptorAttestation": null,
+    "parallelism": {
+     "declared": 1,
+     "running": 0,
+     "queued": 0
+    },
+    "counts": {
+     "total": 2,
+     "passed": 0,
+     "failed": 0,
+     "review": 2,
+     "unsupportedRequired": 0,
+     "notRun": 0
+    },
+    "findings": [],
+    "gateId": "f735eee3-1f0a-4bdc-ac68-cdee83295959",
+    "gateEvaluationId": "4145c868-5f09-47ae-9d15-2d071ee2149c",
+    "identityDigest": "sha256:ef203d632ed10179be9f1628ba1b50949878c0c52fce3ec7be5b52c3d2a27732",
+    "revision": 6
+   }
+  },
+  "GET /gate-runs/8daa5066-bc5c-4b78-b348-20039a83ba66/cases?limit=200": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "caseRunId": "0e067cb2-cca0-48dc-8da6-fe76b896fea4",
+      "gateRunId": "8daa5066-bc5c-4b78-b348-20039a83ba66",
+      "ordinal": 0,
+      "scenarioRevisionId": "ecaaec1d-598d-4511-8c27-7f2327f9eb39",
+      "scenarioName": "accepted-then-lost-response",
+      "lineageRole": "BASELINE",
+      "logicalJobLabel": "1 run operation(s)",
+      "lifecycle": "COMPLETED",
+      "verdict": "REVIEW",
+      "verdictReason": null,
+      "evidence": {
+       "class": "PROVEN",
+       "scope": "SIMULATED_GROUND_TRUTH",
+       "reasons": []
+      },
+      "clientState": "TORN_DOWN",
+      "resetState": "COMPLETE",
+      "token": {
+       "state": "REVOKED",
+       "purpose": "RECONCILIATION_ONLY",
+       "expiresAt": "2026-11-13T11:07:12.129Z"
+      },
+      "fencingEpoch": 2,
+      "effectCoverage": {
+       "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+       "finding": "COMPLETE",
+       "missing": [],
+       "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+       "interceptorFreshness": "FRESH",
+       "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+       "interceptorReviewState": "REVIEWED"
+      },
+      "severity": "HIGH",
+      "requiredInvariants": [
+       "INV-01",
+       "INV-02",
+       "INV-03",
+       "INV-04"
+      ],
+      "queuePosition": null,
+      "recovery": null,
+      "sessionId": "fb4a0850-feee-4a56-91ca-6bd362f72f51",
+      "runOperationIds": [
+       "011f941a-8d65-400e-84a6-ffe326119be4"
+      ],
+      "provenance": "SYNTHETIC"
+     },
+     {
+      "caseRunId": "06994d1c-a83b-4f06-9a0c-3f76fe3641c7",
+      "gateRunId": "8daa5066-bc5c-4b78-b348-20039a83ba66",
+      "ordinal": 1,
+      "scenarioRevisionId": "2f68df4b-3047-491f-aa7a-281c6c759b67",
+      "scenarioName": "regression-accepted-then-lost-response",
+      "lineageRole": "PROMOTED_REGRESSION",
+      "logicalJobLabel": "1 run operation(s)",
+      "lifecycle": "COMPLETED",
+      "verdict": "REVIEW",
+      "verdictReason": null,
+      "evidence": {
+       "class": "PROVEN",
+       "scope": "SIMULATED_GROUND_TRUTH",
+       "reasons": []
+      },
+      "clientState": "TORN_DOWN",
+      "resetState": "COMPLETE",
+      "token": {
+       "state": "REVOKED",
+       "purpose": "RECONCILIATION_ONLY",
+       "expiresAt": "2026-11-13T11:07:22.268Z"
+      },
+      "fencingEpoch": 2,
+      "effectCoverage": {
+       "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+       "finding": "COMPLETE",
+       "missing": [],
+       "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+       "interceptorFreshness": "FRESH",
+       "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+       "interceptorReviewState": "REVIEWED"
+      },
+      "severity": "HIGH",
+      "requiredInvariants": [
+       "INV-01",
+       "INV-02",
+       "INV-03",
+       "INV-04"
+      ],
+      "queuePosition": null,
+      "recovery": null,
+      "sessionId": "25aa0a02-5bfe-45d8-9b7b-e37337d55b85",
+      "runOperationIds": [
+       "6c7497b0-d2a9-421c-8599-5a5602471ca6"
+      ],
+      "provenance": "INDEPENDENTLY_REPRODUCED"
+     }
+    ],
+    "nextCursor": null,
+    "total": 2
+   }
+  },
+  "GET /gate-runs/96d63516-f2de-4bbe-99c4-f205211f1440": {
+   "status": 200,
+   "body": {
+    "gateRunId": "96d63516-f2de-4bbe-99c4-f205211f1440",
+    "projectId": "332f0475-2601-4214-ad4b-5ad62e50e172",
+    "revisionId": "29af5d04-63ee-4997-9303-b63ed2ea44ab",
+    "mode": "SIMULATE",
+    "lifecycle": "COMPLETED",
+    "verdict": "REVIEW",
+    "verdictReason": null,
+    "evidence": {
+     "class": "PROVEN",
+     "scope": "SIMULATED_GROUND_TRUTH",
+     "reasons": []
+    },
+    "attestation": {
+     "class": "TRUSTED_LAUNCHER",
+     "attestationId": "98ce9021-826b-4c73-b9ab-18aa3b23bcbe",
+     "observedAt": "2026-11-13T10:56:45.302Z",
+     "freshness": "FRESH"
+    },
+    "effectCoverage": {
+     "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+     "finding": "INCOMPLETE",
+     "missing": [
+      "INTERCEPTOR_MISSING",
+      "REQUIRED_SINK_UNOBSERVED:fulfilment-canary"
+     ],
+     "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+     "interceptorFreshness": "NOT_APPLICABLE",
+     "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+     "interceptorReviewState": "REVIEWED"
+    },
+    "artifactReady": null,
+    "enforcementMode": "LOCAL_ADVISORY",
+    "officialCompatibility": {
+     "status": "NOT_RUN",
+     "recordId": null,
+     "observedAt": null
+    },
+    "evaluatedAt": "2026-11-13T10:57:04.444Z",
+    "evidenceObservedAt": "2026-11-13T10:57:04.415Z",
+    "identity": {
+     "repository": "git+file:packages/regressions/test/support/subject/baseline-client.ts",
+     "commitSha": "4fe98d17dbf0b05520532238c6865faf38650fa8",
+     "dirtyTreeDigest": null,
+     "buildRevisionId": "10f1377e-d0ea-4c4b-8b1e-aa87cc0179c0",
+     "artifactDigest": "sha256:dffc2daea4bfc1d908c49af9a50f2e5927ded75f1c656a97911041d92dbed25e",
+     "effectPolicyDigest": "sha256:be4987a78e910ddae95dae8f5a434f8d22a00e38ac342a602c06c59d7e47633c",
+     "effectManifestDigest": "sha256:7b50af406babef0cf47e068ddc4ba9695d5dba27decf7a7576d756f63dc279f3",
+     "callSiteInventoryDigest": null,
+     "interceptorProfileDigest": "sha256:56e00eba41377364da7dea25e29d259a1b5725680c3729176f84a4189869a56b",
+     "corpusRevisionId": "d26b2984-c21d-430e-a8e1-1ede467f6dae",
+     "corpusDigest": "sha256:89294ab1cea97775a5446dff77389b7e0ef98a230825cc06e5d64e5b77f5d397",
+     "evaluatorRevision": "routespec-kernel@1.1.0",
+     "adapterRevision": "routespec-adapter@1.0.0",
+     "protocolProfileId": "oneclick-v0@1.0.0",
+     "configurationDigest": "sha256:0e72218d83e434ff9f41b6dcf9f3f3e31f65cc92027cb66023fd34c94be836e9",
+     "workflowRunId": null,
+     "appRevision": "routespec-control-api@1.0.0"
+    },
+    "interceptorAttestation": null,
+    "parallelism": {
+     "declared": 1,
+     "running": 0,
+     "queued": 0
+    },
+    "counts": {
+     "total": 1,
+     "passed": 0,
+     "failed": 0,
+     "review": 1,
+     "unsupportedRequired": 0,
+     "notRun": 0
+    },
+    "findings": [],
+    "gateId": "5d142e3a-2b87-4dae-8c58-7045a77389cc",
+    "gateEvaluationId": "5e8c43e7-2b33-4c01-aad3-37ff9103ca2b",
+    "identityDigest": "sha256:10422e70b0d7fb0bab1a19597efa70af82fd3465f434db2c614a50dec71e27f4",
+    "revision": 6
+   }
+  },
+  "GET /gate-runs/96d63516-f2de-4bbe-99c4-f205211f1440/cases?limit=200": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "caseRunId": "511f6982-2e88-479e-a9f9-898eec783f5b",
+      "gateRunId": "96d63516-f2de-4bbe-99c4-f205211f1440",
+      "ordinal": 0,
+      "scenarioRevisionId": "ecaaec1d-598d-4511-8c27-7f2327f9eb39",
+      "scenarioName": "accepted-then-lost-response",
+      "lineageRole": "BASELINE",
+      "logicalJobLabel": "1 run operation(s)",
+      "lifecycle": "COMPLETED",
+      "verdict": "REVIEW",
+      "verdictReason": null,
+      "evidence": {
+       "class": "PROVEN",
+       "scope": "SIMULATED_GROUND_TRUTH",
+       "reasons": []
+      },
+      "clientState": "TORN_DOWN",
+      "resetState": "COMPLETE",
+      "token": {
+       "state": "REVOKED",
+       "purpose": "RECONCILIATION_ONLY",
+       "expiresAt": "2026-11-13T11:07:04.336Z"
+      },
+      "fencingEpoch": 2,
+      "effectCoverage": {
+       "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+       "finding": "INCOMPLETE",
+       "missing": [
+        "INTERCEPTOR_MISSING",
+        "REQUIRED_SINK_UNOBSERVED:fulfilment-canary"
+       ],
+       "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+       "interceptorFreshness": "NOT_APPLICABLE",
+       "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+       "interceptorReviewState": "REVIEWED"
+      },
+      "severity": "HIGH",
+      "requiredInvariants": [
+       "INV-01",
+       "INV-02",
+       "INV-03",
+       "INV-04"
+      ],
+      "queuePosition": null,
+      "recovery": null,
+      "sessionId": "7c03df8c-64f6-4119-960e-7370a3355505",
+      "runOperationIds": [
+       "f4b5ee4c-0a32-4950-b357-6196a8c6eefc"
+      ],
+      "provenance": "SYNTHETIC"
+     }
+    ],
+    "nextCursor": null,
+    "total": 1
+   }
+  },
+  "GET /gate-runs/9ef6e868-f305-4e33-b183-ebbf90fb8b0e": {
+   "status": 200,
+   "body": {
+    "gateRunId": "9ef6e868-f305-4e33-b183-ebbf90fb8b0e",
+    "projectId": "332f0475-2601-4214-ad4b-5ad62e50e172",
+    "revisionId": "29af5d04-63ee-4997-9303-b63ed2ea44ab",
+    "mode": "SIMULATE",
+    "lifecycle": "COMPLETED",
+    "verdict": "FAIL",
+    "verdictReason": null,
+    "evidence": {
+     "class": "PROVEN",
+     "scope": "SIMULATED_GROUND_TRUTH",
+     "reasons": []
+    },
+    "attestation": {
+     "class": "TRUSTED_LAUNCHER",
+     "attestationId": "44f6cf1f-3256-465d-bed2-fbb5b0644d47",
+     "observedAt": "2026-11-13T10:56:54.760Z",
+     "freshness": "FRESH"
+    },
+    "effectCoverage": {
+     "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+     "finding": "COMPLETE",
+     "missing": [],
+     "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+     "interceptorFreshness": "NOT_APPLICABLE",
+     "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+     "interceptorReviewState": "REVIEWED"
+    },
+    "artifactReady": null,
+    "enforcementMode": "LOCAL_ADVISORY",
+    "officialCompatibility": {
+     "status": "NOT_RUN",
+     "recordId": null,
+     "observedAt": null
+    },
+    "evaluatedAt": "2026-11-13T10:57:03.915Z",
+    "evidenceObservedAt": "2026-11-13T10:57:03.468Z",
+    "identity": {
+     "repository": "git+file:packages/regressions/test/support/subject/hedging-client.ts",
+     "commitSha": "4fe98d17dbf0b05520532238c6865faf38650fa8",
+     "dirtyTreeDigest": null,
+     "buildRevisionId": "eabd839e-1c22-45c1-974c-1a58f6156687",
+     "artifactDigest": "sha256:132bb7ac18e2f7edc8b19404ae4d8cb9c3171ec777a1e596d0fade02c415336d",
+     "effectPolicyDigest": "sha256:7845a31b3a429fa574eca5316cfc9c0e507668a61c18b308e981ca964cad2b78",
+     "effectManifestDigest": "sha256:f76e0981c6985359dcf94961c173b38efebb62ee7ccaf5aa3759fd14b35e8b20",
+     "callSiteInventoryDigest": null,
+     "interceptorProfileDigest": "sha256:56e00eba41377364da7dea25e29d259a1b5725680c3729176f84a4189869a56b",
+     "corpusRevisionId": "1ccab6e7-1c68-4a61-88da-4caf379f75d8",
+     "corpusDigest": "sha256:abe08e00879164c8bea0c40925b6bbf9e4e6b0bcfc26b2d2d884a5a11846fbb3",
+     "evaluatorRevision": "routespec-kernel@1.1.0",
+     "adapterRevision": "routespec-adapter@1.0.0",
+     "protocolProfileId": "oneclick-v0@1.0.0",
+     "configurationDigest": "sha256:0e72218d83e434ff9f41b6dcf9f3f3e31f65cc92027cb66023fd34c94be836e9",
+     "workflowRunId": null,
+     "appRevision": "routespec-control-api@1.0.0"
+    },
+    "interceptorAttestation": null,
+    "parallelism": {
+     "declared": 1,
+     "running": 0,
+     "queued": 0
+    },
+    "counts": {
+     "total": 1,
+     "passed": 0,
+     "failed": 1,
+     "review": 0,
+     "unsupportedRequired": 0,
+     "notRun": 0
+    },
+    "findings": [],
+    "gateId": "e3bf4d5c-9fb3-4b84-a7fa-9a582bb11832",
+    "gateEvaluationId": "e4fa9f11-5096-4572-937c-070e4ea2b334",
+    "identityDigest": "sha256:7ece881994eccfcf5d9fc7e9e21fbc302218943cf660fa04d1a0c2cd1f471bde",
+    "revision": 6
+   }
+  },
+  "GET /gate-runs/9ef6e868-f305-4e33-b183-ebbf90fb8b0e/cases?limit=200": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "caseRunId": "5d292048-ce01-4f04-9b0a-568eded4c773",
+      "gateRunId": "9ef6e868-f305-4e33-b183-ebbf90fb8b0e",
+      "ordinal": 0,
+      "scenarioRevisionId": "fa8887b2-7ff8-4031-99eb-2752fd5ceb0d",
+      "scenarioName": "slow-commit-answer",
+      "lineageRole": "BASELINE",
+      "logicalJobLabel": "2 run operation(s)",
+      "lifecycle": "COMPLETED",
+      "verdict": "FAIL",
+      "verdictReason": null,
+      "evidence": {
+       "class": "PROVEN",
+       "scope": "SIMULATED_GROUND_TRUTH",
+       "reasons": []
+      },
+      "clientState": "TORN_DOWN",
+      "resetState": "COMPLETE",
+      "token": {
+       "state": "REVOKED",
+       "purpose": "RECONCILIATION_ONLY",
+       "expiresAt": "2026-11-13T11:07:02.736Z"
+      },
+      "fencingEpoch": 2,
+      "effectCoverage": {
+       "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+       "finding": "COMPLETE",
+       "missing": [],
+       "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+       "interceptorFreshness": "FRESH",
+       "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+       "interceptorReviewState": "REVIEWED"
+      },
+      "severity": "HIGH",
+      "requiredInvariants": [
+       "INV-01",
+       "INV-02",
+       "INV-03",
+       "INV-04"
+      ],
+      "queuePosition": null,
+      "recovery": null,
+      "sessionId": "6745db01-d93d-4f1e-9738-682e8e4c1239",
+      "runOperationIds": [
+       "162ef4e8-b795-45c5-9e25-c0a01f9e7fd6",
+       "8a075ada-d12a-415f-8798-5e8dd53e19fd"
+      ],
+      "provenance": "SYNTHETIC"
+     }
+    ],
+    "nextCursor": null,
+    "total": 1
+   }
+  },
+  "GET /imports/5496090e-8863-4ce0-85d8-7f7adfdba969": {
+   "status": 200,
+   "body": {
+    "importId": "5496090e-8863-4ce0-85d8-7f7adfdba969",
+    "origin": "INSTALLED_ARTIFACT_CAPTURE",
+    "source": {
+     "buildRevisionId": "10f1377e-d0ea-4c4b-8b1e-aa87cc0179c0",
+     "gateRunId": "5b5ed325-3022-4bb4-a0c9-657cca050c22",
+     "caseRunId": "6b9c576f-d237-4ee1-ac82-adada13c72da",
+     "sessionId": "0a3ed070-016b-422c-9b2a-93cfaa72f5d5"
+    },
+    "sanitizedName": "installed-capture",
+    "digest": "sha256:1c44f8a0b7788e2bfb57361b40b06f9a9918cd2589b84f838f93398437940ac0",
+    "sizeBytes": 3618,
+    "state": "PROMOTED",
+    "revision": 7,
+    "findings": {
+     "secret": 0,
+     "nondeterminism": 0,
+     "unresolved": 0
+    },
+    "expiresAt": null,
+    "promotable": false,
+    "blockers": [],
+    "lineage": [
+     {
+      "stage": "CAPTURE",
+      "state": "DONE",
+      "recordId": "5496090e-8863-4ce0-85d8-7f7adfdba969",
+      "digest": "sha256:1c44f8a0b7788e2bfb57361b40b06f9a9918cd2589b84f838f93398437940ac0"
+     },
+     {
+      "stage": "QUARANTINE",
+      "state": "DONE",
+      "recordId": null,
+      "digest": null
+     },
+     {
+      "stage": "SANITIZE",
+      "state": "DONE",
+      "recordId": "cf0ae1c3-df0a-403e-913f-198bc2a495b5",
+      "digest": "sha256:e75daa8297b7374a77a7df8fab5fe07219fb6fd787d5806a73e6be0c6f8614e5"
+     },
+     {
+      "stage": "MAP",
+      "state": "DONE",
+      "recordId": "83039d85-bf63-451c-a8ee-b2bf2ec60080",
+      "digest": "sha256:308571e0a6215886196c20dc5d2047607f3974bd95ee2e166a4d4d2097bdbc42"
+     },
+     {
+      "stage": "REPLAY_VERIFICATION",
+      "state": "DONE",
+      "recordId": "af4f5edb-bf84-47a9-89f3-398edce26113",
+      "digest": "sha256:813436bc1d51d1532bf206cbc56ae6157a2830cdb5968ee0c49880b126dbfbf4"
+     },
+     {
+      "stage": "REVIEW",
+      "state": "DONE",
+      "recordId": null,
+      "digest": null
+     },
+     {
+      "stage": "PROMOTED_SCENARIO",
+      "state": "DONE",
+      "recordId": "2f68df4b-3047-491f-aa7a-281c6c759b67",
+      "digest": null
+     },
+     {
+      "stage": "NEW_CORPUS",
+      "state": "DONE",
+      "recordId": "344f3b3a-2da0-4be0-abbd-64d8be02d6cc",
+      "digest": null
+     },
+     {
+      "stage": "CORRECTED_RERUN",
+      "state": "DONE",
+      "recordId": "3e3dcdce-da6b-4fe4-a74e-615e72454a23",
+      "digest": null
+     }
+    ],
+    "sourceEvents": [
+     {
+      "sequence": 0,
+      "summary": "QUOTE 200"
+     },
+     {
+      "sequence": 0,
+      "summary": "QUOTE_REQUEST_CREATED"
+     },
+     {
+      "sequence": 1,
+      "summary": "QUOTE_FINALIZED"
+     },
+     {
+      "sequence": 2,
+      "summary": "COMMIT"
+     },
+     {
+      "sequence": 2,
+      "summary": "COMMIT_ACCEPTED"
+     }
+    ],
+    "proposedEvents": [
+     {
+      "sequence": 0,
+      "phase": null,
+      "summary": "QUOTE 200"
+     },
+     {
+      "sequence": 0,
+      "phase": null,
+      "summary": "QUOTE_REQUEST_CREATED"
+     },
+     {
+      "sequence": 1,
+      "phase": null,
+      "summary": "QUOTE_FINALIZED"
+     },
+     {
+      "sequence": 2,
+      "phase": null,
+      "summary": "COMMIT"
+     },
+     {
+      "sequence": 2,
+      "phase": null,
+      "summary": "COMMIT_ACCEPTED"
+     }
+    ],
+    "replayOnlyPass": false,
+    "regressionStatus": "CORRECTED_RUN_PASSED",
+    "promotion": {
+     "scenarioRevisionId": "2f68df4b-3047-491f-aa7a-281c6c759b67",
+     "corpusRevisionId": "344f3b3a-2da0-4be0-abbd-64d8be02d6cc",
+     "baseCorpusRevisionId": "d26b2984-c21d-430e-a8e1-1ede467f6dae",
+     "evidenceUse": "RELEASE_EVIDENCE",
+     "refusalReasons": []
+    },
+    "releaseEvidence": {
+     "releaseEvidence": true,
+     "refusalReasons": [],
+     "promotableAs": [
+      "RELEASE_EVIDENCE",
+      "DIAGNOSTIC_ONLY"
+     ]
+    },
+    "correctedRuns": [
+     {
+      "gateRunId": "3e3dcdce-da6b-4fe4-a74e-615e72454a23",
+      "caseRunId": "17360e28-14e8-41be-9501-710d3a8c86ef",
+      "buildRevisionId": "74bbbbd9-03b7-4d21-9deb-33f92c048f81",
+      "lineageRole": "PROMOTED_REGRESSION",
+      "lifecycle": "COMPLETED",
+      "verdict": "PASS"
+     }
+    ],
+    "mapping": {
+     "mappingRevisionId": "83039d85-bf63-451c-a8ee-b2bf2ec60080",
+     "mappingDigest": "sha256:308571e0a6215886196c20dc5d2047607f3974bd95ee2e166a4d4d2097bdbc42"
+    },
+    "replayReport": {
+     "reportId": "af4f5edb-bf84-47a9-89f3-398edce26113",
+     "stable": true,
+     "trials": 3,
+     "reportDigest": "sha256:813436bc1d51d1532bf206cbc56ae6157a2830cdb5968ee0c49880b126dbfbf4"
+    },
+    "review": {
+     "decisions": [
+      "REDACTIONS_APPROVED",
+      "SOURCE_BINDING_APPROVED",
+      "OPERATION_LINEAGE_APPROVED",
+      "EXPECTED_TERMINAL_APPROVED",
+      "FORBIDDEN_BEHAVIORS_APPROVED",
+      "EVIDENCE_LIMITS_APPROVED",
+      "EFFECT_COVERAGE_APPROVED",
+      "PROVENANCE_APPROVED"
+     ],
+     "confirmationPhrase": "I reviewed this sanitized trace and its mapping locally.",
+     "latestReviewId": "fd202533-0fc5-4cea-a145-23f092d75a16"
+    }
+   }
+  },
+  "GET /projects": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "projectId": "332f0475-2601-4214-ad4b-5ad62e50e172",
+      "name": "Checkout integration (M12 delivery)",
+      "description": null,
+      "settingsRevision": 1,
+      "createdAt": "2026-11-13T10:56:44.704Z"
+     }
+    ],
+    "nextCursor": null,
+    "total": 1
+   }
+  },
+  "GET /projects/332f0475-2601-4214-ad4b-5ad62e50e172/imports": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "importId": "5496090e-8863-4ce0-85d8-7f7adfdba969",
+      "origin": "INSTALLED_ARTIFACT_CAPTURE",
+      "source": {
+       "buildRevisionId": "10f1377e-d0ea-4c4b-8b1e-aa87cc0179c0",
+       "gateRunId": "5b5ed325-3022-4bb4-a0c9-657cca050c22",
+       "caseRunId": "6b9c576f-d237-4ee1-ac82-adada13c72da",
+       "sessionId": "0a3ed070-016b-422c-9b2a-93cfaa72f5d5"
+      },
+      "sanitizedName": "installed-capture",
+      "digest": "sha256:1c44f8a0b7788e2bfb57361b40b06f9a9918cd2589b84f838f93398437940ac0",
+      "sizeBytes": 3618,
+      "state": "PROMOTED",
+      "revision": 7,
+      "findings": {
+       "secret": 0,
+       "nondeterminism": 0,
+       "unresolved": 0
+      },
+      "expiresAt": null,
+      "promotable": false,
+      "blockers": []
+     }
+    ],
+    "nextCursor": null,
+    "total": 1
+   }
+  },
+  "GET /projects/332f0475-2601-4214-ad4b-5ad62e50e172/matrix": {
+   "status": 200,
+   "body": {
+    "projectId": "332f0475-2601-4214-ad4b-5ad62e50e172",
+    "projectName": "Checkout integration (M12 delivery)",
+    "rows": [
+     {
+      "lifecycle": "COMPLETED",
+      "verdict": "REVIEW",
+      "verdictReason": null,
+      "evidence": {
+       "class": "PROVEN",
+       "scope": "SIMULATED_GROUND_TRUTH",
+       "reasons": []
+      },
+      "attestation": {
+       "class": "TRUSTED_LAUNCHER",
+       "attestationId": "98ce9021-826b-4c73-b9ab-18aa3b23bcbe",
+       "observedAt": "2026-11-13T10:56:45.302Z",
+       "freshness": "FRESH"
+      },
+      "effectCoverage": {
+       "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+       "finding": "COMPLETE",
+       "missing": [],
+       "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+       "interceptorFreshness": "NOT_APPLICABLE",
+       "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+       "interceptorReviewState": "REVIEWED"
+      },
+      "artifactReady": null,
+      "enforcementMode": "LOCAL_ADVISORY",
+      "officialCompatibility": {
+       "status": "NOT_RUN",
+       "recordId": null,
+       "observedAt": null
+      },
+      "evaluatedAt": "2026-11-13T10:56:54.495Z",
+      "evidenceObservedAt": "2026-11-13T10:56:54.077Z",
+      "revisionId": "29af5d04-63ee-4997-9303-b63ed2ea44ab",
+      "revisionLabel": "release-candidate-1",
+      "commitSha": "4fe98d17dbf0b05520532238c6865faf38650fa8",
+      "buildRevisionId": "10f1377e-d0ea-4c4b-8b1e-aa87cc0179c0",
+      "artifactDigest": "sha256:dffc2daea4bfc1d908c49af9a50f2e5927ded75f1c656a97911041d92dbed25e",
+      "corpusRevisionId": "d26b2984-c21d-430e-a8e1-1ede467f6dae",
+      "corpusDigest": "sha256:89294ab1cea97775a5446dff77389b7e0ef98a230825cc06e5d64e5b77f5d397",
+      "caseCount": 1,
+      "gateRunId": "5b5ed325-3022-4bb4-a0c9-657cca050c22",
+      "counts": {
+       "total": 1,
+       "passed": 0,
+       "failed": 0,
+       "review": 1,
+       "unsupportedRequired": 0,
+       "notRun": 0
+      }
+     },
+     {
+      "lifecycle": "COMPLETED",
+      "verdict": "FAIL",
+      "verdictReason": null,
+      "evidence": {
+       "class": "PROVEN",
+       "scope": "SIMULATED_GROUND_TRUTH",
+       "reasons": []
+      },
+      "attestation": {
+       "class": "TRUSTED_LAUNCHER",
+       "attestationId": "44f6cf1f-3256-465d-bed2-fbb5b0644d47",
+       "observedAt": "2026-11-13T10:56:54.760Z",
+       "freshness": "FRESH"
+      },
+      "effectCoverage": {
+       "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+       "finding": "COMPLETE",
+       "missing": [],
+       "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+       "interceptorFreshness": "NOT_APPLICABLE",
+       "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+       "interceptorReviewState": "REVIEWED"
+      },
+      "artifactReady": null,
+      "enforcementMode": "LOCAL_ADVISORY",
+      "officialCompatibility": {
+       "status": "NOT_RUN",
+       "recordId": null,
+       "observedAt": null
+      },
+      "evaluatedAt": "2026-11-13T10:57:03.915Z",
+      "evidenceObservedAt": "2026-11-13T10:57:03.468Z",
+      "revisionId": "29af5d04-63ee-4997-9303-b63ed2ea44ab",
+      "revisionLabel": "release-candidate-1",
+      "commitSha": "4fe98d17dbf0b05520532238c6865faf38650fa8",
+      "buildRevisionId": "eabd839e-1c22-45c1-974c-1a58f6156687",
+      "artifactDigest": "sha256:132bb7ac18e2f7edc8b19404ae4d8cb9c3171ec777a1e596d0fade02c415336d",
+      "corpusRevisionId": "1ccab6e7-1c68-4a61-88da-4caf379f75d8",
+      "corpusDigest": "sha256:abe08e00879164c8bea0c40925b6bbf9e4e6b0bcfc26b2d2d884a5a11846fbb3",
+      "caseCount": 1,
+      "gateRunId": "9ef6e868-f305-4e33-b183-ebbf90fb8b0e",
+      "counts": {
+       "total": 1,
+       "passed": 0,
+       "failed": 1,
+       "review": 0,
+       "unsupportedRequired": 0,
+       "notRun": 0
+      }
+     },
+     {
+      "lifecycle": "COMPLETED",
+      "verdict": "REVIEW",
+      "verdictReason": null,
+      "evidence": {
+       "class": "PROVEN",
+       "scope": "SIMULATED_GROUND_TRUTH",
+       "reasons": []
+      },
+      "attestation": {
+       "class": "TRUSTED_LAUNCHER",
+       "attestationId": "98ce9021-826b-4c73-b9ab-18aa3b23bcbe",
+       "observedAt": "2026-11-13T10:56:45.302Z",
+       "freshness": "FRESH"
+      },
+      "effectCoverage": {
+       "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+       "finding": "INCOMPLETE",
+       "missing": [
+        "INTERCEPTOR_MISSING",
+        "REQUIRED_SINK_UNOBSERVED:fulfilment-canary"
+       ],
+       "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+       "interceptorFreshness": "NOT_APPLICABLE",
+       "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+       "interceptorReviewState": "REVIEWED"
+      },
+      "artifactReady": null,
+      "enforcementMode": "LOCAL_ADVISORY",
+      "officialCompatibility": {
+       "status": "NOT_RUN",
+       "recordId": null,
+       "observedAt": null
+      },
+      "evaluatedAt": "2026-11-13T10:57:04.444Z",
+      "evidenceObservedAt": "2026-11-13T10:57:04.415Z",
+      "revisionId": "29af5d04-63ee-4997-9303-b63ed2ea44ab",
+      "revisionLabel": "release-candidate-1",
+      "commitSha": "4fe98d17dbf0b05520532238c6865faf38650fa8",
+      "buildRevisionId": "10f1377e-d0ea-4c4b-8b1e-aa87cc0179c0",
+      "artifactDigest": "sha256:dffc2daea4bfc1d908c49af9a50f2e5927ded75f1c656a97911041d92dbed25e",
+      "corpusRevisionId": "d26b2984-c21d-430e-a8e1-1ede467f6dae",
+      "corpusDigest": "sha256:89294ab1cea97775a5446dff77389b7e0ef98a230825cc06e5d64e5b77f5d397",
+      "caseCount": 1,
+      "gateRunId": "96d63516-f2de-4bbe-99c4-f205211f1440",
+      "counts": {
+       "total": 1,
+       "passed": 0,
+       "failed": 0,
+       "review": 1,
+       "unsupportedRequired": 0,
+       "notRun": 0
+      }
+     },
+     {
+      "lifecycle": "COMPLETED",
+      "verdict": "REVIEW",
+      "verdictReason": null,
+      "evidence": {
+       "class": "PROVEN",
+       "scope": "SIMULATED_GROUND_TRUTH",
+       "reasons": []
+      },
+      "attestation": {
+       "class": "TRUSTED_LAUNCHER",
+       "attestationId": "98ce9021-826b-4c73-b9ab-18aa3b23bcbe",
+       "observedAt": "2026-11-13T10:56:45.302Z",
+       "freshness": "FRESH"
+      },
+      "effectCoverage": {
+       "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+       "finding": "COMPLETE",
+       "missing": [],
+       "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+       "interceptorFreshness": "NOT_APPLICABLE",
+       "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+       "interceptorReviewState": "REVIEWED"
+      },
+      "artifactReady": null,
+      "enforcementMode": "LOCAL_ADVISORY",
+      "officialCompatibility": {
+       "status": "NOT_RUN",
+       "recordId": null,
+       "observedAt": null
+      },
+      "evaluatedAt": "2026-11-13T10:57:23.390Z",
+      "evidenceObservedAt": "2026-11-13T10:57:22.961Z",
+      "revisionId": "29af5d04-63ee-4997-9303-b63ed2ea44ab",
+      "revisionLabel": "release-candidate-1",
+      "commitSha": "4fe98d17dbf0b05520532238c6865faf38650fa8",
+      "buildRevisionId": "10f1377e-d0ea-4c4b-8b1e-aa87cc0179c0",
+      "artifactDigest": "sha256:dffc2daea4bfc1d908c49af9a50f2e5927ded75f1c656a97911041d92dbed25e",
+      "corpusRevisionId": "344f3b3a-2da0-4be0-abbd-64d8be02d6cc",
+      "corpusDigest": "sha256:727dc13a0d62cfe352530448f091db7b2fc720b004677865cf5113e137838884",
+      "caseCount": 2,
+      "gateRunId": "8daa5066-bc5c-4b78-b348-20039a83ba66",
+      "counts": {
+       "total": 2,
+       "passed": 0,
+       "failed": 0,
+       "review": 2,
+       "unsupportedRequired": 0,
+       "notRun": 0
+      }
+     },
+     {
+      "lifecycle": "COMPLETED",
+      "verdict": "PASS",
+      "verdictReason": null,
+      "evidence": {
+       "class": "PROVEN",
+       "scope": "SIMULATED_GROUND_TRUTH",
+       "reasons": []
+      },
+      "attestation": {
+       "class": "TRUSTED_LAUNCHER",
+       "attestationId": "1b7471d1-bed0-49ad-9170-8fabe98022e2",
+       "observedAt": "2026-11-13T10:57:23.636Z",
+       "freshness": "FRESH"
+      },
+      "effectCoverage": {
+       "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+       "finding": "COMPLETE",
+       "missing": [],
+       "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+       "interceptorFreshness": "NOT_APPLICABLE",
+       "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+       "interceptorReviewState": "REVIEWED"
+      },
+      "artifactReady": true,
+      "enforcementMode": "LOCAL_ADVISORY",
+      "officialCompatibility": {
+       "status": "NOT_RUN",
+       "recordId": null,
+       "observedAt": null
+      },
+      "evaluatedAt": "2026-11-13T10:57:41.218Z",
+      "evidenceObservedAt": "2026-11-13T10:57:40.786Z",
+      "revisionId": "29af5d04-63ee-4997-9303-b63ed2ea44ab",
+      "revisionLabel": "release-candidate-1",
+      "commitSha": "4fe98d17dbf0b05520532238c6865faf38650fa8",
+      "buildRevisionId": "74bbbbd9-03b7-4d21-9deb-33f92c048f81",
+      "artifactDigest": "sha256:5a7de97b69c3fd26210951e03de0d8189dc4a2a325868cc5d041a5878b31fe71",
+      "corpusRevisionId": "344f3b3a-2da0-4be0-abbd-64d8be02d6cc",
+      "corpusDigest": "sha256:727dc13a0d62cfe352530448f091db7b2fc720b004677865cf5113e137838884",
+      "caseCount": 2,
+      "gateRunId": "3e3dcdce-da6b-4fe4-a74e-615e72454a23",
+      "counts": {
+       "total": 2,
+       "passed": 2,
+       "failed": 0,
+       "review": 0,
+       "unsupportedRequired": 0,
+       "notRun": 0
+      }
+     }
+    ],
+    "nextCursor": null
+   }
+  },
+  "GET /run-operations/011f941a-8d65-400e-84a6-ffe326119be4": {
+   "status": 200,
+   "body": {
+    "runOperationId": "011f941a-8d65-400e-84a6-ffe326119be4",
+    "logicalJobDigest": "sha256:d445f582cac3f6118484009e5ef09a9968febb5f81fdfe0aa8f731b72a078319",
+    "logicalJobLabel": "logical job d445f582cac3",
+    "bindingDigest": "sha256:97d8a2406266444a9f5dba1e9ab2e38f05685dc8b676cdb2a5bbd6401d7949bc",
+    "lineage": [],
+    "identity": {
+     "projectId": "332f0475-2601-4214-ad4b-5ad62e50e172",
+     "buildRevisionId": "10f1377e-d0ea-4c4b-8b1e-aa87cc0179c0",
+     "artifactDigest": "sha256:dffc2daea4bfc1d908c49af9a50f2e5927ded75f1c656a97911041d92dbed25e",
+     "gateRunId": "8daa5066-bc5c-4b78-b348-20039a83ba66",
+     "caseRunId": "0e067cb2-cca0-48dc-8da6-fe76b896fea4",
+     "sessionId": "fb4a0850-feee-4a56-91ca-6bd362f72f51",
+     "adapterRevision": "routespec-adapter@1.0.0",
+     "effectPolicyDigest": "sha256:be4987a78e910ddae95dae8f5a434f8d22a00e38ac342a602c06c59d7e47633c",
+     "effectManifestDigest": "sha256:7b50af406babef0cf47e068ddc4ba9695d5dba27decf7a7576d756f63dc279f3",
+     "callSiteInventoryDigest": null,
+     "interceptorProfileDigest": "sha256:56e00eba41377364da7dea25e29d259a1b5725680c3729176f84a4189869a56b",
+     "fencingEpoch": 1
+    },
+    "currentPhase": "COMMIT_MUTATION",
+    "phases": {
+     "quoteRequest": {
+      "state": "BOUND",
+      "digest": "sha256:562b38049c51d4fd4c950f11b4b3d3464d090ebb943aa6b605f515b4b6be71f8",
+      "boundAt": "2026-11-13T10:57:12.116Z",
+      "fields": [
+       {
+        "name": "swapType",
+        "value": "EXACT_INPUT",
+        "masked": false
+       },
+       {
+        "name": "originAsset",
+        "value": "nep141:origin.sim",
+        "masked": false
+       },
+       {
+        "name": "destinationAsset",
+        "value": "nep141:destination.sim",
+        "masked": false
+       },
+       {
+        "name": "amount",
+        "value": "1000000",
+        "masked": false
+       },
+       {
+        "name": "slippageTolerance",
+        "value": "100",
+        "masked": false
+       },
+       {
+        "name": "deadline",
+        "value": "2026-11-11T12:00:00Z",
+        "masked": false
+       },
+       {
+        "name": "recipient",
+        "value": "masked",
+        "masked": true
+       },
+       {
+        "name": "refundTo",
+        "value": "masked",
+        "masked": true
+       }
+      ]
+     },
+     "quoteFinalization": {
+      "state": "BOUND",
+      "digest": "sha256:0b1af84773b049b066d9fc3e9331d5fe549a80a8bc6ab22715e6335afb08be97",
+      "boundAt": "2026-11-13T10:57:12.118Z",
+      "fields": [
+       {
+        "name": "correlationId",
+        "value": "sim-corr-c0b51d78590a7f35",
+        "masked": false
+       },
+       {
+        "name": "quoteTimestamp",
+        "value": "2026-01-01T00:00:00.000Z",
+        "masked": false
+       },
+       {
+        "name": "depositAddress",
+        "value": "masked",
+        "masked": true
+       }
+      ]
+     },
+     "commitBinding": {
+      "state": "BOUND",
+      "digest": "sha256:97d8a2406266444a9f5dba1e9ab2e38f05685dc8b676cdb2a5bbd6401d7949bc",
+      "boundAt": "2026-11-13T10:57:12.127Z",
+      "fields": [
+       {
+        "name": "method",
+        "value": "POST",
+        "masked": false
+       },
+       {
+        "name": "route",
+        "value": "/v0/deposit/submit",
+        "masked": false
+       }
+      ]
+     },
+     "reconciliation": {
+      "observations": 0,
+      "lastObservedAt": null
+     }
+    },
+    "conflicts": [],
+    "providerReported": {
+     "rawStatus": null,
+     "rawStatusKnown": false,
+     "normalizedFact": null,
+     "observedAt": null
+    },
+    "evaluatedOutcome": {
+     "verdict": "REVIEW",
+     "fact": null
+    },
+    "attempts": {
+     "count": 2,
+     "uncertainty": "OUTCOME_UNKNOWN"
+    },
+    "effectCoverage": {
+     "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+     "finding": "COMPLETE",
+     "missing": [],
+     "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+     "interceptorFreshness": "FRESH",
+     "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+     "interceptorReviewState": "REVIEWED"
+    },
+    "sinkObservations": [],
+    "evidence": [
+     {
+      "evidenceId": "e9615d77-80b2-4996-92ca-ee94043d3e04",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_GROUND_TRUTH",
+      "subject": "origin_debit",
+      "observedAt": "2026-11-13T10:57:12.819Z",
+      "collectedAt": "2026-11-13T10:57:12.819Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:587414919483dc8463b78449b60c9fac3ca64ab0e63d698f0803c25045c2ccf4",
+      "redacted": true
+     },
+     {
+      "evidenceId": "e17f2f24-195e-46d6-a172-18a4bf37842f",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_GROUND_TRUTH",
+      "subject": "destination_credit",
+      "observedAt": "2026-11-13T10:57:12.820Z",
+      "collectedAt": "2026-11-13T10:57:12.820Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:381cb270f608568cd2a82fbc2b383bad3240902d79e787a70fa3a99a785e53d1",
+      "redacted": true
+     },
+     {
+      "evidenceId": "d46fd127-e4b2-47be-aafa-292ee00c0ed2",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_RUNTIME",
+      "subject": "scenario_runtime",
+      "observedAt": "2026-11-13T10:57:12.820Z",
+      "collectedAt": "2026-11-13T10:57:12.820Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:b57b8ff78c9a7f1ab4c117b68fb24d3ac3b0b3f372d7d7fc7c2abc38f63ffd49",
+      "redacted": true
+     }
+    ],
+    "invariants": [
+     {
+      "invariantId": "INV-01",
+      "title": "One scoped run operation per logical job",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-02",
+      "title": "Operation binding is immutable",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-03",
+      "title": "Reconcile before retry under uncertainty",
+      "status": "REVIEW",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [
+       "ACCEPTED_TERMINAL_STATUS"
+      ],
+      "remediationCode": "RS_INV_03_REVIEW"
+     },
+     {
+      "invariantId": "INV-04",
+      "title": "Protected side effects wait for accepted completion evidence",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "e17f2f24-195e-46d6-a172-18a4bf37842f"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-05",
+      "title": "Observable value conservation",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "e17f2f24-195e-46d6-a172-18a4bf37842f",
+       "e9615d77-80b2-4996-92ca-ee94043d3e04"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-06",
+      "title": "Terminal outcomes do not regress",
+      "status": "REVIEW",
+      "applicable": true,
+      "facts": [
+       "MISSING"
+      ],
+      "evidenceIds": [],
+      "missingPredicates": [
+       "ACCEPTED_TERMINAL_STATUS"
+      ],
+      "remediationCode": "RS_INV_06_REVIEW"
+     },
+     {
+      "invariantId": "INV-07",
+      "title": "Evidence is consumed once",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-08",
+      "title": "Missing or weak evidence cannot satisfy a stronger claim",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "e17f2f24-195e-46d6-a172-18a4bf37842f"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     }
+    ],
+    "sensitiveLocators": "MASKED"
+   }
+  },
+  "GET /run-operations/162ef4e8-b795-45c5-9e25-c0a01f9e7fd6": {
+   "status": 200,
+   "body": {
+    "runOperationId": "162ef4e8-b795-45c5-9e25-c0a01f9e7fd6",
+    "logicalJobDigest": "sha256:5e1d62d2b94613fa7cc9ec9a50b6adc700f0564838af1e52ed1005c7b86b20b5",
+    "logicalJobLabel": "logical job 5e1d62d2b946",
+    "bindingDigest": "sha256:71a53705248bac16144731f679a7f53e869d831a77e67df57108d0c088304e1c",
+    "lineage": [],
+    "identity": {
+     "projectId": "332f0475-2601-4214-ad4b-5ad62e50e172",
+     "buildRevisionId": "eabd839e-1c22-45c1-974c-1a58f6156687",
+     "artifactDigest": "sha256:132bb7ac18e2f7edc8b19404ae4d8cb9c3171ec777a1e596d0fade02c415336d",
+     "gateRunId": "9ef6e868-f305-4e33-b183-ebbf90fb8b0e",
+     "caseRunId": "5d292048-ce01-4f04-9b0a-568eded4c773",
+     "sessionId": "6745db01-d93d-4f1e-9738-682e8e4c1239",
+     "adapterRevision": "routespec-adapter@1.0.0",
+     "effectPolicyDigest": "sha256:7845a31b3a429fa574eca5316cfc9c0e507668a61c18b308e981ca964cad2b78",
+     "effectManifestDigest": "sha256:f76e0981c6985359dcf94961c173b38efebb62ee7ccaf5aa3759fd14b35e8b20",
+     "callSiteInventoryDigest": null,
+     "interceptorProfileDigest": "sha256:56e00eba41377364da7dea25e29d259a1b5725680c3729176f84a4189869a56b",
+     "fencingEpoch": 1
+    },
+    "currentPhase": "COMMIT_MUTATION",
+    "phases": {
+     "quoteRequest": {
+      "state": "BOUND",
+      "digest": "sha256:562b38049c51d4fd4c950f11b4b3d3464d090ebb943aa6b605f515b4b6be71f8",
+      "boundAt": "2026-11-13T10:57:01.956Z",
+      "fields": [
+       {
+        "name": "swapType",
+        "value": "EXACT_INPUT",
+        "masked": false
+       },
+       {
+        "name": "originAsset",
+        "value": "nep141:origin.sim",
+        "masked": false
+       },
+       {
+        "name": "destinationAsset",
+        "value": "nep141:destination.sim",
+        "masked": false
+       },
+       {
+        "name": "amount",
+        "value": "1000000",
+        "masked": false
+       },
+       {
+        "name": "slippageTolerance",
+        "value": "100",
+        "masked": false
+       },
+       {
+        "name": "deadline",
+        "value": "2026-11-11T12:00:00Z",
+        "masked": false
+       },
+       {
+        "name": "recipient",
+        "value": "masked",
+        "masked": true
+       },
+       {
+        "name": "refundTo",
+        "value": "masked",
+        "masked": true
+       }
+      ]
+     },
+     "quoteFinalization": {
+      "state": "BOUND",
+      "digest": "sha256:c6927893d765cb89daf5d46c1a5291d128dde8516c698aacc233d6d611278a7f",
+      "boundAt": "2026-11-13T10:57:01.958Z",
+      "fields": [
+       {
+        "name": "correlationId",
+        "value": "sim-corr-11a53da0cd208c38",
+        "masked": false
+       },
+       {
+        "name": "quoteTimestamp",
+        "value": "2026-01-01T00:00:00.000Z",
+        "masked": false
+       },
+       {
+        "name": "depositAddress",
+        "value": "masked",
+        "masked": true
+       }
+      ]
+     },
+     "commitBinding": {
+      "state": "BOUND",
+      "digest": "sha256:71a53705248bac16144731f679a7f53e869d831a77e67df57108d0c088304e1c",
+      "boundAt": "2026-11-13T10:57:01.967Z",
+      "fields": [
+       {
+        "name": "method",
+        "value": "POST",
+        "masked": false
+       },
+       {
+        "name": "route",
+        "value": "/v0/deposit/submit",
+        "masked": false
+       }
+      ]
+     },
+     "reconciliation": {
+      "observations": 0,
+      "lastObservedAt": null
+     }
+    },
+    "conflicts": [],
+    "providerReported": {
+     "rawStatus": null,
+     "rawStatusKnown": false,
+     "normalizedFact": null,
+     "observedAt": null
+    },
+    "evaluatedOutcome": {
+     "verdict": "FAIL",
+     "fact": null
+    },
+    "attempts": {
+     "count": 2,
+     "uncertainty": "OUTCOME_UNKNOWN"
+    },
+    "effectCoverage": {
+     "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+     "finding": "COMPLETE",
+     "missing": [],
+     "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+     "interceptorFreshness": "FRESH",
+     "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+     "interceptorReviewState": "REVIEWED"
+    },
+    "sinkObservations": [],
+    "evidence": [
+     {
+      "evidenceId": "c2b36f0d-c39e-4dad-92a0-bceda440c455",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_GROUND_TRUTH",
+      "subject": "origin_debit",
+      "observedAt": "2026-11-13T10:57:03.466Z",
+      "collectedAt": "2026-11-13T10:57:03.466Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:e7df20f7fe5ada28a81ac913572424574a12b4fc8a87fc03f366493f15420204",
+      "redacted": true
+     },
+     {
+      "evidenceId": "65a92521-710b-4c7c-9edc-e2f9b920e542",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_GROUND_TRUTH",
+      "subject": "destination_credit",
+      "observedAt": "2026-11-13T10:57:03.467Z",
+      "collectedAt": "2026-11-13T10:57:03.467Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:6ee58f88e79b4a8fee4367823eb6c48c0a4c32b0b6d729773b868b26ef00921e",
+      "redacted": true
+     },
+     {
+      "evidenceId": "359d2350-c954-4a4b-8026-830a861b56b5",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_RUNTIME",
+      "subject": "scenario_runtime",
+      "observedAt": "2026-11-13T10:57:03.468Z",
+      "collectedAt": "2026-11-13T10:57:03.468Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:577e7d545021ec25ed1520fc334807711c7629f1dfd5762e43734fd161433386",
+      "redacted": true
+     }
+    ],
+    "invariants": [
+     {
+      "invariantId": "INV-01",
+      "title": "One scoped run operation per logical job",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-02",
+      "title": "Operation binding is immutable",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-03",
+      "title": "Reconcile before retry under uncertainty",
+      "status": "FAIL",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": "RS_INV_03_FAIL"
+     },
+     {
+      "invariantId": "INV-04",
+      "title": "Protected side effects wait for accepted completion evidence",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "65a92521-710b-4c7c-9edc-e2f9b920e542"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-05",
+      "title": "Observable value conservation",
+      "status": "REVIEW",
+      "applicable": true,
+      "facts": [
+       "MISSING"
+      ],
+      "evidenceIds": [
+       "65a92521-710b-4c7c-9edc-e2f9b920e542",
+       "c2b36f0d-c39e-4dad-92a0-bceda440c455"
+      ],
+      "missingPredicates": [
+       "OPERATION_BOUND_VALUE_LEG"
+      ],
+      "remediationCode": "RS_INV_05_REVIEW"
+     },
+     {
+      "invariantId": "INV-06",
+      "title": "Terminal outcomes do not regress",
+      "status": "REVIEW",
+      "applicable": true,
+      "facts": [
+       "MISSING"
+      ],
+      "evidenceIds": [],
+      "missingPredicates": [
+       "ACCEPTED_TERMINAL_STATUS"
+      ],
+      "remediationCode": "RS_INV_06_REVIEW"
+     },
+     {
+      "invariantId": "INV-07",
+      "title": "Evidence is consumed once",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-08",
+      "title": "Missing or weak evidence cannot satisfy a stronger claim",
+      "status": "REVIEW",
+      "applicable": true,
+      "facts": [
+       "MISSING"
+      ],
+      "evidenceIds": [
+       "65a92521-710b-4c7c-9edc-e2f9b920e542"
+      ],
+      "missingPredicates": [
+       "DESTINATION_CREDIT"
+      ],
+      "remediationCode": "RS_INV_08_REVIEW"
+     }
+    ],
+    "sensitiveLocators": "MASKED"
+   }
+  },
+  "GET /run-operations/3f65ac89-56ef-42c9-9ee9-1e9f65a2e5cf": {
+   "status": 200,
+   "body": {
+    "runOperationId": "3f65ac89-56ef-42c9-9ee9-1e9f65a2e5cf",
+    "logicalJobDigest": "sha256:ef5fc3b5b5461e9d0ae4d931d35999085e421ba0e30a780b41825862f6ace295",
+    "logicalJobLabel": "logical job ef5fc3b5b546",
+    "bindingDigest": "sha256:5ab272c5b1c175428b3c36bf4431b3f7da8c789e01449e0b45907a3ea1665d8e",
+    "lineage": [],
+    "identity": {
+     "projectId": "332f0475-2601-4214-ad4b-5ad62e50e172",
+     "buildRevisionId": "10f1377e-d0ea-4c4b-8b1e-aa87cc0179c0",
+     "artifactDigest": "sha256:dffc2daea4bfc1d908c49af9a50f2e5927ded75f1c656a97911041d92dbed25e",
+     "gateRunId": "5b5ed325-3022-4bb4-a0c9-657cca050c22",
+     "caseRunId": "6b9c576f-d237-4ee1-ac82-adada13c72da",
+     "sessionId": "0a3ed070-016b-422c-9b2a-93cfaa72f5d5",
+     "adapterRevision": "routespec-adapter@1.0.0",
+     "effectPolicyDigest": "sha256:be4987a78e910ddae95dae8f5a434f8d22a00e38ac342a602c06c59d7e47633c",
+     "effectManifestDigest": "sha256:7b50af406babef0cf47e068ddc4ba9695d5dba27decf7a7576d756f63dc279f3",
+     "callSiteInventoryDigest": null,
+     "interceptorProfileDigest": "sha256:56e00eba41377364da7dea25e29d259a1b5725680c3729176f84a4189869a56b",
+     "fencingEpoch": 1
+    },
+    "currentPhase": "COMMIT_MUTATION",
+    "phases": {
+     "quoteRequest": {
+      "state": "BOUND",
+      "digest": "sha256:562b38049c51d4fd4c950f11b4b3d3464d090ebb943aa6b605f515b4b6be71f8",
+      "boundAt": "2026-11-13T10:56:53.376Z",
+      "fields": [
+       {
+        "name": "swapType",
+        "value": "EXACT_INPUT",
+        "masked": false
+       },
+       {
+        "name": "originAsset",
+        "value": "nep141:origin.sim",
+        "masked": false
+       },
+       {
+        "name": "destinationAsset",
+        "value": "nep141:destination.sim",
+        "masked": false
+       },
+       {
+        "name": "amount",
+        "value": "1000000",
+        "masked": false
+       },
+       {
+        "name": "slippageTolerance",
+        "value": "100",
+        "masked": false
+       },
+       {
+        "name": "deadline",
+        "value": "2026-11-11T12:00:00Z",
+        "masked": false
+       },
+       {
+        "name": "recipient",
+        "value": "masked",
+        "masked": true
+       },
+       {
+        "name": "refundTo",
+        "value": "masked",
+        "masked": true
+       }
+      ]
+     },
+     "quoteFinalization": {
+      "state": "BOUND",
+      "digest": "sha256:0b1af84773b049b066d9fc3e9331d5fe549a80a8bc6ab22715e6335afb08be97",
+      "boundAt": "2026-11-13T10:56:53.381Z",
+      "fields": [
+       {
+        "name": "correlationId",
+        "value": "sim-corr-c0b51d78590a7f35",
+        "masked": false
+       },
+       {
+        "name": "quoteTimestamp",
+        "value": "2026-01-01T00:00:00.000Z",
+        "masked": false
+       },
+       {
+        "name": "depositAddress",
+        "value": "masked",
+        "masked": true
+       }
+      ]
+     },
+     "commitBinding": {
+      "state": "BOUND",
+      "digest": "sha256:5ab272c5b1c175428b3c36bf4431b3f7da8c789e01449e0b45907a3ea1665d8e",
+      "boundAt": "2026-11-13T10:56:53.392Z",
+      "fields": [
+       {
+        "name": "method",
+        "value": "POST",
+        "masked": false
+       },
+       {
+        "name": "route",
+        "value": "/v0/deposit/submit",
+        "masked": false
+       }
+      ]
+     },
+     "reconciliation": {
+      "observations": 0,
+      "lastObservedAt": null
+     }
+    },
+    "conflicts": [],
+    "providerReported": {
+     "rawStatus": null,
+     "rawStatusKnown": false,
+     "normalizedFact": null,
+     "observedAt": null
+    },
+    "evaluatedOutcome": {
+     "verdict": "REVIEW",
+     "fact": null
+    },
+    "attempts": {
+     "count": 2,
+     "uncertainty": "OUTCOME_UNKNOWN"
+    },
+    "effectCoverage": {
+     "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+     "finding": "COMPLETE",
+     "missing": [],
+     "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+     "interceptorFreshness": "FRESH",
+     "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+     "interceptorReviewState": "REVIEWED"
+    },
+    "sinkObservations": [],
+    "evidence": [
+     {
+      "evidenceId": "7a15e7bf-6ff2-48a1-8a1a-0d5a4c45b88f",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_GROUND_TRUTH",
+      "subject": "origin_debit",
+      "observedAt": "2026-11-13T10:56:54.075Z",
+      "collectedAt": "2026-11-13T10:56:54.075Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:587414919483dc8463b78449b60c9fac3ca64ab0e63d698f0803c25045c2ccf4",
+      "redacted": true
+     },
+     {
+      "evidenceId": "e2f8081e-87e0-4f54-860f-247a58dfa868",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_GROUND_TRUTH",
+      "subject": "destination_credit",
+      "observedAt": "2026-11-13T10:56:54.076Z",
+      "collectedAt": "2026-11-13T10:56:54.076Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:381cb270f608568cd2a82fbc2b383bad3240902d79e787a70fa3a99a785e53d1",
+      "redacted": true
+     },
+     {
+      "evidenceId": "09abe36e-72d3-4eb1-9502-ee4335dda762",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_RUNTIME",
+      "subject": "scenario_runtime",
+      "observedAt": "2026-11-13T10:56:54.077Z",
+      "collectedAt": "2026-11-13T10:56:54.077Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:be2ad51f6d47eabf7332d006999ecaf4f26c204b0d7a5f46cd5aa86fd183f0af",
+      "redacted": true
+     }
+    ],
+    "invariants": [
+     {
+      "invariantId": "INV-01",
+      "title": "One scoped run operation per logical job",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-02",
+      "title": "Operation binding is immutable",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-03",
+      "title": "Reconcile before retry under uncertainty",
+      "status": "REVIEW",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [
+       "ACCEPTED_TERMINAL_STATUS"
+      ],
+      "remediationCode": "RS_INV_03_REVIEW"
+     },
+     {
+      "invariantId": "INV-04",
+      "title": "Protected side effects wait for accepted completion evidence",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "e2f8081e-87e0-4f54-860f-247a58dfa868"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-05",
+      "title": "Observable value conservation",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "7a15e7bf-6ff2-48a1-8a1a-0d5a4c45b88f",
+       "e2f8081e-87e0-4f54-860f-247a58dfa868"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-06",
+      "title": "Terminal outcomes do not regress",
+      "status": "REVIEW",
+      "applicable": true,
+      "facts": [
+       "MISSING"
+      ],
+      "evidenceIds": [],
+      "missingPredicates": [
+       "ACCEPTED_TERMINAL_STATUS"
+      ],
+      "remediationCode": "RS_INV_06_REVIEW"
+     },
+     {
+      "invariantId": "INV-07",
+      "title": "Evidence is consumed once",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-08",
+      "title": "Missing or weak evidence cannot satisfy a stronger claim",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "e2f8081e-87e0-4f54-860f-247a58dfa868"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     }
+    ],
+    "sensitiveLocators": "MASKED"
+   }
+  },
+  "GET /run-operations/6c7497b0-d2a9-421c-8599-5a5602471ca6": {
+   "status": 200,
+   "body": {
+    "runOperationId": "6c7497b0-d2a9-421c-8599-5a5602471ca6",
+    "logicalJobDigest": "sha256:eea6351f2022cc60abb9a35f39ae32d788a7d2795bc87bf01af8c2feca63db22",
+    "logicalJobLabel": "logical job eea6351f2022",
+    "bindingDigest": "sha256:e88b15b5dfb163009fd6ba83112e32053e6bc9665ab5d8f7b00f0b399e6de364",
+    "lineage": [],
+    "identity": {
+     "projectId": "332f0475-2601-4214-ad4b-5ad62e50e172",
+     "buildRevisionId": "10f1377e-d0ea-4c4b-8b1e-aa87cc0179c0",
+     "artifactDigest": "sha256:dffc2daea4bfc1d908c49af9a50f2e5927ded75f1c656a97911041d92dbed25e",
+     "gateRunId": "8daa5066-bc5c-4b78-b348-20039a83ba66",
+     "caseRunId": "06994d1c-a83b-4f06-9a0c-3f76fe3641c7",
+     "sessionId": "25aa0a02-5bfe-45d8-9b7b-e37337d55b85",
+     "adapterRevision": "routespec-adapter@1.0.0",
+     "effectPolicyDigest": "sha256:5d4008715120935743fd5f2fff4958d1d7852c40b6fe7159835690f4ec771b37",
+     "effectManifestDigest": "sha256:7b50af406babef0cf47e068ddc4ba9695d5dba27decf7a7576d756f63dc279f3",
+     "callSiteInventoryDigest": null,
+     "interceptorProfileDigest": "sha256:56e00eba41377364da7dea25e29d259a1b5725680c3729176f84a4189869a56b",
+     "fencingEpoch": 1
+    },
+    "currentPhase": "COMMIT_MUTATION",
+    "phases": {
+     "quoteRequest": {
+      "state": "BOUND",
+      "digest": "sha256:562b38049c51d4fd4c950f11b4b3d3464d090ebb943aa6b605f515b4b6be71f8",
+      "boundAt": "2026-11-13T10:57:22.253Z",
+      "fields": [
+       {
+        "name": "swapType",
+        "value": "EXACT_INPUT",
+        "masked": false
+       },
+       {
+        "name": "originAsset",
+        "value": "nep141:origin.sim",
+        "masked": false
+       },
+       {
+        "name": "destinationAsset",
+        "value": "nep141:destination.sim",
+        "masked": false
+       },
+       {
+        "name": "amount",
+        "value": "1000000",
+        "masked": false
+       },
+       {
+        "name": "slippageTolerance",
+        "value": "100",
+        "masked": false
+       },
+       {
+        "name": "deadline",
+        "value": "2026-11-11T12:00:00Z",
+        "masked": false
+       },
+       {
+        "name": "recipient",
+        "value": "masked",
+        "masked": true
+       },
+       {
+        "name": "refundTo",
+        "value": "masked",
+        "masked": true
+       }
+      ]
+     },
+     "quoteFinalization": {
+      "state": "BOUND",
+      "digest": "sha256:59d33dc153da067ee6da91a9c388d044a6949e780c73e9f54143d09c7957f4b6",
+      "boundAt": "2026-11-13T10:57:22.256Z",
+      "fields": [
+       {
+        "name": "correlationId",
+        "value": "sim-corr-436072ebe1119542",
+        "masked": false
+       },
+       {
+        "name": "quoteTimestamp",
+        "value": "2026-01-01T00:00:00.000Z",
+        "masked": false
+       },
+       {
+        "name": "depositAddress",
+        "value": "masked",
+        "masked": true
+       }
+      ]
+     },
+     "commitBinding": {
+      "state": "BOUND",
+      "digest": "sha256:e88b15b5dfb163009fd6ba83112e32053e6bc9665ab5d8f7b00f0b399e6de364",
+      "boundAt": "2026-11-13T10:57:22.265Z",
+      "fields": [
+       {
+        "name": "method",
+        "value": "POST",
+        "masked": false
+       },
+       {
+        "name": "route",
+        "value": "/v0/deposit/submit",
+        "masked": false
+       }
+      ]
+     },
+     "reconciliation": {
+      "observations": 0,
+      "lastObservedAt": null
+     }
+    },
+    "conflicts": [],
+    "providerReported": {
+     "rawStatus": null,
+     "rawStatusKnown": false,
+     "normalizedFact": null,
+     "observedAt": null
+    },
+    "evaluatedOutcome": {
+     "verdict": "REVIEW",
+     "fact": null
+    },
+    "attempts": {
+     "count": 2,
+     "uncertainty": "OUTCOME_UNKNOWN"
+    },
+    "effectCoverage": {
+     "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+     "finding": "COMPLETE",
+     "missing": [],
+     "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+     "interceptorFreshness": "FRESH",
+     "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+     "interceptorReviewState": "REVIEWED"
+    },
+    "sinkObservations": [],
+    "evidence": [
+     {
+      "evidenceId": "162e7e24-c338-44fe-b75a-b48375ba3cd1",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_GROUND_TRUTH",
+      "subject": "origin_debit",
+      "observedAt": "2026-11-13T10:57:22.959Z",
+      "collectedAt": "2026-11-13T10:57:22.959Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:403cb966197ecea72e849dc4b05e3772524a707b79de1e13e87d21170ad45620",
+      "redacted": true
+     },
+     {
+      "evidenceId": "d227a297-86b6-4230-8320-3cca752cf1bd",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_GROUND_TRUTH",
+      "subject": "destination_credit",
+      "observedAt": "2026-11-13T10:57:22.960Z",
+      "collectedAt": "2026-11-13T10:57:22.960Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:6847ae2903aad241a430231f89f1d1661b1df3970d1e41b62aa18d5a33b02f01",
+      "redacted": true
+     },
+     {
+      "evidenceId": "59301c2d-df16-4a8f-8a24-a610fda9c0e2",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_RUNTIME",
+      "subject": "scenario_runtime",
+      "observedAt": "2026-11-13T10:57:22.961Z",
+      "collectedAt": "2026-11-13T10:57:22.961Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:34aba12c1b73fcd2efb7381959892ede7a9ed81c582e9ad1815c789c21f92196",
+      "redacted": true
+     }
+    ],
+    "invariants": [
+     {
+      "invariantId": "INV-01",
+      "title": "One scoped run operation per logical job",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-02",
+      "title": "Operation binding is immutable",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-03",
+      "title": "Reconcile before retry under uncertainty",
+      "status": "REVIEW",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [
+       "ACCEPTED_TERMINAL_STATUS"
+      ],
+      "remediationCode": "RS_INV_03_REVIEW"
+     },
+     {
+      "invariantId": "INV-04",
+      "title": "Protected side effects wait for accepted completion evidence",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "d227a297-86b6-4230-8320-3cca752cf1bd"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-05",
+      "title": "Observable value conservation",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "162e7e24-c338-44fe-b75a-b48375ba3cd1",
+       "d227a297-86b6-4230-8320-3cca752cf1bd"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-06",
+      "title": "Terminal outcomes do not regress",
+      "status": "REVIEW",
+      "applicable": true,
+      "facts": [
+       "MISSING"
+      ],
+      "evidenceIds": [],
+      "missingPredicates": [
+       "ACCEPTED_TERMINAL_STATUS"
+      ],
+      "remediationCode": "RS_INV_06_REVIEW"
+     },
+     {
+      "invariantId": "INV-07",
+      "title": "Evidence is consumed once",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-08",
+      "title": "Missing or weak evidence cannot satisfy a stronger claim",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "d227a297-86b6-4230-8320-3cca752cf1bd"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     }
+    ],
+    "sensitiveLocators": "MASKED"
+   }
+  },
+  "GET /run-operations/8a075ada-d12a-415f-8798-5e8dd53e19fd": {
+   "status": 200,
+   "body": {
+    "runOperationId": "8a075ada-d12a-415f-8798-5e8dd53e19fd",
+    "logicalJobDigest": "sha256:79b257a540f0f4c7cc349a35ff27faa0875135756d31df3c9fd7b2091aaead79",
+    "logicalJobLabel": "logical job 79b257a540f0",
+    "bindingDigest": "sha256:47b8848d3bfd230a866974680f443f0d96f1d29ce2d67defe0a7072ad3c2d5ba",
+    "lineage": [],
+    "identity": {
+     "projectId": "332f0475-2601-4214-ad4b-5ad62e50e172",
+     "buildRevisionId": "eabd839e-1c22-45c1-974c-1a58f6156687",
+     "artifactDigest": "sha256:132bb7ac18e2f7edc8b19404ae4d8cb9c3171ec777a1e596d0fade02c415336d",
+     "gateRunId": "9ef6e868-f305-4e33-b183-ebbf90fb8b0e",
+     "caseRunId": "5d292048-ce01-4f04-9b0a-568eded4c773",
+     "sessionId": "6745db01-d93d-4f1e-9738-682e8e4c1239",
+     "adapterRevision": "routespec-adapter@1.0.0",
+     "effectPolicyDigest": "sha256:7845a31b3a429fa574eca5316cfc9c0e507668a61c18b308e981ca964cad2b78",
+     "effectManifestDigest": "sha256:f76e0981c6985359dcf94961c173b38efebb62ee7ccaf5aa3759fd14b35e8b20",
+     "callSiteInventoryDigest": null,
+     "interceptorProfileDigest": "sha256:56e00eba41377364da7dea25e29d259a1b5725680c3729176f84a4189869a56b",
+     "fencingEpoch": 1
+    },
+    "currentPhase": "COMMIT_MUTATION",
+    "phases": {
+     "quoteRequest": {
+      "state": "BOUND",
+      "digest": "sha256:562b38049c51d4fd4c950f11b4b3d3464d090ebb943aa6b605f515b4b6be71f8",
+      "boundAt": "2026-11-13T10:57:02.720Z",
+      "fields": [
+       {
+        "name": "swapType",
+        "value": "EXACT_INPUT",
+        "masked": false
+       },
+       {
+        "name": "originAsset",
+        "value": "nep141:origin.sim",
+        "masked": false
+       },
+       {
+        "name": "destinationAsset",
+        "value": "nep141:destination.sim",
+        "masked": false
+       },
+       {
+        "name": "amount",
+        "value": "1000000",
+        "masked": false
+       },
+       {
+        "name": "slippageTolerance",
+        "value": "100",
+        "masked": false
+       },
+       {
+        "name": "deadline",
+        "value": "2026-11-11T12:00:00Z",
+        "masked": false
+       },
+       {
+        "name": "recipient",
+        "value": "masked",
+        "masked": true
+       },
+       {
+        "name": "refundTo",
+        "value": "masked",
+        "masked": true
+       }
+      ]
+     },
+     "quoteFinalization": {
+      "state": "BOUND",
+      "digest": "sha256:68a609d2f526e7050846ce4ed018f7157b6c18841c17962c5b9077748294038c",
+      "boundAt": "2026-11-13T10:57:02.722Z",
+      "fields": [
+       {
+        "name": "correlationId",
+        "value": "sim-corr-d2110335adbbe8e7",
+        "masked": false
+       },
+       {
+        "name": "quoteTimestamp",
+        "value": "2026-01-01T00:00:00.000Z",
+        "masked": false
+       },
+       {
+        "name": "depositAddress",
+        "value": "masked",
+        "masked": true
+       }
+      ]
+     },
+     "commitBinding": {
+      "state": "BOUND",
+      "digest": "sha256:47b8848d3bfd230a866974680f443f0d96f1d29ce2d67defe0a7072ad3c2d5ba",
+      "boundAt": "2026-11-13T10:57:02.728Z",
+      "fields": [
+       {
+        "name": "method",
+        "value": "POST",
+        "masked": false
+       },
+       {
+        "name": "route",
+        "value": "/v0/deposit/submit",
+        "masked": false
+       }
+      ]
+     },
+     "reconciliation": {
+      "observations": 0,
+      "lastObservedAt": null
+     }
+    },
+    "conflicts": [],
+    "providerReported": {
+     "rawStatus": null,
+     "rawStatusKnown": false,
+     "normalizedFact": null,
+     "observedAt": null
+    },
+    "evaluatedOutcome": {
+     "verdict": "FAIL",
+     "fact": null
+    },
+    "attempts": {
+     "count": 2,
+     "uncertainty": "NONE"
+    },
+    "effectCoverage": {
+     "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+     "finding": "COMPLETE",
+     "missing": [],
+     "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+     "interceptorFreshness": "FRESH",
+     "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+     "interceptorReviewState": "REVIEWED"
+    },
+    "sinkObservations": [],
+    "evidence": [
+     {
+      "evidenceId": "c2b36f0d-c39e-4dad-92a0-bceda440c455",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_GROUND_TRUTH",
+      "subject": "origin_debit",
+      "observedAt": "2026-11-13T10:57:03.466Z",
+      "collectedAt": "2026-11-13T10:57:03.466Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:e7df20f7fe5ada28a81ac913572424574a12b4fc8a87fc03f366493f15420204",
+      "redacted": true
+     },
+     {
+      "evidenceId": "65a92521-710b-4c7c-9edc-e2f9b920e542",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_GROUND_TRUTH",
+      "subject": "destination_credit",
+      "observedAt": "2026-11-13T10:57:03.467Z",
+      "collectedAt": "2026-11-13T10:57:03.467Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:6ee58f88e79b4a8fee4367823eb6c48c0a4c32b0b6d729773b868b26ef00921e",
+      "redacted": true
+     },
+     {
+      "evidenceId": "359d2350-c954-4a4b-8026-830a861b56b5",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_RUNTIME",
+      "subject": "scenario_runtime",
+      "observedAt": "2026-11-13T10:57:03.468Z",
+      "collectedAt": "2026-11-13T10:57:03.468Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:577e7d545021ec25ed1520fc334807711c7629f1dfd5762e43734fd161433386",
+      "redacted": true
+     }
+    ],
+    "invariants": [
+     {
+      "invariantId": "INV-01",
+      "title": "One scoped run operation per logical job",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-02",
+      "title": "Operation binding is immutable",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-04",
+      "title": "Protected side effects wait for accepted completion evidence",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "65a92521-710b-4c7c-9edc-e2f9b920e542"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-05",
+      "title": "Observable value conservation",
+      "status": "REVIEW",
+      "applicable": true,
+      "facts": [
+       "MISSING"
+      ],
+      "evidenceIds": [
+       "65a92521-710b-4c7c-9edc-e2f9b920e542",
+       "c2b36f0d-c39e-4dad-92a0-bceda440c455"
+      ],
+      "missingPredicates": [
+       "OPERATION_BOUND_VALUE_LEG"
+      ],
+      "remediationCode": "RS_INV_05_REVIEW"
+     },
+     {
+      "invariantId": "INV-06",
+      "title": "Terminal outcomes do not regress",
+      "status": "REVIEW",
+      "applicable": true,
+      "facts": [
+       "MISSING"
+      ],
+      "evidenceIds": [],
+      "missingPredicates": [
+       "ACCEPTED_TERMINAL_STATUS"
+      ],
+      "remediationCode": "RS_INV_06_REVIEW"
+     },
+     {
+      "invariantId": "INV-07",
+      "title": "Evidence is consumed once",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-08",
+      "title": "Missing or weak evidence cannot satisfy a stronger claim",
+      "status": "REVIEW",
+      "applicable": true,
+      "facts": [
+       "MISSING"
+      ],
+      "evidenceIds": [
+       "65a92521-710b-4c7c-9edc-e2f9b920e542"
+      ],
+      "missingPredicates": [
+       "DESTINATION_CREDIT"
+      ],
+      "remediationCode": "RS_INV_08_REVIEW"
+     }
+    ],
+    "sensitiveLocators": "MASKED"
+   }
+  },
+  "GET /run-operations/d2993bc1-10bf-468f-8f19-c7348fc42bc9": {
+   "status": 200,
+   "body": {
+    "runOperationId": "d2993bc1-10bf-468f-8f19-c7348fc42bc9",
+    "logicalJobDigest": "sha256:112a8e58c4cd92cf37f4453e28259be9ff16d7e1f82a18981df6928783dc7e9f",
+    "logicalJobLabel": "logical job 112a8e58c4cd",
+    "bindingDigest": "sha256:5cca36d7b7c9e2203f92cd73face8eac236f95bbe3988f617890e066fcf45f0e",
+    "lineage": [],
+    "identity": {
+     "projectId": "332f0475-2601-4214-ad4b-5ad62e50e172",
+     "buildRevisionId": "74bbbbd9-03b7-4d21-9deb-33f92c048f81",
+     "artifactDigest": "sha256:5a7de97b69c3fd26210951e03de0d8189dc4a2a325868cc5d041a5878b31fe71",
+     "gateRunId": "3e3dcdce-da6b-4fe4-a74e-615e72454a23",
+     "caseRunId": "17360e28-14e8-41be-9501-710d3a8c86ef",
+     "sessionId": "4a4b0002-c590-481f-a835-442f5bb7068c",
+     "adapterRevision": "routespec-adapter@1.0.0",
+     "effectPolicyDigest": "sha256:0a7284603803413e65fb1e079f9c682c231d7982bfb71a3be3c095d39d86fe00",
+     "effectManifestDigest": "sha256:b736f6e8c568430ff7ab8878928badc38e6b0e18b75754a9bb459aa06ea86038",
+     "callSiteInventoryDigest": null,
+     "interceptorProfileDigest": "sha256:56e00eba41377364da7dea25e29d259a1b5725680c3729176f84a4189869a56b",
+     "fencingEpoch": 1
+    },
+    "currentPhase": "READ_ONLY_RECONCILIATION",
+    "phases": {
+     "quoteRequest": {
+      "state": "BOUND",
+      "digest": "sha256:562b38049c51d4fd4c950f11b4b3d3464d090ebb943aa6b605f515b4b6be71f8",
+      "boundAt": "2026-11-13T10:57:40.079Z",
+      "fields": [
+       {
+        "name": "swapType",
+        "value": "EXACT_INPUT",
+        "masked": false
+       },
+       {
+        "name": "originAsset",
+        "value": "nep141:origin.sim",
+        "masked": false
+       },
+       {
+        "name": "destinationAsset",
+        "value": "nep141:destination.sim",
+        "masked": false
+       },
+       {
+        "name": "amount",
+        "value": "1000000",
+        "masked": false
+       },
+       {
+        "name": "slippageTolerance",
+        "value": "100",
+        "masked": false
+       },
+       {
+        "name": "deadline",
+        "value": "2026-11-11T12:00:00Z",
+        "masked": false
+       },
+       {
+        "name": "recipient",
+        "value": "masked",
+        "masked": true
+       },
+       {
+        "name": "refundTo",
+        "value": "masked",
+        "masked": true
+       }
+      ]
+     },
+     "quoteFinalization": {
+      "state": "BOUND",
+      "digest": "sha256:59d33dc153da067ee6da91a9c388d044a6949e780c73e9f54143d09c7957f4b6",
+      "boundAt": "2026-11-13T10:57:40.082Z",
+      "fields": [
+       {
+        "name": "correlationId",
+        "value": "sim-corr-436072ebe1119542",
+        "masked": false
+       },
+       {
+        "name": "quoteTimestamp",
+        "value": "2026-01-01T00:00:00.000Z",
+        "masked": false
+       },
+       {
+        "name": "depositAddress",
+        "value": "masked",
+        "masked": true
+       }
+      ]
+     },
+     "commitBinding": {
+      "state": "BOUND",
+      "digest": "sha256:5cca36d7b7c9e2203f92cd73face8eac236f95bbe3988f617890e066fcf45f0e",
+      "boundAt": "2026-11-13T10:57:40.091Z",
+      "fields": [
+       {
+        "name": "method",
+        "value": "POST",
+        "masked": false
+       },
+       {
+        "name": "route",
+        "value": "/v0/deposit/submit",
+        "masked": false
+       }
+      ]
+     },
+     "reconciliation": {
+      "observations": 2,
+      "lastObservedAt": "2026-11-13T10:57:40.110Z"
+     }
+    },
+    "conflicts": [],
+    "providerReported": {
+     "rawStatus": "SUCCESS",
+     "rawStatusKnown": true,
+     "normalizedFact": "SUCCESS_REPORTED",
+     "observedAt": "2026-11-13T10:57:40.110Z"
+    },
+    "evaluatedOutcome": {
+     "verdict": "PASS",
+     "fact": "SUCCESS_REPORTED"
+    },
+    "attempts": {
+     "count": 4,
+     "uncertainty": "OUTCOME_UNKNOWN"
+    },
+    "effectCoverage": {
+     "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+     "finding": "COMPLETE",
+     "missing": [],
+     "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+     "interceptorFreshness": "FRESH",
+     "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+     "interceptorReviewState": "REVIEWED"
+    },
+    "sinkObservations": [],
+    "evidence": [
+     {
+      "evidenceId": "904feb86-07bd-48ef-a59f-ac296389e8db",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_GROUND_TRUTH",
+      "subject": "origin_debit",
+      "observedAt": "2026-11-13T10:57:40.785Z",
+      "collectedAt": "2026-11-13T10:57:40.785Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:403cb966197ecea72e849dc4b05e3772524a707b79de1e13e87d21170ad45620",
+      "redacted": true
+     },
+     {
+      "evidenceId": "8e1ed9ad-06dd-489d-a7ca-aaab2fe909a5",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_GROUND_TRUTH",
+      "subject": "destination_credit",
+      "observedAt": "2026-11-13T10:57:40.785Z",
+      "collectedAt": "2026-11-13T10:57:40.785Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:6847ae2903aad241a430231f89f1d1661b1df3970d1e41b62aa18d5a33b02f01",
+      "redacted": true
+     },
+     {
+      "evidenceId": "2d2f150e-c0d9-401d-8ede-16c58c261e21",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_RUNTIME",
+      "subject": "scenario_runtime",
+      "observedAt": "2026-11-13T10:57:40.786Z",
+      "collectedAt": "2026-11-13T10:57:40.786Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:af8f9ef25e94cefe8481b9854037c1ba3de94a569b6f22e1477b0ab937721ac0",
+      "redacted": true
+     }
+    ],
+    "invariants": [
+     {
+      "invariantId": "INV-01",
+      "title": "One scoped run operation per logical job",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-02",
+      "title": "Operation binding is immutable",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-03",
+      "title": "Reconcile before retry under uncertainty",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-04",
+      "title": "Protected side effects wait for accepted completion evidence",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "8e1ed9ad-06dd-489d-a7ca-aaab2fe909a5"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-05",
+      "title": "Observable value conservation",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "8e1ed9ad-06dd-489d-a7ca-aaab2fe909a5",
+       "904feb86-07bd-48ef-a59f-ac296389e8db"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-06",
+      "title": "Terminal outcomes do not regress",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-07",
+      "title": "Evidence is consumed once",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-08",
+      "title": "Missing or weak evidence cannot satisfy a stronger claim",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "8e1ed9ad-06dd-489d-a7ca-aaab2fe909a5"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     }
+    ],
+    "sensitiveLocators": "MASKED"
+   }
+  },
+  "GET /run-operations/edf88177-aec6-45c8-b2a2-b54a33ce6a93": {
+   "status": 200,
+   "body": {
+    "runOperationId": "edf88177-aec6-45c8-b2a2-b54a33ce6a93",
+    "logicalJobDigest": "sha256:7edfbf08f9e51976eafbe251253dd5d9e7963e4e365ff1bce3c9d5f14ebf2630",
+    "logicalJobLabel": "logical job 7edfbf08f9e5",
+    "bindingDigest": "sha256:7e3a5add80d77e78079e0466afb05c13e3d9545152b798ee61c077626dcca9c4",
+    "lineage": [],
+    "identity": {
+     "projectId": "332f0475-2601-4214-ad4b-5ad62e50e172",
+     "buildRevisionId": "74bbbbd9-03b7-4d21-9deb-33f92c048f81",
+     "artifactDigest": "sha256:5a7de97b69c3fd26210951e03de0d8189dc4a2a325868cc5d041a5878b31fe71",
+     "gateRunId": "3e3dcdce-da6b-4fe4-a74e-615e72454a23",
+     "caseRunId": "e8759fbe-b94d-457d-90ec-0d73b228caa4",
+     "sessionId": "e02e7f76-ad59-4247-adda-399471bef2fd",
+     "adapterRevision": "routespec-adapter@1.0.0",
+     "effectPolicyDigest": "sha256:87c5a5034d48b9f2de6b5223706a9a32ffa9695975bb0d6852c4674765ec5b1f",
+     "effectManifestDigest": "sha256:b736f6e8c568430ff7ab8878928badc38e6b0e18b75754a9bb459aa06ea86038",
+     "callSiteInventoryDigest": null,
+     "interceptorProfileDigest": "sha256:56e00eba41377364da7dea25e29d259a1b5725680c3729176f84a4189869a56b",
+     "fencingEpoch": 1
+    },
+    "currentPhase": "READ_ONLY_RECONCILIATION",
+    "phases": {
+     "quoteRequest": {
+      "state": "BOUND",
+      "digest": "sha256:562b38049c51d4fd4c950f11b4b3d3464d090ebb943aa6b605f515b4b6be71f8",
+      "boundAt": "2026-11-13T10:57:31.316Z",
+      "fields": [
+       {
+        "name": "swapType",
+        "value": "EXACT_INPUT",
+        "masked": false
+       },
+       {
+        "name": "originAsset",
+        "value": "nep141:origin.sim",
+        "masked": false
+       },
+       {
+        "name": "destinationAsset",
+        "value": "nep141:destination.sim",
+        "masked": false
+       },
+       {
+        "name": "amount",
+        "value": "1000000",
+        "masked": false
+       },
+       {
+        "name": "slippageTolerance",
+        "value": "100",
+        "masked": false
+       },
+       {
+        "name": "deadline",
+        "value": "2026-11-11T12:00:00Z",
+        "masked": false
+       },
+       {
+        "name": "recipient",
+        "value": "masked",
+        "masked": true
+       },
+       {
+        "name": "refundTo",
+        "value": "masked",
+        "masked": true
+       }
+      ]
+     },
+     "quoteFinalization": {
+      "state": "BOUND",
+      "digest": "sha256:0b1af84773b049b066d9fc3e9331d5fe549a80a8bc6ab22715e6335afb08be97",
+      "boundAt": "2026-11-13T10:57:31.319Z",
+      "fields": [
+       {
+        "name": "correlationId",
+        "value": "sim-corr-c0b51d78590a7f35",
+        "masked": false
+       },
+       {
+        "name": "quoteTimestamp",
+        "value": "2026-01-01T00:00:00.000Z",
+        "masked": false
+       },
+       {
+        "name": "depositAddress",
+        "value": "masked",
+        "masked": true
+       }
+      ]
+     },
+     "commitBinding": {
+      "state": "BOUND",
+      "digest": "sha256:7e3a5add80d77e78079e0466afb05c13e3d9545152b798ee61c077626dcca9c4",
+      "boundAt": "2026-11-13T10:57:31.328Z",
+      "fields": [
+       {
+        "name": "method",
+        "value": "POST",
+        "masked": false
+       },
+       {
+        "name": "route",
+        "value": "/v0/deposit/submit",
+        "masked": false
+       }
+      ]
+     },
+     "reconciliation": {
+      "observations": 2,
+      "lastObservedAt": "2026-11-13T10:57:31.346Z"
+     }
+    },
+    "conflicts": [],
+    "providerReported": {
+     "rawStatus": "SUCCESS",
+     "rawStatusKnown": true,
+     "normalizedFact": "SUCCESS_REPORTED",
+     "observedAt": "2026-11-13T10:57:31.346Z"
+    },
+    "evaluatedOutcome": {
+     "verdict": "PASS",
+     "fact": "SUCCESS_REPORTED"
+    },
+    "attempts": {
+     "count": 4,
+     "uncertainty": "OUTCOME_UNKNOWN"
+    },
+    "effectCoverage": {
+     "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+     "finding": "COMPLETE",
+     "missing": [],
+     "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+     "interceptorFreshness": "FRESH",
+     "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+     "interceptorReviewState": "REVIEWED"
+    },
+    "sinkObservations": [],
+    "evidence": [
+     {
+      "evidenceId": "cfbb7701-d6ea-4e6d-86fd-741555fd106f",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_GROUND_TRUTH",
+      "subject": "origin_debit",
+      "observedAt": "2026-11-13T10:57:32.053Z",
+      "collectedAt": "2026-11-13T10:57:32.053Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:587414919483dc8463b78449b60c9fac3ca64ab0e63d698f0803c25045c2ccf4",
+      "redacted": true
+     },
+     {
+      "evidenceId": "539d3a13-5f93-4572-83c3-4eb7f5254b10",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_GROUND_TRUTH",
+      "subject": "destination_credit",
+      "observedAt": "2026-11-13T10:57:32.053Z",
+      "collectedAt": "2026-11-13T10:57:32.053Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:381cb270f608568cd2a82fbc2b383bad3240902d79e787a70fa3a99a785e53d1",
+      "redacted": true
+     },
+     {
+      "evidenceId": "ddf892f0-2b4b-4a9b-85f5-fedf75680903",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_RUNTIME",
+      "subject": "scenario_runtime",
+      "observedAt": "2026-11-13T10:57:32.054Z",
+      "collectedAt": "2026-11-13T10:57:32.054Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:f304a6fb3dd16a68f6748014296467656133a6049d94653051feb0508baa0b3b",
+      "redacted": true
+     }
+    ],
+    "invariants": [
+     {
+      "invariantId": "INV-01",
+      "title": "One scoped run operation per logical job",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-02",
+      "title": "Operation binding is immutable",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-03",
+      "title": "Reconcile before retry under uncertainty",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-04",
+      "title": "Protected side effects wait for accepted completion evidence",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "539d3a13-5f93-4572-83c3-4eb7f5254b10"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-05",
+      "title": "Observable value conservation",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "539d3a13-5f93-4572-83c3-4eb7f5254b10",
+       "cfbb7701-d6ea-4e6d-86fd-741555fd106f"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-06",
+      "title": "Terminal outcomes do not regress",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-07",
+      "title": "Evidence is consumed once",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-08",
+      "title": "Missing or weak evidence cannot satisfy a stronger claim",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "539d3a13-5f93-4572-83c3-4eb7f5254b10"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     }
+    ],
+    "sensitiveLocators": "MASKED"
+   }
+  },
+  "GET /run-operations/f4b5ee4c-0a32-4950-b357-6196a8c6eefc": {
+   "status": 200,
+   "body": {
+    "runOperationId": "f4b5ee4c-0a32-4950-b357-6196a8c6eefc",
+    "logicalJobDigest": "sha256:f214afb43e06fe3f219a916b43d9dd4011abf0492678b1a08e77fe22d4934768",
+    "logicalJobLabel": "logical job f214afb43e06",
+    "bindingDigest": "sha256:d5852944196c92248b60a7d61bcf56223ec7e63b86562bbdcf3aac8c9505324e",
+    "lineage": [],
+    "identity": {
+     "projectId": "332f0475-2601-4214-ad4b-5ad62e50e172",
+     "buildRevisionId": "10f1377e-d0ea-4c4b-8b1e-aa87cc0179c0",
+     "artifactDigest": "sha256:dffc2daea4bfc1d908c49af9a50f2e5927ded75f1c656a97911041d92dbed25e",
+     "gateRunId": "96d63516-f2de-4bbe-99c4-f205211f1440",
+     "caseRunId": "511f6982-2e88-479e-a9f9-898eec783f5b",
+     "sessionId": "7c03df8c-64f6-4119-960e-7370a3355505",
+     "adapterRevision": "routespec-adapter@1.0.0",
+     "effectPolicyDigest": "sha256:be4987a78e910ddae95dae8f5a434f8d22a00e38ac342a602c06c59d7e47633c",
+     "effectManifestDigest": "sha256:7b50af406babef0cf47e068ddc4ba9695d5dba27decf7a7576d756f63dc279f3",
+     "callSiteInventoryDigest": null,
+     "interceptorProfileDigest": "sha256:56e00eba41377364da7dea25e29d259a1b5725680c3729176f84a4189869a56b",
+     "fencingEpoch": 1
+    },
+    "currentPhase": "READ_ONLY_RECONCILIATION",
+    "phases": {
+     "quoteRequest": {
+      "state": "BOUND",
+      "digest": "sha256:562b38049c51d4fd4c950f11b4b3d3464d090ebb943aa6b605f515b4b6be71f8",
+      "boundAt": "2026-11-13T10:57:04.326Z",
+      "fields": [
+       {
+        "name": "swapType",
+        "value": "EXACT_INPUT",
+        "masked": false
+       },
+       {
+        "name": "originAsset",
+        "value": "nep141:origin.sim",
+        "masked": false
+       },
+       {
+        "name": "destinationAsset",
+        "value": "nep141:destination.sim",
+        "masked": false
+       },
+       {
+        "name": "amount",
+        "value": "1000000",
+        "masked": false
+       },
+       {
+        "name": "slippageTolerance",
+        "value": "100",
+        "masked": false
+       },
+       {
+        "name": "deadline",
+        "value": "2026-11-11T12:00:00Z",
+        "masked": false
+       },
+       {
+        "name": "recipient",
+        "value": "masked",
+        "masked": true
+       },
+       {
+        "name": "refundTo",
+        "value": "masked",
+        "masked": true
+       }
+      ]
+     },
+     "quoteFinalization": {
+      "state": "BOUND",
+      "digest": "sha256:0b1af84773b049b066d9fc3e9331d5fe549a80a8bc6ab22715e6335afb08be97",
+      "boundAt": "2026-11-13T10:57:04.328Z",
+      "fields": [
+       {
+        "name": "correlationId",
+        "value": "sim-corr-c0b51d78590a7f35",
+        "masked": false
+       },
+       {
+        "name": "quoteTimestamp",
+        "value": "2026-01-01T00:00:00.000Z",
+        "masked": false
+       },
+       {
+        "name": "depositAddress",
+        "value": "masked",
+        "masked": true
+       }
+      ]
+     },
+     "commitBinding": {
+      "state": "BOUND",
+      "digest": "sha256:d5852944196c92248b60a7d61bcf56223ec7e63b86562bbdcf3aac8c9505324e",
+      "boundAt": "2026-11-13T10:57:04.334Z",
+      "fields": [
+       {
+        "name": "method",
+        "value": "POST",
+        "masked": false
+       },
+       {
+        "name": "route",
+        "value": "/v0/deposit/submit",
+        "masked": false
+       }
+      ]
+     },
+     "reconciliation": {
+      "observations": 1,
+      "lastObservedAt": "2026-11-13T10:57:04.384Z"
+     }
+    },
+    "conflicts": [],
+    "providerReported": {
+     "rawStatus": "PROCESSING",
+     "rawStatusKnown": true,
+     "normalizedFact": "PROCESSING",
+     "observedAt": "2026-11-13T10:57:04.384Z"
+    },
+    "evaluatedOutcome": {
+     "verdict": "REVIEW",
+     "fact": "PROCESSING"
+    },
+    "attempts": {
+     "count": 3,
+     "uncertainty": "OUTCOME_UNKNOWN"
+    },
+    "effectCoverage": {
+     "basis": "INDEPENDENT_BOUNDARY_INTERCEPT",
+     "finding": "INCOMPLETE",
+     "missing": [
+      "INTERCEPTOR_MISSING",
+      "REQUIRED_SINK_UNOBSERVED:fulfilment-canary"
+     ],
+     "interceptorProfileId": "4b5c5564-a5b4-4143-9d26-d90ac8db36be",
+     "interceptorFreshness": "NOT_APPLICABLE",
+     "processTreeScope": "linux-container:network-none:read-only-root:cap-drop-all:no-new-privileges:init",
+     "interceptorReviewState": "REVIEWED"
+    },
+    "sinkObservations": [],
+    "evidence": [
+     {
+      "evidenceId": "628eab73-7e81-40a0-adb5-d0e2ff7cfc7b",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_GROUND_TRUTH",
+      "subject": "origin_debit",
+      "observedAt": "2026-11-13T10:57:04.413Z",
+      "collectedAt": "2026-11-13T10:57:04.413Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:587414919483dc8463b78449b60c9fac3ca64ab0e63d698f0803c25045c2ccf4",
+      "redacted": true
+     },
+     {
+      "evidenceId": "d80d457e-3e4e-45c0-a874-bb4026f450a4",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_GROUND_TRUTH",
+      "subject": "destination_credit",
+      "observedAt": "2026-11-13T10:57:04.414Z",
+      "collectedAt": "2026-11-13T10:57:04.414Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:381cb270f608568cd2a82fbc2b383bad3240902d79e787a70fa3a99a785e53d1",
+      "redacted": true
+     },
+     {
+      "evidenceId": "5f5bbb1b-2a97-4019-9443-cedb3d03f7e1",
+      "class": "PROVEN",
+      "scope": "SIMULATED_GROUND_TRUTH",
+      "reasons": [],
+      "provenance": "SCENARIO_RUNTIME",
+      "subject": "scenario_runtime",
+      "observedAt": "2026-11-13T10:57:04.415Z",
+      "collectedAt": "2026-11-13T10:57:04.415Z",
+      "freshness": "NOT_APPLICABLE",
+      "digest": "sha256:1f5a2d6eebb85e2bc91b2374bf8898438e9f814e04e08fb9e15883157c629e67",
+      "redacted": true
+     }
+    ],
+    "invariants": [
+     {
+      "invariantId": "INV-01",
+      "title": "One scoped run operation per logical job",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-02",
+      "title": "Operation binding is immutable",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-03",
+      "title": "Reconcile before retry under uncertainty",
+      "status": "REVIEW",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [
+       "ACCEPTED_TERMINAL_STATUS"
+      ],
+      "remediationCode": "RS_INV_03_REVIEW"
+     },
+     {
+      "invariantId": "INV-04",
+      "title": "Protected side effects wait for accepted completion evidence",
+      "status": "REVIEW",
+      "applicable": true,
+      "facts": [
+       "EFFECT_COVERAGE_MISSING"
+      ],
+      "evidenceIds": [],
+      "missingPredicates": [
+       "INTERCEPTOR_MISSING",
+       "REQUIRED_SINK_UNOBSERVED:fulfilment-canary"
+      ],
+      "remediationCode": "RS_INV_04_REVIEW"
+     },
+     {
+      "invariantId": "INV-05",
+      "title": "Observable value conservation",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "628eab73-7e81-40a0-adb5-d0e2ff7cfc7b",
+       "d80d457e-3e4e-45c0-a874-bb4026f450a4"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-06",
+      "title": "Terminal outcomes do not regress",
+      "status": "REVIEW",
+      "applicable": true,
+      "facts": [
+       "MISSING"
+      ],
+      "evidenceIds": [],
+      "missingPredicates": [
+       "ACCEPTED_TERMINAL_STATUS"
+      ],
+      "remediationCode": "RS_INV_06_REVIEW"
+     },
+     {
+      "invariantId": "INV-07",
+      "title": "Evidence is consumed once",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [],
+      "missingPredicates": [],
+      "remediationCode": null
+     },
+     {
+      "invariantId": "INV-08",
+      "title": "Missing or weak evidence cannot satisfy a stronger claim",
+      "status": "PASS",
+      "applicable": true,
+      "facts": [],
+      "evidenceIds": [
+       "d80d457e-3e4e-45c0-a874-bb4026f450a4"
+      ],
+      "missingPredicates": [],
+      "remediationCode": null
+     }
+    ],
+    "sensitiveLocators": "MASKED"
+   }
+  },
+  "GET /sessions/0a3ed070-016b-422c-9b2a-93cfaa72f5d5/events?limit=100": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "sequence": 0,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_REQUEST_CREATED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "3f65ac89-56ef-42c9-9ee9-1e9f65a2e5cf",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:56:53.377Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_REQUEST_CREATED at sequence 0"
+     },
+     {
+      "sequence": 1,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_FINALIZED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "3f65ac89-56ef-42c9-9ee9-1e9f65a2e5cf",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:56:53.381Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_FINALIZED at sequence 1"
+     },
+     {
+      "sequence": 2,
+      "kind": "PHASE_BINDING",
+      "eventCode": "COMMIT_ACCEPTED",
+      "phase": "COMMIT_MUTATION",
+      "runOperationId": "3f65ac89-56ef-42c9-9ee9-1e9f65a2e5cf",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:56:53.392Z",
+      "timerCanonical": true,
+      "summary": "COMMIT_ACCEPTED at sequence 2"
+     }
+    ],
+    "nextCursor": "eyJ2IjoxLCJsaXN0Ijoic2Vzc2lvbi1ldmVudHM6MGEzZWQwNzAtMDE2Yi00MjJjLTliMmEtOTNjZmFhNzJmNWQ1IiwiZiI6InNoYTI1NjpiMGI5OWIwNTM1YTRhYmQxY2MwOTk1ZjM3N2QxNDZhOThiZmRhOWUyZTM2ZDkzOWIyMmZhZTRjYjAzNmE5YjdlIiwicCI6eyJraW5kIjoic2VxIiwic2VxIjozfX0.keJgsY_zmnNwvWMDQjGS64YPDKH80JoCEgZiZtueI2Q",
+    "hasMore": false,
+    "total": 3
+   }
+  },
+  "GET /sessions/0a3ed070-016b-422c-9b2a-93cfaa72f5d5/events?limit=100&runOperationId=3f65ac89-56ef-42c9-9ee9-1e9f65a2e5cf": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "sequence": 0,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_REQUEST_CREATED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "3f65ac89-56ef-42c9-9ee9-1e9f65a2e5cf",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:56:53.377Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_REQUEST_CREATED at sequence 0"
+     },
+     {
+      "sequence": 1,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_FINALIZED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "3f65ac89-56ef-42c9-9ee9-1e9f65a2e5cf",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:56:53.381Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_FINALIZED at sequence 1"
+     },
+     {
+      "sequence": 2,
+      "kind": "PHASE_BINDING",
+      "eventCode": "COMMIT_ACCEPTED",
+      "phase": "COMMIT_MUTATION",
+      "runOperationId": "3f65ac89-56ef-42c9-9ee9-1e9f65a2e5cf",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:56:53.392Z",
+      "timerCanonical": true,
+      "summary": "COMMIT_ACCEPTED at sequence 2"
+     }
+    ],
+    "nextCursor": "eyJ2IjoxLCJsaXN0Ijoic2Vzc2lvbi1ldmVudHM6MGEzZWQwNzAtMDE2Yi00MjJjLTliMmEtOTNjZmFhNzJmNWQ1IiwiZiI6InNoYTI1NjpmYzc4NjFkYjgyMDczMTg3OGFiYzZlNGVmODYzYzY1MmMzZDUyOGY5ZWY1YzVmMzJkZjFiNzE3ZmU3ZGVlNWM0IiwicCI6eyJraW5kIjoic2VxIiwic2VxIjozfX0.xdkoSeJPOSqL1QgjBFtTHLV4na6Mehk7xhQOTHBCmJs",
+    "hasMore": false,
+    "total": 3
+   }
+  },
+  "GET /sessions/25aa0a02-5bfe-45d8-9b7b-e37337d55b85/events?limit=100": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "sequence": 0,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_REQUEST_CREATED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "6c7497b0-d2a9-421c-8599-5a5602471ca6",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:22.254Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_REQUEST_CREATED at sequence 0"
+     },
+     {
+      "sequence": 1,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_FINALIZED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "6c7497b0-d2a9-421c-8599-5a5602471ca6",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:22.257Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_FINALIZED at sequence 1"
+     },
+     {
+      "sequence": 2,
+      "kind": "PHASE_BINDING",
+      "eventCode": "COMMIT_ACCEPTED",
+      "phase": "COMMIT_MUTATION",
+      "runOperationId": "6c7497b0-d2a9-421c-8599-5a5602471ca6",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:22.265Z",
+      "timerCanonical": true,
+      "summary": "COMMIT_ACCEPTED at sequence 2"
+     }
+    ],
+    "nextCursor": "eyJ2IjoxLCJsaXN0Ijoic2Vzc2lvbi1ldmVudHM6MjVhYTBhMDItNWJmZS00NWQ4LTliN2ItZTM3MzM3ZDU1Yjg1IiwiZiI6InNoYTI1NjpiMGI5OWIwNTM1YTRhYmQxY2MwOTk1ZjM3N2QxNDZhOThiZmRhOWUyZTM2ZDkzOWIyMmZhZTRjYjAzNmE5YjdlIiwicCI6eyJraW5kIjoic2VxIiwic2VxIjozfX0.l3ghrGE_BGGpNUKWcBi_l5hOfkJWzy0j7YT2DDLqULo",
+    "hasMore": false,
+    "total": 3
+   }
+  },
+  "GET /sessions/25aa0a02-5bfe-45d8-9b7b-e37337d55b85/events?limit=100&runOperationId=6c7497b0-d2a9-421c-8599-5a5602471ca6": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "sequence": 0,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_REQUEST_CREATED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "6c7497b0-d2a9-421c-8599-5a5602471ca6",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:22.254Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_REQUEST_CREATED at sequence 0"
+     },
+     {
+      "sequence": 1,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_FINALIZED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "6c7497b0-d2a9-421c-8599-5a5602471ca6",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:22.257Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_FINALIZED at sequence 1"
+     },
+     {
+      "sequence": 2,
+      "kind": "PHASE_BINDING",
+      "eventCode": "COMMIT_ACCEPTED",
+      "phase": "COMMIT_MUTATION",
+      "runOperationId": "6c7497b0-d2a9-421c-8599-5a5602471ca6",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:22.265Z",
+      "timerCanonical": true,
+      "summary": "COMMIT_ACCEPTED at sequence 2"
+     }
+    ],
+    "nextCursor": "eyJ2IjoxLCJsaXN0Ijoic2Vzc2lvbi1ldmVudHM6MjVhYTBhMDItNWJmZS00NWQ4LTliN2ItZTM3MzM3ZDU1Yjg1IiwiZiI6InNoYTI1NjoxMDNmZjRmZjQzYmRkNjRmYjFiOWM3OWY4ZWEzYmM2NzE4ODAzYzllOWIyNGVkODQ3ODQxNDMyOWRiOWUxYzdiIiwicCI6eyJraW5kIjoic2VxIiwic2VxIjozfX0.77e4OsjIkSkps0udGX3Nywnw401d6AAbtThkKnKD0DY",
+    "hasMore": false,
+    "total": 3
+   }
+  },
+  "GET /sessions/4a4b0002-c590-481f-a835-442f5bb7068c/events?limit=100": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "sequence": 0,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_REQUEST_CREATED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "d2993bc1-10bf-468f-8f19-c7348fc42bc9",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:40.080Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_REQUEST_CREATED at sequence 0"
+     },
+     {
+      "sequence": 1,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_FINALIZED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "d2993bc1-10bf-468f-8f19-c7348fc42bc9",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:40.082Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_FINALIZED at sequence 1"
+     },
+     {
+      "sequence": 2,
+      "kind": "PHASE_BINDING",
+      "eventCode": "COMMIT_ACCEPTED",
+      "phase": "COMMIT_MUTATION",
+      "runOperationId": "d2993bc1-10bf-468f-8f19-c7348fc42bc9",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:40.091Z",
+      "timerCanonical": true,
+      "summary": "COMMIT_ACCEPTED at sequence 2"
+     },
+     {
+      "sequence": 3,
+      "kind": "PROVIDER_OBSERVATION",
+      "eventCode": "PROVIDER_STATUS",
+      "phase": "READ_ONLY_RECONCILIATION",
+      "runOperationId": "d2993bc1-10bf-468f-8f19-c7348fc42bc9",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": "PROCESSING",
+      "normalizedFact": "PROCESSING",
+      "virtualMs": 5000,
+      "wallTime": "2026-11-13T10:57:40.104Z",
+      "timerCanonical": true,
+      "summary": "PROVIDER_STATUS at sequence 3"
+     },
+     {
+      "sequence": 4,
+      "kind": "PROVIDER_OBSERVATION",
+      "eventCode": "PROVIDER_STATUS",
+      "phase": "READ_ONLY_RECONCILIATION",
+      "runOperationId": "d2993bc1-10bf-468f-8f19-c7348fc42bc9",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": "SUCCESS",
+      "normalizedFact": "SUCCESS_REPORTED",
+      "virtualMs": 6000,
+      "wallTime": "2026-11-13T10:57:40.110Z",
+      "timerCanonical": true,
+      "summary": "PROVIDER_STATUS at sequence 4"
+     }
+    ],
+    "nextCursor": "eyJ2IjoxLCJsaXN0Ijoic2Vzc2lvbi1ldmVudHM6NGE0YjAwMDItYzU5MC00ODFmLWE4MzUtNDQyZjViYjcwNjhjIiwiZiI6InNoYTI1NjpiMGI5OWIwNTM1YTRhYmQxY2MwOTk1ZjM3N2QxNDZhOThiZmRhOWUyZTM2ZDkzOWIyMmZhZTRjYjAzNmE5YjdlIiwicCI6eyJraW5kIjoic2VxIiwic2VxIjo1fX0.spruGhFEy5ZNTrK34rV9NrPrkkYWhelnrJZqGSQIM04",
+    "hasMore": false,
+    "total": 5
+   }
+  },
+  "GET /sessions/4a4b0002-c590-481f-a835-442f5bb7068c/events?limit=100&runOperationId=d2993bc1-10bf-468f-8f19-c7348fc42bc9": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "sequence": 0,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_REQUEST_CREATED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "d2993bc1-10bf-468f-8f19-c7348fc42bc9",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:40.080Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_REQUEST_CREATED at sequence 0"
+     },
+     {
+      "sequence": 1,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_FINALIZED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "d2993bc1-10bf-468f-8f19-c7348fc42bc9",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:40.082Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_FINALIZED at sequence 1"
+     },
+     {
+      "sequence": 2,
+      "kind": "PHASE_BINDING",
+      "eventCode": "COMMIT_ACCEPTED",
+      "phase": "COMMIT_MUTATION",
+      "runOperationId": "d2993bc1-10bf-468f-8f19-c7348fc42bc9",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:40.091Z",
+      "timerCanonical": true,
+      "summary": "COMMIT_ACCEPTED at sequence 2"
+     },
+     {
+      "sequence": 3,
+      "kind": "PROVIDER_OBSERVATION",
+      "eventCode": "PROVIDER_STATUS",
+      "phase": "READ_ONLY_RECONCILIATION",
+      "runOperationId": "d2993bc1-10bf-468f-8f19-c7348fc42bc9",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": "PROCESSING",
+      "normalizedFact": "PROCESSING",
+      "virtualMs": 5000,
+      "wallTime": "2026-11-13T10:57:40.104Z",
+      "timerCanonical": true,
+      "summary": "PROVIDER_STATUS at sequence 3"
+     },
+     {
+      "sequence": 4,
+      "kind": "PROVIDER_OBSERVATION",
+      "eventCode": "PROVIDER_STATUS",
+      "phase": "READ_ONLY_RECONCILIATION",
+      "runOperationId": "d2993bc1-10bf-468f-8f19-c7348fc42bc9",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": "SUCCESS",
+      "normalizedFact": "SUCCESS_REPORTED",
+      "virtualMs": 6000,
+      "wallTime": "2026-11-13T10:57:40.110Z",
+      "timerCanonical": true,
+      "summary": "PROVIDER_STATUS at sequence 4"
+     }
+    ],
+    "nextCursor": "eyJ2IjoxLCJsaXN0Ijoic2Vzc2lvbi1ldmVudHM6NGE0YjAwMDItYzU5MC00ODFmLWE4MzUtNDQyZjViYjcwNjhjIiwiZiI6InNoYTI1Njo3NTdiYWQ2MmI3ZDFlNTY1ODk2OWY2ZWFmOGRiYWE2NmQ0YWJkNTRmYWNlYmQ2OWMzYzNjNzZkYTM0NzQyZmUzIiwicCI6eyJraW5kIjoic2VxIiwic2VxIjo1fX0.Tmq3eqxv4Art_PgPFt_5RKPYpyaYYo71rQ5ig_qp340",
+    "hasMore": false,
+    "total": 5
+   }
+  },
+  "GET /sessions/6745db01-d93d-4f1e-9738-682e8e4c1239/events?limit=100": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "sequence": 0,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_REQUEST_CREATED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "162ef4e8-b795-45c5-9e25-c0a01f9e7fd6",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:01.956Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_REQUEST_CREATED at sequence 0"
+     },
+     {
+      "sequence": 1,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_FINALIZED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "162ef4e8-b795-45c5-9e25-c0a01f9e7fd6",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:01.958Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_FINALIZED at sequence 1"
+     },
+     {
+      "sequence": 2,
+      "kind": "PHASE_BINDING",
+      "eventCode": "COMMIT_ACCEPTED",
+      "phase": "COMMIT_MUTATION",
+      "runOperationId": "162ef4e8-b795-45c5-9e25-c0a01f9e7fd6",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:01.967Z",
+      "timerCanonical": true,
+      "summary": "COMMIT_ACCEPTED at sequence 2"
+     },
+     {
+      "sequence": 3,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_REQUEST_CREATED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "8a075ada-d12a-415f-8798-5e8dd53e19fd",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:02.720Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_REQUEST_CREATED at sequence 3"
+     },
+     {
+      "sequence": 4,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_FINALIZED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "8a075ada-d12a-415f-8798-5e8dd53e19fd",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:02.722Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_FINALIZED at sequence 4"
+     },
+     {
+      "sequence": 5,
+      "kind": "PHASE_BINDING",
+      "eventCode": "COMMIT_ACCEPTED",
+      "phase": "COMMIT_MUTATION",
+      "runOperationId": "8a075ada-d12a-415f-8798-5e8dd53e19fd",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:02.729Z",
+      "timerCanonical": true,
+      "summary": "COMMIT_ACCEPTED at sequence 5"
+     }
+    ],
+    "nextCursor": "eyJ2IjoxLCJsaXN0Ijoic2Vzc2lvbi1ldmVudHM6Njc0NWRiMDEtZDkzZC00ZjFlLTk3MzgtNjgyZThlNGMxMjM5IiwiZiI6InNoYTI1NjpiMGI5OWIwNTM1YTRhYmQxY2MwOTk1ZjM3N2QxNDZhOThiZmRhOWUyZTM2ZDkzOWIyMmZhZTRjYjAzNmE5YjdlIiwicCI6eyJraW5kIjoic2VxIiwic2VxIjo2fX0.MYroWgEu7gGxxZyn52vnfoRRHiaM4sKt-fMNy7EFpTk",
+    "hasMore": false,
+    "total": 6
+   }
+  },
+  "GET /sessions/6745db01-d93d-4f1e-9738-682e8e4c1239/events?limit=100&runOperationId=162ef4e8-b795-45c5-9e25-c0a01f9e7fd6": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "sequence": 0,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_REQUEST_CREATED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "162ef4e8-b795-45c5-9e25-c0a01f9e7fd6",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:01.956Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_REQUEST_CREATED at sequence 0"
+     },
+     {
+      "sequence": 1,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_FINALIZED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "162ef4e8-b795-45c5-9e25-c0a01f9e7fd6",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:01.958Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_FINALIZED at sequence 1"
+     },
+     {
+      "sequence": 2,
+      "kind": "PHASE_BINDING",
+      "eventCode": "COMMIT_ACCEPTED",
+      "phase": "COMMIT_MUTATION",
+      "runOperationId": "162ef4e8-b795-45c5-9e25-c0a01f9e7fd6",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:01.967Z",
+      "timerCanonical": true,
+      "summary": "COMMIT_ACCEPTED at sequence 2"
+     }
+    ],
+    "nextCursor": "eyJ2IjoxLCJsaXN0Ijoic2Vzc2lvbi1ldmVudHM6Njc0NWRiMDEtZDkzZC00ZjFlLTk3MzgtNjgyZThlNGMxMjM5IiwiZiI6InNoYTI1NjplZmUxM2Q1ZjJiMWY0NGUzNjUxMTc2Yzc1ZTM5MTJlYWI2Yzg1YjdkYjlkZDMyNWNiZmUyNjg0N2NkMmE1NTQyIiwicCI6eyJraW5kIjoic2VxIiwic2VxIjozfX0.AazxbarEbANl-fZmd3RLXcu7PpLsnb4W_jgZkdlA5Fo",
+    "hasMore": false,
+    "total": 3
+   }
+  },
+  "GET /sessions/6745db01-d93d-4f1e-9738-682e8e4c1239/events?limit=100&runOperationId=8a075ada-d12a-415f-8798-5e8dd53e19fd": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "sequence": 3,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_REQUEST_CREATED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "8a075ada-d12a-415f-8798-5e8dd53e19fd",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:02.720Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_REQUEST_CREATED at sequence 3"
+     },
+     {
+      "sequence": 4,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_FINALIZED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "8a075ada-d12a-415f-8798-5e8dd53e19fd",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:02.722Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_FINALIZED at sequence 4"
+     },
+     {
+      "sequence": 5,
+      "kind": "PHASE_BINDING",
+      "eventCode": "COMMIT_ACCEPTED",
+      "phase": "COMMIT_MUTATION",
+      "runOperationId": "8a075ada-d12a-415f-8798-5e8dd53e19fd",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:02.729Z",
+      "timerCanonical": true,
+      "summary": "COMMIT_ACCEPTED at sequence 5"
+     }
+    ],
+    "nextCursor": "eyJ2IjoxLCJsaXN0Ijoic2Vzc2lvbi1ldmVudHM6Njc0NWRiMDEtZDkzZC00ZjFlLTk3MzgtNjgyZThlNGMxMjM5IiwiZiI6InNoYTI1NjpmOGU3YzdmOTcxNTY4OTNlNmMzMjEzYmJlOWJkZjMzNzZmNmI1MDI1MDVhNzAxNDFmMTdiOGY5ODFjYjk4YzVhIiwicCI6eyJraW5kIjoic2VxIiwic2VxIjo2fX0.8_m8uYeKj57qbL8TMVBN9YRVd9Zi4Ioal8KlEg7qI9w",
+    "hasMore": false,
+    "total": 3
+   }
+  },
+  "GET /sessions/7c03df8c-64f6-4119-960e-7370a3355505/events?limit=100": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "sequence": 0,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_REQUEST_CREATED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "f4b5ee4c-0a32-4950-b357-6196a8c6eefc",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:04.326Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_REQUEST_CREATED at sequence 0"
+     },
+     {
+      "sequence": 1,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_FINALIZED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "f4b5ee4c-0a32-4950-b357-6196a8c6eefc",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:04.328Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_FINALIZED at sequence 1"
+     },
+     {
+      "sequence": 2,
+      "kind": "PHASE_BINDING",
+      "eventCode": "COMMIT_ACCEPTED",
+      "phase": "COMMIT_MUTATION",
+      "runOperationId": "f4b5ee4c-0a32-4950-b357-6196a8c6eefc",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:04.334Z",
+      "timerCanonical": true,
+      "summary": "COMMIT_ACCEPTED at sequence 2"
+     },
+     {
+      "sequence": 3,
+      "kind": "PROVIDER_OBSERVATION",
+      "eventCode": "PROVIDER_STATUS",
+      "phase": "READ_ONLY_RECONCILIATION",
+      "runOperationId": "f4b5ee4c-0a32-4950-b357-6196a8c6eefc",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": "PROCESSING",
+      "normalizedFact": "PROCESSING",
+      "virtualMs": 5000,
+      "wallTime": "2026-11-13T10:57:04.384Z",
+      "timerCanonical": true,
+      "summary": "PROVIDER_STATUS at sequence 3"
+     }
+    ],
+    "nextCursor": "eyJ2IjoxLCJsaXN0Ijoic2Vzc2lvbi1ldmVudHM6N2MwM2RmOGMtNjRmNi00MTE5LTk2MGUtNzM3MGEzMzU1NTA1IiwiZiI6InNoYTI1NjpiMGI5OWIwNTM1YTRhYmQxY2MwOTk1ZjM3N2QxNDZhOThiZmRhOWUyZTM2ZDkzOWIyMmZhZTRjYjAzNmE5YjdlIiwicCI6eyJraW5kIjoic2VxIiwic2VxIjo0fX0.PAtKxLgLvJb8KlVkYpyzSZeuZ4zMCgN0cQZJ-uIRJnc",
+    "hasMore": false,
+    "total": 4
+   }
+  },
+  "GET /sessions/7c03df8c-64f6-4119-960e-7370a3355505/events?limit=100&runOperationId=f4b5ee4c-0a32-4950-b357-6196a8c6eefc": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "sequence": 0,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_REQUEST_CREATED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "f4b5ee4c-0a32-4950-b357-6196a8c6eefc",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:04.326Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_REQUEST_CREATED at sequence 0"
+     },
+     {
+      "sequence": 1,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_FINALIZED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "f4b5ee4c-0a32-4950-b357-6196a8c6eefc",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:04.328Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_FINALIZED at sequence 1"
+     },
+     {
+      "sequence": 2,
+      "kind": "PHASE_BINDING",
+      "eventCode": "COMMIT_ACCEPTED",
+      "phase": "COMMIT_MUTATION",
+      "runOperationId": "f4b5ee4c-0a32-4950-b357-6196a8c6eefc",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:04.334Z",
+      "timerCanonical": true,
+      "summary": "COMMIT_ACCEPTED at sequence 2"
+     },
+     {
+      "sequence": 3,
+      "kind": "PROVIDER_OBSERVATION",
+      "eventCode": "PROVIDER_STATUS",
+      "phase": "READ_ONLY_RECONCILIATION",
+      "runOperationId": "f4b5ee4c-0a32-4950-b357-6196a8c6eefc",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": "PROCESSING",
+      "normalizedFact": "PROCESSING",
+      "virtualMs": 5000,
+      "wallTime": "2026-11-13T10:57:04.384Z",
+      "timerCanonical": true,
+      "summary": "PROVIDER_STATUS at sequence 3"
+     }
+    ],
+    "nextCursor": "eyJ2IjoxLCJsaXN0Ijoic2Vzc2lvbi1ldmVudHM6N2MwM2RmOGMtNjRmNi00MTE5LTk2MGUtNzM3MGEzMzU1NTA1IiwiZiI6InNoYTI1NjoxZGNlYWZjOTJhYzhjYjAzYWU3NTcwMzJlMDk4ZmEzNDBhOTI0NTQwMTFmOTQzMDM4ODZlZTU0YmEwNTI2ZGNhIiwicCI6eyJraW5kIjoic2VxIiwic2VxIjo0fX0.YH1lVTOdJWHtrZydHwkrPA_MAVxrCIPnmkPazER8Cuk",
+    "hasMore": false,
+    "total": 4
+   }
+  },
+  "GET /sessions/e02e7f76-ad59-4247-adda-399471bef2fd/events?limit=100": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "sequence": 0,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_REQUEST_CREATED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "edf88177-aec6-45c8-b2a2-b54a33ce6a93",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:31.317Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_REQUEST_CREATED at sequence 0"
+     },
+     {
+      "sequence": 1,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_FINALIZED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "edf88177-aec6-45c8-b2a2-b54a33ce6a93",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:31.319Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_FINALIZED at sequence 1"
+     },
+     {
+      "sequence": 2,
+      "kind": "PHASE_BINDING",
+      "eventCode": "COMMIT_ACCEPTED",
+      "phase": "COMMIT_MUTATION",
+      "runOperationId": "edf88177-aec6-45c8-b2a2-b54a33ce6a93",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:31.328Z",
+      "timerCanonical": true,
+      "summary": "COMMIT_ACCEPTED at sequence 2"
+     },
+     {
+      "sequence": 3,
+      "kind": "PROVIDER_OBSERVATION",
+      "eventCode": "PROVIDER_STATUS",
+      "phase": "READ_ONLY_RECONCILIATION",
+      "runOperationId": "edf88177-aec6-45c8-b2a2-b54a33ce6a93",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": "PROCESSING",
+      "normalizedFact": "PROCESSING",
+      "virtualMs": 5000,
+      "wallTime": "2026-11-13T10:57:31.340Z",
+      "timerCanonical": true,
+      "summary": "PROVIDER_STATUS at sequence 3"
+     },
+     {
+      "sequence": 4,
+      "kind": "PROVIDER_OBSERVATION",
+      "eventCode": "PROVIDER_STATUS",
+      "phase": "READ_ONLY_RECONCILIATION",
+      "runOperationId": "edf88177-aec6-45c8-b2a2-b54a33ce6a93",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": "SUCCESS",
+      "normalizedFact": "SUCCESS_REPORTED",
+      "virtualMs": 6000,
+      "wallTime": "2026-11-13T10:57:31.346Z",
+      "timerCanonical": true,
+      "summary": "PROVIDER_STATUS at sequence 4"
+     }
+    ],
+    "nextCursor": "eyJ2IjoxLCJsaXN0Ijoic2Vzc2lvbi1ldmVudHM6ZTAyZTdmNzYtYWQ1OS00MjQ3LWFkZGEtMzk5NDcxYmVmMmZkIiwiZiI6InNoYTI1NjpiMGI5OWIwNTM1YTRhYmQxY2MwOTk1ZjM3N2QxNDZhOThiZmRhOWUyZTM2ZDkzOWIyMmZhZTRjYjAzNmE5YjdlIiwicCI6eyJraW5kIjoic2VxIiwic2VxIjo1fX0.sdNG7U7oo_2OvN9NQr0u-hr1_T50j_pSm2oR3y9r3fU",
+    "hasMore": false,
+    "total": 5
+   }
+  },
+  "GET /sessions/e02e7f76-ad59-4247-adda-399471bef2fd/events?limit=100&runOperationId=edf88177-aec6-45c8-b2a2-b54a33ce6a93": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "sequence": 0,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_REQUEST_CREATED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "edf88177-aec6-45c8-b2a2-b54a33ce6a93",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:31.317Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_REQUEST_CREATED at sequence 0"
+     },
+     {
+      "sequence": 1,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_FINALIZED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "edf88177-aec6-45c8-b2a2-b54a33ce6a93",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:31.319Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_FINALIZED at sequence 1"
+     },
+     {
+      "sequence": 2,
+      "kind": "PHASE_BINDING",
+      "eventCode": "COMMIT_ACCEPTED",
+      "phase": "COMMIT_MUTATION",
+      "runOperationId": "edf88177-aec6-45c8-b2a2-b54a33ce6a93",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:31.328Z",
+      "timerCanonical": true,
+      "summary": "COMMIT_ACCEPTED at sequence 2"
+     },
+     {
+      "sequence": 3,
+      "kind": "PROVIDER_OBSERVATION",
+      "eventCode": "PROVIDER_STATUS",
+      "phase": "READ_ONLY_RECONCILIATION",
+      "runOperationId": "edf88177-aec6-45c8-b2a2-b54a33ce6a93",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": "PROCESSING",
+      "normalizedFact": "PROCESSING",
+      "virtualMs": 5000,
+      "wallTime": "2026-11-13T10:57:31.340Z",
+      "timerCanonical": true,
+      "summary": "PROVIDER_STATUS at sequence 3"
+     },
+     {
+      "sequence": 4,
+      "kind": "PROVIDER_OBSERVATION",
+      "eventCode": "PROVIDER_STATUS",
+      "phase": "READ_ONLY_RECONCILIATION",
+      "runOperationId": "edf88177-aec6-45c8-b2a2-b54a33ce6a93",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": "SUCCESS",
+      "normalizedFact": "SUCCESS_REPORTED",
+      "virtualMs": 6000,
+      "wallTime": "2026-11-13T10:57:31.346Z",
+      "timerCanonical": true,
+      "summary": "PROVIDER_STATUS at sequence 4"
+     }
+    ],
+    "nextCursor": "eyJ2IjoxLCJsaXN0Ijoic2Vzc2lvbi1ldmVudHM6ZTAyZTdmNzYtYWQ1OS00MjQ3LWFkZGEtMzk5NDcxYmVmMmZkIiwiZiI6InNoYTI1NjpkMzRhNjUzYmE4OTBjYWZiMmRiNmNhYjU2YjRkNDdjMTBhYmFlZmFkZmUzZWY1NGY4NjcyYmJhYjE4Nzg3YTE2IiwicCI6eyJraW5kIjoic2VxIiwic2VxIjo1fX0.llrDeVJ8pDhCqBMbucW99EBzzHeMR7z-luK_kD0Wzt4",
+    "hasMore": false,
+    "total": 5
+   }
+  },
+  "GET /sessions/fb4a0850-feee-4a56-91ca-6bd362f72f51/events?limit=100": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "sequence": 0,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_REQUEST_CREATED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "011f941a-8d65-400e-84a6-ffe326119be4",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:12.116Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_REQUEST_CREATED at sequence 0"
+     },
+     {
+      "sequence": 1,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_FINALIZED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "011f941a-8d65-400e-84a6-ffe326119be4",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:12.118Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_FINALIZED at sequence 1"
+     },
+     {
+      "sequence": 2,
+      "kind": "PHASE_BINDING",
+      "eventCode": "COMMIT_ACCEPTED",
+      "phase": "COMMIT_MUTATION",
+      "runOperationId": "011f941a-8d65-400e-84a6-ffe326119be4",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:12.127Z",
+      "timerCanonical": true,
+      "summary": "COMMIT_ACCEPTED at sequence 2"
+     }
+    ],
+    "nextCursor": "eyJ2IjoxLCJsaXN0Ijoic2Vzc2lvbi1ldmVudHM6ZmI0YTA4NTAtZmVlZS00YTU2LTkxY2EtNmJkMzYyZjcyZjUxIiwiZiI6InNoYTI1NjpiMGI5OWIwNTM1YTRhYmQxY2MwOTk1ZjM3N2QxNDZhOThiZmRhOWUyZTM2ZDkzOWIyMmZhZTRjYjAzNmE5YjdlIiwicCI6eyJraW5kIjoic2VxIiwic2VxIjozfX0.-pqu0Pn__z5eD2RELx5Y4FqIDH-pg6KpaPSghLqfarY",
+    "hasMore": false,
+    "total": 3
+   }
+  },
+  "GET /sessions/fb4a0850-feee-4a56-91ca-6bd362f72f51/events?limit=100&runOperationId=011f941a-8d65-400e-84a6-ffe326119be4": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "sequence": 0,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_REQUEST_CREATED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "011f941a-8d65-400e-84a6-ffe326119be4",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:12.116Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_REQUEST_CREATED at sequence 0"
+     },
+     {
+      "sequence": 1,
+      "kind": "PHASE_BINDING",
+      "eventCode": "QUOTE_FINALIZED",
+      "phase": "QUOTE_REQUEST",
+      "runOperationId": "011f941a-8d65-400e-84a6-ffe326119be4",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:12.118Z",
+      "timerCanonical": true,
+      "summary": "QUOTE_FINALIZED at sequence 1"
+     },
+     {
+      "sequence": 2,
+      "kind": "PHASE_BINDING",
+      "eventCode": "COMMIT_ACCEPTED",
+      "phase": "COMMIT_MUTATION",
+      "runOperationId": "011f941a-8d65-400e-84a6-ffe326119be4",
+      "source": "PROXY",
+      "evidenceClass": null,
+      "evidenceScope": null,
+      "evidenceReasons": [],
+      "rawStatus": null,
+      "normalizedFact": null,
+      "virtualMs": 0,
+      "wallTime": "2026-11-13T10:57:12.127Z",
+      "timerCanonical": true,
+      "summary": "COMMIT_ACCEPTED at sequence 2"
+     }
+    ],
+    "nextCursor": "eyJ2IjoxLCJsaXN0Ijoic2Vzc2lvbi1ldmVudHM6ZmI0YTA4NTAtZmVlZS00YTU2LTkxY2EtNmJkMzYyZjcyZjUxIiwiZiI6InNoYTI1Njo0MDMzNzU0MDI2MjBjMDNkZDdjOGQyNWVlYzdiOTQwOGY3YTkzMzg2MGExODUxYjU1NTg5OTE4NzRjMTE1Yjc4IiwicCI6eyJraW5kIjoic2VxIiwic2VxIjozfX0.58VekF0X7plHdmG7pAUN7VAkPIjNlsvjxXEnwKh_0Ik",
+    "hasMore": false,
+    "total": 3
+   }
+  },
+  "GET /settings": {
+   "status": 200,
+   "body": {
+    "bindAddress": "127.0.0.1",
+    "port": 9581,
+    "modes": [
+     {
+      "mode": "SIMULATE",
+      "supported": true,
+      "runtime": "NETWORKLESS_SCENARIO"
+     },
+     {
+      "mode": "REPLAY",
+      "supported": true,
+      "runtime": "NETWORKLESS_SCENARIO"
+     },
+     {
+      "mode": "LIVE_DRY_PROBE",
+      "supported": true,
+      "runtime": "LIVE_DRY_ADAPTER"
+     },
+     {
+      "mode": "COMMITTED_LIVE",
+      "supported": false,
+      "runtime": "NONE"
+     }
+    ],
+    "providerTokenState": "NOT_REQUIRED",
+    "upstreamOrigin": null,
+    "allowlistedRoutes": [
+     "POST /v0/quote (dry: true only, separate live-dry adapter)"
+    ],
+    "retention": {
+     "days": 30,
+     "storageBytes": 0
+    },
+    "exportPolicy": "Redacted bundles only; plan, privacy scan, and explicit local confirmation before any write.",
+    "versions": {
+     "app": "routespec-control-api@1.0.0",
+     "protocolProfile": "oneclick-v0@1.0.0",
+     "evaluator": "routespec-kernel@1.1.0",
+     "sdk": "@defuse-protocol/one-click-sdk-typescript@0.1.26"
+    },
+    "compatibilityRecords": [],
+    "dryProbe": {
+     "authorized": false,
+     "expiresAt": null
+    }
+   }
+  }
+ }
+}

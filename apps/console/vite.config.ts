@@ -9,11 +9,17 @@ export default defineConfig(({ command }) => {
   // development JSX transform, which embeds absolute source file paths of the build machine
   // in the bundle (found by the M12 clean-install check, T-054).
   if (command === 'build') process.env['NODE_ENV'] = 'production';
+  // The static read-only demo (M54) is built under a sub-path (GitHub Pages serves a project site
+  // at /<repository>/) into its own directory; the console the local service serves keeps '/'.
+  const base = process.env['ROUTESPEC_CONSOLE_BASE'] ?? '/';
+  if (!/^\/(?:[A-Za-z0-9._-]+\/)*$/.test(base)) {
+    throw new Error('ROUTESPEC_CONSOLE_BASE must be an absolute path ending in /');
+  }
   return {
     plugins: [react()],
-    base: '/',
+    base,
     build: {
-      outDir: 'dist',
+      outDir: process.env['ROUTESPEC_CONSOLE_OUT'] ?? 'dist',
       emptyOutDir: true,
       sourcemap: false,
       // Keep every asset as a separate same-origin file so the strict CSP (no data: fonts,

@@ -1,561 +1,335 @@
 # RouteSpec
 
-RouteSpec is a local release check for applications that use NEAR Intents 1Click through the
-official TypeScript SDK. It runs your installed client against a networkless, protocol-faithful
-local 1Click service, injects deterministic faults, records what the client did, and returns
-PASS, FAIL, or REVIEW from a pure invariant kernel. A failing case can be captured and promoted
-into a regression that the next build must pass.
+A local release check for apps that use NEAR Intents 1Click: it runs your real client against a
+simulated 1Click service, breaks the network on purpose, and tells you whether the client would
+have lost or duplicated a cross-chain order.
 
-Built during NEAR HACKATHON (2026-11). License: MIT ([`LICENSE`](LICENSE)).
+[![ci](https://github.com/gnanam1990/routespec-near/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gnanam1990/routespec-near/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+Demo video: <added after recording>
+
+- **Verify page and console demo (no install):** `https://gnanam1990.github.io/routespec-near/`
+  (verify page) and `https://gnanam1990.github.io/routespec-near/console/` (read-only console
+  recorded from a real contained run). Published after the `routespec-pages` workflow runs with
+  GitHub Pages enabled; not live yet ([M49](docs/status/M49.md), [M54](docs/status/M54.md)).
+- **Hosted app:** pending. RouteSpec is local-first; the judge path below runs on your machine.
+- **Engineering reference:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Evidence per module:
+  [`docs/status/`](docs/status/). Claim record: [`BUILD-STATUS.md`](BUILD-STATUS.md).
 
 ## 30-second summary
 
-- **Problem.** A 1Click deposit moves real funds across chains and cannot be undone. The risky
-  moment is when the service accepts a deposit submission but the client never sees the answer
-  (timeout, crash, dropped connection). A naive client resubmits, gives up, or ships the order
-  anyway. There is no Intents testnet, so these paths are hard to test before release.
-- **What RouteSpec does.** It replaces the 1Click endpoint with a loopback simulator during a
-  test, plays an exact fault schedule such as "commit accepted, response lost", and checks the
-  client against eight invariants (for example: reconcile before retrying under uncertainty, and
-  hold protected side effects until accepted completion evidence exists). The result comes with a checksummed evidence bundle and JSON, JUnit,
-  and SARIF reports.
-- **What you will see.** The repository ships three client builds that use the pinned official
-  SDK. The naive build resubmits and gives up without reconciling: its gate result is REVIEW.
-  A second naive build "hedges" a slow deposit submission by placing a second order while the
-  first is still unanswered: its gate result is FAIL (INV-03), with or without Docker. The
-  corrected build reconciles through the read-only status route: its gate result is PASS when
-  subjects run contained (Docker), and REVIEW without Docker because RouteSpec will not count a
-  client's own hooks as proof of its side effects.
-- **No funds, no keys.** RouteSpec never signs, holds a credential, or moves funds. Everything in
-  the judge path below runs offline on 127.0.0.1.
+- **Problem.** A 1Click deposit moves real funds across chains and cannot be undone. The dangerous
+  moment is when the service accepts a deposit but the app never hears back (timeout, crash,
+  dropped connection). A naive app then gives up, or places a second order. NEAR Intents has no
+  testnet, so this path is hard to test before release.
+- **What RouteSpec does.** During a test it points the official 1Click TypeScript SDK at a
+  loopback simulator, plays an exact fault such as "deposit accepted, answer lost", records every
+  request the client process made, and returns **PASS**, **FAIL** or **REVIEW** from a pure
+  invariant kernel ([`packages/kernel`](packages/kernel/src/evaluate.ts)). A failing case can be
+  captured and promoted into a regression that the next build must pass.
+- **Why NEAR.** 1Click settles cross-chain and irreversibly; a client bug around a lost response
+  double-delivers or ships on a refund. RouteSpec tests exactly that boundary of a NEAR Intents
+  integration, using the pinned official SDK unchanged, and checks its simulator against the real
+  1Click API with `dry: true` quotes (no funds). Release decisions can be recorded as signed
+  certificates in a NEAR contract (built and sandbox-tested; testnet deployment pending).
+
+### The story in one run: FAIL, then REVIEW, then PASS
+
+The repository ships three client builds that call the official SDK. The verdicts below are the
+kernel's output over what each client process actually sent; nothing is hand-written.
+
+| Client build                                                                   | What it does when the answer is late or lost                                              | Verdict                                                    |
+| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| [hedging](packages/regressions/test/support/subject/hedging-client.ts)         | after 750 ms without an answer it places a **second order** while the first is still open | **FAIL** (INV-03: second order under uncertainty)          |
+| [naive baseline](packages/regressions/test/support/subject/baseline-client.ts) | resubmits, is refused, gives up without ever learning the outcome                         | **REVIEW** (outcome never established)                     |
+| [corrected](packages/regressions/test/support/subject/corrected-client.ts)     | reads `/v0/status` for the same deposit until it is terminal (reconciles)                 | **PASS** when run contained; REVIEW without Docker (below) |
+
+Why the corrected build is REVIEW without Docker: RouteSpec will not take a client's own word for
+its side effects. Only when the client runs in a sealed container with an independent observer
+does it count the evidence and give PASS.
+
+What is proven today: the whole journey runs end to end from a fresh clone, offline, and the
+FAIL, REVIEW and PASS above are real kernel verdicts over real client processes; and the real
+1Click API answered 24 of 26 `dry: true` routes in the exact shape RouteSpec simulates (2 unknown,
+0 different). The specification's formal label
+`WORKING_LOCAL` is still withheld until a second person reviews the interceptor profile and the
+contained run is repeated on that review ([Honest status](#honest-status)).
+
+### Glossary
+
+- **PASS / FAIL / REVIEW / NOT_RUN**: proven safe / a rule was broken / not enough independent evidence to pass / did not run
+- **INV-01**: one logical job maps to one run operation
+- **INV-02**: an order's binding (quote, deposit address, commit) never changes after it is made
+- **INV-03**: reconcile before retry: after an unknown outcome, only status reads until a terminal result
+- **INV-04**: protected side effects (shipping goods, granting access) wait for accepted completion evidence
+- **INV-05**: value is conserved per asset; any unexplained loss is FAIL
+- **INV-06**: a terminal outcome is never silently replaced by a later, weaker one
+- **INV-07**: one piece of evidence satisfies at most one order
+- **INV-08**: weak or missing evidence cannot satisfy a claim that needs proof
+- **Gate run / corpus / case**: one release check of one build / the fixed set of scenarios it runs / one scenario run in isolation
+- **Contained**: the client runs in a locked-down container (no network except a tunnel to RouteSpec, read-only root, seccomp, attested launch)
+- **Declared hooks only**: uncontained: only the client's own reports of its side effects exist, so INV-04 stays REVIEW
+- **Release evidence / `DIAGNOSTIC_ONLY`**: a capture strong enough to gate a release / a weaker capture kept only as advice
+- **`dry: true` quote**: a 1Click quote that never creates a deposit address and never moves funds
+- **Release certificate / attester**: a signed on-chain record of a gate decision for an evidence bundle digest / the key allowed to sign it ([ADR-0029](docs/adr/0029-onchain-release-certificates.md))
+- **`WORKING_LOCAL`**: the specification's strict claim level; needs every real-product gate met ([BUILD-STATUS](BUILD-STATUS.md))
+
+The kernel's invariant code is in [`packages/kernel/src/invariants/`](packages/kernel/src/invariants/);
+the normative text is [`docs/spec/CORE-CONTRACT.md`](docs/spec/CORE-CONTRACT.md).
+
+## Screenshots
+
+Console pages served by the real local control service over test data (the project uses a
+placeholder commit id).
+
+![Releases page: revision matrix with one gate run FAIL and one PASS, each row naming the exact subject build and corpus digest](docs/media/releases-matrix.webp)
+
+![Gate run page for a FAIL decision: verdict FAIL, effect coverage "Declared hooks only — REVIEW", and the five case runs with PASS, REVIEW and FAIL verdicts](docs/media/gate-run-fail.webp)
+
+![Case run page: PASS verdict, required invariants INV-01, INV-02, INV-03, INV-05, and the recorded trace from quote request to provider status](docs/media/case-run-trace.webp)
+
+![Regression review page: an uncontained capture refused as release evidence, with the six reasons listed, and Promote unavailable](docs/media/capture-refused.webp)
+
+## See it on chain
+
+**No NEAR testnet or mainnet transaction has been sent yet, so there is no explorer link to
+show.** The on-chain part, release certificates in the `routespec-registry` contract
+([`contracts/routespec-registry`](contracts/routespec-registry/crates/routespec-registry/src/lib.rs)),
+is built and was run against a real local NEAR node; deploying it to testnet and publishing the
+first certificate are owner steps ([runbook](docs/runbooks/release-certificates.md)). Every recorded run
+that touched NEAR, and where it ran:
+
+- **One `dry: true` quote, wNEAR -> USDC, official SDK profile**. Where it ran: official 1Click API (mainnet service, no funds). Result: `OFFICIAL_ENDPOINT_COMPATIBLE`, HTTP 201. Evidence: [M42](docs/status/M42.md).
+- **Fidelity matrix, 26 routes, `dry: true` only**. Where it ran: official 1Click API (mainnet service, no funds). Result: `NO_DRIFT`: 24 compatible, 0 incompatible, 2 unknown. Evidence: [M51](docs/status/M51.md).
+- **Registry contract: enrol, publish, tamper, replay, deposit, revoke (20 tests)**. Where it ran: local nearcore 2.14.0 sandbox node. Result: pass. Evidence: [test](packages/registry/sandbox-test/registry-contract.sandbox.test.ts), [M47](docs/status/M47.md), [M47A](docs/status/M47A.md).
+- **CLI publishes and verifies real bundles (14) and CI certificate step (5)**. Where it ran: local nearcore sandbox node. Result: pass. Evidence: [M47](docs/status/M47.md).
+- **Badge, CLI and built verify page agree (11; Chromium)**. Where it ran: local nearcore sandbox node. Result: pass (no certificate, PASS, FAIL, revoked attester). Evidence: [test](apps/verify/sandbox-test/m49-certified-badge.sandbox.test.ts), [M49](docs/status/M49.md).
+- **Registry deployment, attester enrolment, first certificate**. Where it ran: NEAR testnet. Result: **pending (owner)**. Evidence: [runbook](docs/runbooks/release-certificates.md).
+
+Reproducible contract build: wasm `sha256:bc6d8b9d…7b656`, NEAR code hash
+`DgYXio822TH3CGJqfKU8gDFFSSqmxurWAwG1i4Jhqo5P` ([M47A](docs/status/M47A.md),
+`pnpm run registry:reproduce`). The verify page expects the registry at
+`gnanam1990-routespec.testnet` ([config](apps/verify/public/config.json)); its explorer page,
+empty until deployment, is <https://testnet.nearblocks.io/address/gnanam1990-routespec.testnet>.
+
+Read-only check (no key, no transaction):
+
+```sh
+curl -s https://test.rpc.fastnear.com -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"query","params":{"request_type":"view_account","finality":"final","account_id":"gnanam1990-routespec.testnet"}}'
+```
+
+On 2026-11-13 it returns `UNKNOWN_ACCOUNT` (not deployed). After deployment its `code_hash`
+must equal `DgYXio822TH3CGJqfKU8gDFFSSqmxurWAwG1i4Jhqo5P`.
 
 ## Try it in 10 minutes
 
-Needs Node.js 22.18 or later, pnpm 10, and git. No Docker, no account, no API key. Every command
-below was run from a fresh clone of `main` on Windows 11 (Git Bash and PowerShell) on 2026-11-13.
-On Linux and macOS the commands are the same; they were not run by hand on those hosts for this
-record, but `pnpm run check` runs there in CI (see [Status](#honest-status)).
+Needs Node.js 22.18 or later, pnpm 10 and git. No Docker, no account, no API key, no network after
+install. Every command and output below was run from a fresh local clone of `main` (`425d48e`) on
+Windows 11 (Git Bash) on 2026-11-13, with pnpm already installed. CI runs `pnpm run check` on Linux, macOS and Windows.
 
-**1. Install and build** (about 1 minute)
+**1. Clone, install, run the one-command judge check** (44 seconds here with a warm pnpm
+store; a first package download takes longer)
 
 ```sh
 git clone https://github.com/gnanam1990/routespec-near.git routespec
 cd routespec
 corepack enable                    # or: npm install -g pnpm@10.34.9
 pnpm install --frozen-lockfile
-pnpm run build
-pnpm run build:console
+pnpm judge
 ```
 
-See: `pnpm install` ends with `Done`; both builds exit 0 (the console build prints a `dist/`
-file list). `pnpm install` also prints a boxed notice `Ignored build scripts: esbuild` and
-suggests `pnpm approve-builds`. That is expected and harmless: pnpm 10 does not run dependency
-install scripts unless approved, and esbuild (used by Vite for the console build) gets its
-platform binary from its `@esbuild/*` optional package instead. Nothing below needs
-`pnpm approve-builds`.
-
-**2. Run the whole product journey** (about 10 seconds)
-
-```sh
-pnpm run delivery:journey -- --work .data/demo --out .data/journey.json --no-ui
-node scripts/journey-summary.mjs .data/journey.json
-```
-
-`.data/` is ignored by git. The journey starts the real control service, registers a project
-and the three client builds through the public API, runs each build as its own process, captures
-the failure, promotes it to a regression, reruns, exports a bundle, crashes and restarts the
-service, and verifies the bundle offline. No verdict is hand-written: every verdict below is the
-invariant kernel's result over what the client process actually sent.
-
-See (abridged):
+`pnpm install` prints a boxed `Ignored build scripts: esbuild` notice; it is expected and nothing
+needs `pnpm approve-builds`. [`pnpm judge`](packages/distribution/src/judge.ts) builds, runs the
+whole product journey, checks the recorded console demo and its evidence bundle, and gates the
+sample client with the npm package installed offline. Expected (abridged; times from this run):
 
 ```text
-containment UNCONTAINED
-baseline client, release corpus: gate decision REVIEW
-  case 0 accepted-then-lost-response: client GAVE_UP (resubmissions answered: 401 RS_TOKEN_REVOKED, ...) | INV-03 REVIEW | INV-04 REVIEW | ...
+PASS    build        12.4s  tsc -b exit 0
 hedging client, slow-answer corpus: gate decision FAIL
-  case 0 slow-commit-answer: client HEDGED (second quote and deposit submitted while the first was unanswered; run operations 2) | INV-03 FAIL | INV-04 REVIEW | effect coverage DECLARED_HOOKS_ONLY | case verdict FAIL
+  case 0 slow-commit-answer: client HEDGED (second quote and deposit submitted while the first was unanswered; run operations 2) | INV-03 FAIL | ...
+baseline client, release corpus: gate decision REVIEW
 corrected client, promoted corpus: gate decision REVIEW
-  case 0 accepted-then-lost-response: client RECONCILED | INV-03 PASS | INV-04 REVIEW | effect coverage DECLARED_HOOKS_ONLY | ...
+  case 0 accepted-then-lost-response: client RECONCILED | INV-03 PASS | INV-04 REVIEW | effect coverage DECLARED_HOOKS_ONLY | case verdict REVIEW
 capture as release evidence: refused 422 RS_CAPTURE_NOT_RELEASE_EVIDENCE (DECLARED_HOOKS_ONLY, ...)
-promoted as DIAGNOSTIC_ONLY
 evidence bundle verified offline: true
 crash recovery: epoch 1 -> 2, stale token RS_TOKEN_REVOKED, second mutation RS_TOKEN_PHASE_DENIED
+PASS    journey       8.8s  containment UNCONTAINED; baseline REVIEW, hedging FAIL, corrected REVIEW; bundle verified offline true
+SKIPPED contained     0.0s  no container engine configured (set ROUTESPEC_CONTAINER_CLI or pass --contained)
+PASS    demo          0.4s  recorded from a CONTAINED run at 4fe98d17dbf0; bundle PASS, verified true
+PASS    package      17.5s  routespec@0.1.0 (1377 files, ...) installed offline; self-gate PASS
+routespec judge: all steps passed or were skipped (record: .data/judge/judge.json)
 ```
 
-Read it as: the naive client lost the response, its resubmissions were refused, and it never
-reached an accepted terminal status (INV-03 REVIEW).
+Exit code 0. A step is PASS only when the product returned what this README says; the judge
+script never computes a verdict itself.
 
-The hedging client ([`hedging-client.ts`](packages/regressions/test/support/subject/hedging-client.ts))
-is the FAIL case. It ran the `slow-commit-answer` scenario
-([`scenarios.ts`](packages/delivery/src/scenarios.ts)), where the simulated service accepts the
-deposit submission but holds its answer until the client reads status. After 750 ms without an
-answer the client requested a fresh quote under a new order key, submitted a second deposit, and
-cancelled the first request. The journal shows a quote finalization and a second commit accepted
-after the first commit and before any terminal status for it, so the kernel returns INV-03 FAIL
-(a mutation was accepted while a commit outcome was still unknown). The case, the gate, the
-console, and the CLI (`gate show`, exit code 2) all report FAIL. The scenario states no expected
-verdict, and RouteSpec did not refuse the second order: when it arrived, no response had been
-lost yet, so there was nothing to fence.
-
-The corrected client reconciled to `SUCCESS` (INV-03 PASS). Its gate stays REVIEW here only
-because, without containment, the side-effect check (INV-04) has nothing but the client's own
-hooks, and the uncontained capture is refused as release evidence. Step 4 shows the contained run
-where the corrected build passes.
-
-**3. Open the console on the same data**
+**2. Optional: the contained run where the corrected client gets PASS** (about 75 seconds, needs a
+Linux container engine and `docker pull node:22-bookworm-slim` once)
 
 ```sh
-node packages/control-api/src/main.ts --data .data/demo/data --console apps/console/dist --handoff stderr
-```
-
-See: one JSON line with the origin, then `routespec: console http://127.0.0.1:<port>/#token=...`.
-Open that URL (the token is removed from the address bar on load). The Releases page lists five
-gate runs for `release-candidate-1` with Verdict, Evidence, Subject identity ("User-asserted local
-build"), Effect coverage ("Declared hooks only — REVIEW"), and Enforcement ("Local advisory").
-The Gate summary at the top shows the most recent gate run (the corrected build), says so, and
-names its gate run id; select a row in the matrix to see another. The second row, Verdict FAIL,
-is the hedging build: "Open gate run" shows its case with INV-03 FAIL. "Open gate run" shows each
-case with its invariants, run operations, and the export panel. Stop
-the service with Ctrl+C. Reloading the page drops the session by design; start the service again
-for a new link.
-
-**4. Optional: the contained run where the corrected client passes** (about 1 minute, needs Docker)
-
-Docker is needed only for containment. Pull the image once, point RouteSpec at the engine, and
-add `--contained`:
-
-```sh
-docker pull node:22-bookworm-slim
 export ROUTESPEC_CONTAINER_CLI='["docker"]'          # Docker Engine on Linux
-pnpm run delivery:journey -- --work .data/demo-contained --out .data/journey-contained.json --no-ui --contained
-node scripts/journey-summary.mjs .data/journey-contained.json
+# Windows, Docker Engine inside WSL 2 (what was run for this record):
+# export ROUTESPEC_CONTAINER_CLI='["wsl.exe","-d","Ubuntu-24.04","-u","root","--exec","docker"]'
+pnpm judge --skip-package
 ```
 
-On Windows with Docker Engine inside WSL 2 (PowerShell):
-
-```powershell
-$env:ROUTESPEC_CONTAINER_CLI = '["wsl.exe","-d","Ubuntu-24.04","-u","root","--exec","docker"]'
-pnpm run delivery:journey -- --work .data/demo-contained --out .data/journey-contained.json --no-ui --contained
-node scripts/journey-summary.mjs .data/journey-contained.json
-```
-
-See:
+Expected:
 
 ```text
-containment CONTAINED
-baseline client, release corpus: gate decision REVIEW
-  case 0 accepted-then-lost-response: client GAVE_UP (resubmissions answered: 403 RS_TOKEN_PHASE_DENIED, ...) | INV-03 REVIEW | INV-04 PASS | effect coverage INDEPENDENT_BOUNDARY_INTERCEPT | ...
-hedging client, slow-answer corpus: gate decision FAIL
-  case 0 slow-commit-answer: client HEDGED (second quote and deposit submitted while the first was unanswered; run operations 2) | INV-03 FAIL | INV-04 PASS | effect coverage INDEPENDENT_BOUNDARY_INTERCEPT | case verdict FAIL
-corrected client, promoted corpus: gate decision PASS
-  case 0 accepted-then-lost-response: client RECONCILED | INV-03 PASS | INV-04 PASS | effect coverage INDEPENDENT_BOUNDARY_INTERCEPT | case verdict PASS
-capture as release evidence: accepted
-promoted as RELEASE_EVIDENCE
-regression status CORRECTED_RUN_PASSED
+PASS    contained    62.5s  containment CONTAINED; baseline REVIEW, hedging FAIL, corrected PASS; bundle verified offline true
 ```
 
-Containment does not change the hedging verdict: INV-03 is judged from the journal either way.
-Opening the console on `.data/demo-contained/data` (step 3) shows the last gate run as PASS with
-"Trusted launcher attestation" and "Independent boundary". Each subject ran in a container with
-no network except a loopback tunnel to RouteSpec, a read-only root, no capabilities, a seccomp
-filter, and an attested launch. The journey signs the interceptor profile review with a locally
-generated test key, so this PASS is not an independent review (see Status). The WSL 2 variant
-was verified for this record; the plain Linux `["docker"]` variant was not run here. Engine setup:
-[`docs/runbooks/container-containment.md`](docs/runbooks/container-containment.md).
+Only the WSL 2 form was run for this record; the plain Linux `["docker"]` form was not. Engine
+setup: [`docs/runbooks/container-containment.md`](docs/runbooks/container-containment.md).
 
-**5. Run the test suite**
+**3. Open the console on the journey's data** (the local demo)
 
 ```sh
-pnpm run check
+pnpm run build:console
+node packages/control-api/src/main.ts --data .data/judge/journey/data --console apps/console/dist --handoff stderr
 ```
 
-See: typecheck, ESLint, Prettier, Vitest, and the repository secret scan; on this record's commit (2026-11-13, Windows 11):
-`Test Files 86 passed | 1 skipped (87)`, `Tests 727 passed | 6 skipped (733)`,
-`secret-scan: clean`. One earlier full run (M40, fresh clone) had a single timing failure in
-T-042 (an endless chunked body cut-off) under full parallel load; it passed on three isolated
-reruns and on the next full run. Longer suites (`test:delivery`, `test:e2e:real`,
-`test:containment`) are listed under [Verify](#verify).
+It prints one JSON line with the origin, then `routespec: console http://127.0.0.1:<port>/#token=...`.
+Open that URL (the token leaves the address bar on load). Releases shows the gate runs for
+`release-candidate-1`; the FAIL row is the hedging build, and "Open gate run" shows its case with
+INV-03 FAIL. Use `.data/judge/journey-contained/data` after step 2 to see the PASS. Stop with Ctrl+C.
 
-## Add the RouteSpec gate to your CI
+**4. The full test suite**
 
-The repository contains a composite GitHub Action,
-[`.github/actions/routespec-gate`](.github/actions/routespec-gate/action.yml). It installs
-RouteSpec's pinned dependencies, removes provider secrets and CI tokens before its entry point
-starts, runs the networkless gate (simulate and replay only), and stages redacted reports
-(JSON, JUnit, SARIF, evidence bundle). The step exits 0 only for a PASS decision.
+```sh
+pnpm run check      # typecheck, ESLint, Prettier, Vitest, secret scan
+```
 
-1. Add a `routespec.ci.json` (schema `routespec.ci-config/1`) to your repository. It names your
-   client module, its artifact files, lockfile, declared effect manifest, scenarios, and required
-   invariants. The repository's own self-gate config is a working example:
-   [`.github/routespec/routespec.ci.json`](.github/routespec/routespec.ci.json).
-2. Add a workflow step, pinned to a reviewed commit of this repository:
+Result on this record's commit is in [Honest status](#honest-status). Longer suites
+(`test:delivery`, `test:containment`, `test:registry`, `test:e2e:real`) are listed in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#verify).
 
-   ```yaml
-   permissions:
-     contents: read
-   jobs:
-     routespec:
-       runs-on: ubuntu-24.04
-       steps:
-         - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-           with:
-             persist-credentials: false
-         - id: gate
-           uses: gnanam1990/routespec-near/.github/actions/routespec-gate@<reviewed-commit-sha>
-           with:
-             config: routespec.ci.json
-         - if: ${{ always() && steps.gate.outputs.upload-directory != '' }}
-           uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
-           with:
-             name: routespec-gate-${{ github.run_id }}
-             path: ${{ steps.gate.outputs.upload-directory }}
-             retention-days: ${{ steps.gate.outputs.retention-days }}
-   ```
+## Features
 
-   A reusable-workflow version is in
-   [`docs/ci/routespec-gate.reusable.example.yml`](docs/ci/routespec-gate.reusable.example.yml).
+Every merged module, one line each. "Pending" means built and tested here, waiting for an owner
+step (publish, deploy, a key, or a second person).
 
-3. Outputs: `conclusion`, `decision`, `exit-code`, `trust`, `enforcement-mode`, `artifact-ready`.
-   Pull-request and fork jobs get no secrets and upload only redacted reports. Enforcement is
-   reported as `CI_CHECK` or `REQUIRED_CHECK_UNVERIFIED`; RouteSpec never claims it blocks a
-   merge. The action does not use containment.
-
-The action's behaviour was tested with a simulated runner environment (T-056, T-058), and it has
-run on GitHub's hosted runners: the repository's self-gate workflow `routespec-gate`
-(ubuntu-24.04) succeeded on `main` at `ab9b89f`
-([run 43272644038](https://github.com/gnanam1990/routespec-near/actions/runs/43272644038)) and at
-`bfd3065` ([run 43357797080](https://github.com/gnanam1990/routespec-near/actions/runs/43357797080)).
-The step exits 0 only for a PASS decision, so the sample subject's gate decision was PASS.
+- **Simulated 1Click service** for `/v0/quote`, `/v0/deposit/submit`, `/v0/status`, networkless,
+  with deterministic faults and a virtual clock (M02, M03): [proxy](packages/proxy/src/), [scenarios](packages/scenario/src/).
+- **Invariant kernel** INV-01..INV-08, pure function from journal to verdicts (M04): [kernel](packages/kernel/src/), [M04](docs/status/M04.md).
+- **Closed versioned schemas and the 1Click protocol profile** (M00): [contracts](packages/contracts/src/).
+- **Durable journal** on `node:sqlite` with fenced tokens and crash recovery (M01): [store](packages/store/src/), [M00-M03](docs/status/M00-M01-M03.md).
+- **Capture to regression**: quarantine, sanitise, replay-verify, review, promote (M05): [regressions](packages/regressions/src/), [M05](docs/status/M05.md).
+- **Release gates, CLI and reports** (JSON, JUnit, SARIF, checksummed bundles) (M06): [runner](packages/runner/src/), [cli](packages/cli/src/), [M06](docs/status/M06.md).
+- **Official `dry: true` probe** in its own process; deposits and signatures refused before any socket (M07, M42): [adapter](packages/live-dry-adapter/src/), [M42](docs/status/M42.md).
+- **1Click fidelity matrix**, 26 real dry routes, `NO_DRIFT`; scheduled job pending its first GitHub run (M51): [M51](docs/status/M51.md).
+- **Local control API and accessible web console** (WCAG 2.2 AA checked with axe) (M08, M09, M45, M46): [control-api](packages/control-api/src/), [console](apps/console/src/), [M09](docs/status/M09.md).
+- **GitHub Action** gate with redacted uploads; green on hosted runners (M10): [action](.github/actions/routespec-gate/action.yml), [M10](docs/status/M10.md).
+- **Hardening**: secret redaction, path policy, supply-chain audit (M11): [hardening](packages/hardening/src/), [M11](docs/status/M11.md).
+- **Container containment** with attested launches and an independent effect observer (M14, M17): [containment](packages/containment/src/), [M14](docs/status/M14.md), [M17](docs/status/M17.md).
+- **Release-evidence refusal and signed interceptor profile review** (M16): [M16](docs/status/M16.md).
+- **One pinned official SDK example run contained**; it stopped at `GET /v0/tokens`, so no invariant was evaluated (M48): [M48](docs/status/M48.md).
+- **Observed-incident corpus and read-only Explorer importer**; live import pending an Explorer API key, corpus has 0 records (M50): [M50](docs/status/M50.md).
+- **On-chain release certificates and attester registry**, sandbox-tested; testnet deployment pending (M47, M47A): [contract](contracts/routespec-registry/), [M47](docs/status/M47.md).
+- **"RouteSpec Certified" badge and static verify page**, sandbox-tested; Pages publish pending, and no badge is shown here because no certificate exists (M49): [verify](apps/verify/), [M49](docs/status/M49.md).
+- **Fix patterns**: for a FAIL or REVIEW, the SDK calls found and a suggested diff (M53): [fix-patterns](packages/fix-patterns/src/), [example](docs/demo/m53-fix-advice-hedging.md).
+- **MCP server and coding-agent skill** (`routespec mcp`, five tools); scripted session shows a real FAIL then PASS (M52): [skill](examples/agent-skill/SKILL.md), [transcript](examples/agent-skill/demo/TRANSCRIPT.md).
+- **Delivery and upkeep**: clean-clone end-to-end delivery tests (M12), dependency upgrades (M13),
+  CI runner fix (M15), consolidation (M18), reviewer kits (M19, [kits](docs/review-kits/README.md)),
+  README, screening and console polish (M40 to M46), registry audit pin (M49A): [BUILD-STATUS](BUILD-STATUS.md).
+- **Distribution**: npm package, Marketplace action, recorded console demo, `pnpm judge`; npm publish, Marketplace listing and Pages deploy pending (M54): [M54](docs/status/M54.md).
 
 ## NEAR integration: exactly what is used
 
-| Used                                                         | How                                                                                                                                                                                                                                                                                                                                            |
-| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| NEAR Intents 1Click TypeScript SDK                           | `@defuse-protocol/one-click-sdk-typescript` pinned at `0.1.26` ([ADR-0002](docs/adr/0002-official-1click-sdk-pin.md)). The clients under test call it unchanged; RouteSpec only points its base URL at the loopback proxy.                                                                                                                     |
-| 1Click API protocol (`oneclick-v0` profile)                  | The local service implements `/v0/quote`, `/v0/deposit/submit`, and `/v0/status` and the status lifecycle (`PROCESSING`, `SUCCESS`, `REFUNDED`, `FAILED`, ...) as a data-only model. Unknown routes never pass through.                                                                                                                        |
-| 1Click official endpoint, `dry: true` quotes only (optional) | A separate live-dry adapter can send at most one `dry: true` quote to `https://1click.chaindefuser.com`; committed quotes, deposits, and signatures are refused before any credential, DNS lookup, or socket. **Run once** with the owner's JWT (RP-07, 2026-11-13): `OFFICIAL_ENDPOINT_COMPATIBLE`, HTTP 201 ([details](docs/status/M42.md)). |
+- **NEAR Intents 1Click TypeScript SDK**: `@defuse-protocol/one-click-sdk-typescript` pinned at `0.1.26` ([ADR-0002](docs/adr/0002-official-1click-sdk-pin.md)); clients call it unchanged, RouteSpec only points its base URL at the loopback simulator
+- **1Click API protocol (`oneclick-v0` profile)**: quote, deposit submit and status routes and the status lifecycle as a data-only model ([profile](packages/contracts/src/protocol/oneclick-v0.ts))
+- **Official 1Click endpoint, `dry: true` only**: one probe and a 26-route matrix against `https://1click.chaindefuser.com` with the owner's JWT ([M42](docs/status/M42.md), [M51](docs/status/M51.md)); no deposit, no settlement
+- **NEAR smart contract (near-sdk 5.30.1)**: `routespec-registry`: owner-managed attester keys, signature-checked append-only certificate log, views; no payable method, no promise ([ADR-0029](docs/adr/0029-onchain-release-certificates.md))
+- **NEAR JSON-RPC (read-only)**: minimal client in [`packages/registry/src/near.ts`](packages/registry/src/near.ts) and the browser verify page; `https://test.rpc.fastnear.com` for testnet
+- **nearcore sandbox**: the contract, CLI, CI step and verify page tested against a real local node ([`vitest.registry.config.ts`](vitest.registry.config.ts))
+- **Intents Explorer API (read-only)**: importer built against the public OpenAPI shape; no authenticated request made yet ([M50](docs/status/M50.md))
 
-Not used: NEAR smart contracts, NEAR RPC, wallets, signing, chain signatures, testnet or mainnet
-transactions. Nothing ran on NEAR testnet: NEAR Intents has no testnet, and RouteSpec is
-networkless by design. Why NEAR: 1Click settles cross-chain and is irreversible, so a client bug
-around a lost response can double-deliver or deliver on a refund. RouteSpec tests exactly that
-boundary of a NEAR Intents integration before release.
-
-## Honest status
-
-Full record: [`BUILD-STATUS.md`](BUILD-STATUS.md); per-module evidence in
-[`docs/status/`](docs/status/); what only the owner can do:
-[`docs/USER-NEXT-STEPS.md`](docs/USER-NEXT-STEPS.md).
-
-- **Claim level: no `WORKING_*` level is claimed.** The real CI run (RP-05) is now observed (next
-  item). `WORKING_LOCAL` still needs (1) a review of the canary interceptor profile by a reviewer
-  independent of the operator, with their own key (RP-02/RP-06), (2) a contained gate run in a
-  data directory that holds that review, so INV-04 and the capture classification rest on it,
-  and (3) a rerun of `pnpm run test:delivery` with the engine configured on that same commit. The
-  journeys review the profile with a locally generated test key held by the operator, so (1) is
-  not met.
-- **Real CI (RP-05): observed.** GitHub Actions `ci` ran green from a clean checkout of `main` at
-  `ab9b89f` on ubuntu-24.04, windows-2022, and macos-15
-  ([run 43272644091](https://github.com/gnanam1990/routespec-near/actions/runs/43272644091)), and
-  again at `bfd3065`
-  ([run 43357797047](https://github.com/gnanam1990/routespec-near/actions/runs/43357797047));
-  `routespec-gate` ran green on both commits (see the CI section). Commits made after `bfd3065`
-  are covered only once they are pushed and their runs are green.
-- **What ran:** modules M00–M18 and ten security fixes, merged locally; the uncontained and
-  contained journeys (above); `pnpm run check`; the console against the real service
-  (Playwright + axe, Chromium); container escape and container-host access tests on Docker
-  Engine in WSL 2, all on Windows 11 x64; and `pnpm run check` on Linux and macOS through the CI
-  runs above.
-- **What ran on testnet:** nothing (see NEAR integration).
-- **Official `dry: true` probe (RP-07):** run with the owner's 1Click JWT on 2026-11-13:
-  `OFFICIAL_ENDPOINT_COMPATIBLE` (HTTP 201, one wNEAR -> USDC dry quote, no settlement). The
-  first run reported `INCOMPATIBLE` because RouteSpec compared the echoed request byte-for-byte;
-  M42 fixed that comparison (`docs/status/M42.md`).
-- **Not done:** the independent interceptor profile review (above); the contained journey and `test:delivery` on Linux and
-  macOS hosts; Firefox, WebKit, and screen readers; an independent human security review; plain
-  Linux Docker and rootless engines. RouteSpec has no funded mode and no hosted deployment.
+Not used: wallets, signing of user transactions, Chain Signatures, funded swaps. Gate decisions
+themselves are always networkless; a certificate records a decision, it never changes one.
 
 ## Security
 
-Two security audits were run against this code by the team itself. Both were self-run; neither
-is a third-party audit. Every confirmed finding was first reproduced with a failing test on the
-real code, then fixed, and each has its own evidence record in [`docs/status/`](docs/status/):
+Two security audits were run by the team itself (self-run, not third-party). Every confirmed
+finding was first reproduced with a failing test on the real code, then fixed; each has its own
+record.
 
-- **[Strix](https://github.com/usestrix/strix) 1.7.0**, an open-source automated
-  penetration-testing agent, run by the team against this repository: 3 findings, all fixed —
-  [vuln-0001](docs/status/SEC-routespec-vuln-0001.md) (medium, withheld CI credentials readable
-  through `/proc/<pid>/environ`), [vuln-0002](docs/status/SEC-routespec-vuln-0002.md) (low,
-  credential shapes missed after a word character),
-  [vuln-0003](docs/status/SEC-routespec-vuln-0003.md) (low, auth-failure budget locked out the
-  operator).
-- **Cloudflare's open-source
-  [security-audit skill](https://github.com/cloudflare/security-audit-skill) methodology**,
-  applied by the team to this repository: 7 findings, all fixed — [RS-01](docs/status/SEC-routespec-RS-01.md) (medium, unauthenticated interceptor
-  sink), [RS-02](docs/status/SEC-routespec-RS-02.md) (contained subject could write to the host
-  control channel), [RS-03](docs/status/SEC-routespec-RS-03.md) (pre-authentication rate budget),
-  [RS-04](docs/status/SEC-routespec-RS-04.md) (quarantine dropped blocking findings past 512),
-  [RS-05](docs/status/SEC-routespec-RS-05.md) (journal readable by other local users),
-  [RS-06](docs/status/SEC-routespec-RS-06.md) (connection barriers keyed by step id only),
-  [RS-07](docs/status/SEC-routespec-RS-07.md) (gate kept PASS for a revoked attester); RS-02 to
-  RS-07 are low.
+- **[Strix](https://github.com/usestrix/strix) 1.7.0**, an open-source automated penetration-testing
+  agent: 3 findings, all fixed: [vuln-0001](docs/status/SEC-routespec-vuln-0001.md) (medium, withheld
+  CI credentials readable through `/proc/<pid>/environ`), [vuln-0002](docs/status/SEC-routespec-vuln-0002.md)
+  (low, credential shapes missed after a word character), [vuln-0003](docs/status/SEC-routespec-vuln-0003.md)
+  (low, auth-failure budget locked out the operator).
+- **Cloudflare's open-source [security-audit skill](https://github.com/cloudflare/security-audit-skill)
+  methodology**: 7 findings, all fixed: [RS-01](docs/status/SEC-routespec-RS-01.md) (medium,
+  unauthenticated interceptor sink), [RS-02](docs/status/SEC-routespec-RS-02.md) (contained subject
+  could write to the host control channel), [RS-03](docs/status/SEC-routespec-RS-03.md)
+  (pre-authentication rate budget), [RS-04](docs/status/SEC-routespec-RS-04.md) (quarantine dropped
+  blocking findings past 512), [RS-05](docs/status/SEC-routespec-RS-05.md) (journal readable by other
+  local users), [RS-06](docs/status/SEC-routespec-RS-06.md) (connection barriers keyed by step id
+  only), [RS-07](docs/status/SEC-routespec-RS-07.md) (gate kept PASS for a revoked attester); RS-02
+  to RS-07 are low.
+- **Registry contract audit (M47A)**: 1 low finding fixed (small-order Ed25519 attester keys could
+  forge certificates; failing sandbox test first), 3 accepted risks recorded
+  ([M47A](docs/status/M47A.md)); M49A pinned the audited build in the badge test.
+- **Incident importer (M50)**: treats Explorer data as untrusted; sanitisation to a closed set of
+  239 descriptors, no redirects, request spacing ([M50](docs/status/M50.md)).
 
-Known remaining limits are stated in those records (for example, hostile code inside the CI
-action process is not contained). An independent human security review is still NOT_RUN. The
-fix branches are `feat/routespec-m20-*` to `feat/routespec-m29-*`, one per finding (see
-[Layout](#layout)).
+An independent human security review is NOT_RUN. Known limits are in each record (for example,
+hostile code inside the CI action process is not contained).
 
-## Hackathon disclosure
+## Honest status
 
-- **Built during NEAR HACKATHON.** The repository's first commit is 2026-11-11 (import of the
-  RouteSpec specification pack in [`docs/spec/`](docs/spec/START-HERE.md)); all code was written
-  from 2026-11-11 to 2026-11-13. No pre-existing code from any other project is included, so the
-  whole history is the hackathon work.
-- **Third-party libraries** (all from npm, pinned in `pnpm-lock.yaml`): the official 1Click SDK
-  above, zod, yaml, React, react-router, Vite, Vitest, Playwright, axe-core, fast-check,
-  TypeScript, ESLint, Prettier, node-forge (test certificates only), and Fontsource fonts. Storage
-  uses Node's built-in `node:sqlite`.
+- **Product journey (FAIL, REVIEW, REVIEW)**. Where it ran: local, uncontained, fresh clone, Windows 11, 2026-11-13. State: real kernel verdicts over real client processes; 1Click service **simulated**.
+- **Contained journey (corrected PASS)**. Where it ran: local, Docker Engine in WSL 2. State: real; plain Linux Docker and rootless engines NOT_RUN.
+- **`pnpm run check`**. Where it ran: local and GitHub Actions (ubuntu, windows, macos). State: green locally (counts below); hosted `ci` green on `ab9b89f` and `bfd3065`, **red on `425d48e`** (see below).
+- **Official 1Click API**. Where it ran: real, `dry: true` only. State: `OFFICIAL_ENDPOINT_COMPATIBLE`; matrix `NO_DRIFT` 24/26.
+- **Registry contract**. Where it ran: local nearcore sandbox. State: tested; **testnet deployment, enrolment, first certificate pending (owner)**; **mainnet certificate publish pending**.
+- **Verify page, console demo**. Where it ran: built and driven in Chromium locally. State: **Pages publish pending**.
+- **Explorer import**. Where it ran: importer tested on a fixture. State: **live import pending** (Explorer API key).
+- **npm package, Marketplace action**. Where it ran: packed and installed offline locally. State: **publish pending (owner)**.
+- **NEAR testnet / mainnet transactions**. Where it ran: none. State: none sent.
+
+Hosted CI: `ci` [run 43272644091](https://github.com/gnanam1990/routespec-near/actions/runs/43272644091)
+(`ab9b89f`) and [run 43357797047](https://github.com/gnanam1990/routespec-near/actions/runs/43357797047)
+(`bfd3065`) were green on all three runners, as were the matching `routespec-gate` runs. On the
+latest pushed commit `425d48e` the `check` step of `ci` failed on all three runners
+([run 43423876752](https://github.com/gnanam1990/routespec-near/actions/runs/43423876752)) while
+`routespec-gate` and `routespec-certificate` succeeded; the job log needs repository access, so the
+cause was not read for this record. The `routespec-pages` deploy job failed on the same commit,
+so the Pages site is not live.
+
+Local `pnpm run check` on `425d48e` (the code this README describes; Windows 11, fresh clone):
+exit 0, `Test Files 121 passed | 1 skipped (122)`, `Tests 1007 passed | 6 skipped (1013)`,
+`secret-scan: clean (744 files scanned, 8 rules)`.
+
+**Claim level.** Per [`BUILD-STATUS.md`](BUILD-STATUS.md), the specification's strict label
+`WORKING_LOCAL` is **not claimed**. Of its gates RP-01, RP-03, RP-04, RP-05 and RP-08 are met in this
+environment; RP-02 and RP-06 are partial because the interceptor profile was reviewed only with a
+locally generated test key held by the operator, not by an independent reviewer
+([what remains](docs/USER-NEXT-STEPS.md)). RP-07 (`OFFICIAL_ENDPOINT_COMPATIBLE`) is met on its own
+axis. Enforcement is advisory (`LOCAL_ADVISORY`, `CI_CHECK`, `REQUIRED_CHECK_UNVERIFIED`): RouteSpec
+never claims it blocks a merge or a release.
+
+**Safety boundary.** RouteSpec has no funded mode. It never holds a provider credential in a gate
+run, signs a user transaction or moves funds. Not run: Firefox, WebKit, screen readers, the
+contained journey on Linux and macOS hosts, an independent security review.
+
+## Hackathon notes
+
+- **Built at NEAR HACKATHON**, 2026-11-11 to 2026-11-14. The first commit (2026-11-11) imports the
+  RouteSpec specification pack in [`docs/spec/`](docs/spec/START-HERE.md); all code was written in
+  the window. No pre-existing code from another project is included, so the whole history is
+  hackathon work. Each module is its own `feat/routespec-mNN-*` branch merged with `--no-ff`
+  ([layout](docs/ARCHITECTURE.md#layout)).
+- **Sibling project.** The same lead also entered [Dockside](https://github.com/gnanam1990/dockside-near),
+  an independent supplier-trade escrow product. Separate repositories, code, state, demos and
+  submissions; neither is a second submission of the other.
+- **Libraries** (npm, pinned in `pnpm-lock.yaml`): the official 1Click SDK, zod, yaml, React,
+  react-router, Vite, Vitest, Playwright, axe-core, fast-check, TypeScript, ESLint, Prettier,
+  node-forge (test certificates only), Fontsource fonts; storage on Node's built-in `node:sqlite`.
+  Contract: Rust, near-sdk 5.30.1, nearcore sandbox 2.14.0 for tests.
 - Development was AI-assisted (coding agents); all code was tested and reviewed in this repository.
-- **Sibling project.** The same lead also entered
-  [Dockside](https://github.com/gnanam1990/dockside-near), an independent supplier-trade escrow
-  product for importers, suppliers, and named inspectors. RouteSpec and Dockside have separate
-  repositories, code, state, demos, and submissions; neither is a second submission of the other.
 
----
+## License
 
-The sections below are the detailed engineering reference.
-
-The authoritative specification is the sealed pack in [`docs/spec/`](docs/spec/START-HERE.md).
-This repository implements it module by module (M00–M18).
-
-## Status (2026-11-12, verified on win32/x64; containment on Docker Engine in WSL 2)
-
-- All modules M00–M17 are implemented and merged locally; M18 re-ran the full regression and
-  consolidated the records. Exactly what passed, what is partial, and what is blocked is in
-  [`BUILD-STATUS.md`](BUILD-STATUS.md), with one record per module in
-  [`docs/status/`](docs/status/).
-- From a clean clone, the installed product runs the whole local journey with the pinned
-  official SDK: the baseline client fails the lost-response case, the failure is captured and
-  promoted to a regression, and a genuinely corrected client passes (`pnpm run test:delivery`).
-- **Containment (M14, M17).** With a Linux container engine configured, every subject case runs
-  confined (no network but a loopback tunnel to RouteSpec, read-only root, no capabilities,
-  non-root, an active seccomp filter), launches are attested by an enrolled launcher key, and an
-  independent interceptor observes the protected effect. Real escape attempts are blocked, and
-  no container (bridge, host-network, or confined) reached any RouteSpec listener on this host
-  (T-036 container-host part, `pnpm run test:containment`). Without an engine those tests report
-  NOT_RUN.
-- **Release evidence (M16, RP-08).** Captures that are declared-hooks-only, unconfined, not
-  independently observed, unattested, interceptor-incomplete, or made under an unreviewed
-  interceptor profile are **refused** as release evidence (`RS_CAPTURE_NOT_RELEASE_EVIDENCE`,
-  HTTP 422, CLI exit 6) at promotion, corpus creation, gate aggregation, and export. Promoting
-  one anyway is an explicit `DIAGNOSTIC_ONLY` choice that adds only an ADVISORY case, and its
-  bundle says so (`routespec.bundle/2`, `evidenceUse`).
-- **Interceptor profile review (M16).** A profile becomes `REVIEWED` only through an Ed25519
-  signature by an enrolled reviewer whose key is not a launcher key; INV-04 needs an effective
-  review. The journeys use a locally generated **test** reviewer key; an independent review is
-  NOT_RUN ([runbook](docs/runbooks/interceptor-profile-review.md)).
-- **No `WORKING_*` gate level is claimed.** The green clean-checkout run on a real CI service
-  (RP-05) is now observed: GitHub Actions `ci` run 43272644091 on `ab9b89f` (ubuntu-24.04,
-  windows-2022, macos-15). `WORKING_LOCAL` still needs a review of the interceptor profile by a
-  reviewer independent of the operator, followed by a contained gate run on that review
-  (RP-02/RP-06) and a `test:delivery` rerun on that commit. The official live dry probe (RP-07)
-  ran once with the owner's JWT: `OFFICIAL_ENDPOINT_COMPATIBLE` for one `dry: true` quote (HTTP
-  201). That is a separate claim and does not change `WORKING_LOCAL`.
-- Enforcement is advisory: `LOCAL_ADVISORY`, `CI_CHECK`, or `REQUIRED_CHECK_UNVERIFIED`.
-  RouteSpec never says it blocks a merge or a release.
-- Not run: the contained journey on Linux and macOS hosts, Firefox and WebKit, screen readers,
-  an independent security review. What you can do next: [`docs/USER-NEXT-STEPS.md`](docs/USER-NEXT-STEPS.md).
-
-### Dependencies
-
-- zod 4.6.7, react-router 7.18.5, vitest 4.1.12 (M13); minimatch 11.0.3 through a scoped pnpm
-  override (M17, ADR-0020).
-- `pnpm audit` (2026-11-12): 4 advisories, all node-forge 1.4.2 (dev only), patched in 1.4.3,
-  which is held by the two-week cool-down until 2026-11-18.
-
-## Requirements
-
-- Node.js `>= 22.18` (built-in type stripping and `node:sqlite`; verified on 22.23.1)
-- pnpm 10 (`corepack enable` or a global install)
-- git
-- Windows, Linux, or macOS. No C toolchain is needed. The console acceptance suites need
-  Playwright's Chromium (`pnpm --filter @routespec/console exec playwright install chromium`).
-- Optional, for subject containment: a Linux container engine (Docker Engine on Linux, or Docker
-  Engine inside WSL 2 on Windows; Docker Desktop is not needed) and the image
-  `node:22-bookworm-slim` pulled once. Setup: [`docs/runbooks/container-containment.md`](docs/runbooks/container-containment.md).
-
-## Install and build
-
-```sh
-pnpm install --frozen-lockfile     # works with --offline once the pnpm store has the lockfile's packages
-pnpm run build                     # tsc -b over all project references (strict)
-pnpm run build:console             # production console bundle in apps/console/dist
-```
-
-## Run it
-
-```sh
-# Loopback control service (127.0.0.1) with the console, journal in ./.data
-node packages/control-api/src/main.ts --data .data --console apps/console/dist
-```
-
-The service prints one JSON line with its origin. On an interactive terminal it also prints a
-one-time console URL whose `#token=` fragment carries the ephemeral control token (removed from
-the address bar on load). Every `/__routespec/v1` request needs `Authorization: Bearer <token>`;
-mutations need `Idempotency-Key` and, for updates, `If-Match`.
-
-The `routespec` CLI (`node packages/cli/src/main.ts <command>`) prints one JSON document on stdout.
-Exit codes: 0 PASS, 2 FAIL, 3 REVIEW or NOT_RUN, 4 configuration error, 5 internal or corrupted
-state, 6 safety policy denial. Main commands: `project create`, `revision register`,
-`build register`, `effect manifest`, `effect policy`, `scenario validate|add`, `corpus create`,
-`gate create|run|evaluate|show`, `case recover`, `regression evidence|promote [--diagnostic-only]`,
-`profile review-status|review-sign`, `export plan [--evidence-use]|write|verify`. `gate run` hands each
-case to your client through the reviewed launcher (`runWithLauncher` from `@routespec/cli`);
-RouteSpec never runs your commands.
-
-The end-to-end journey (`pnpm run delivery:journey -- --work <empty dir> --out <file.json>`)
-drives a fresh data directory through the control API, console, and CLI with the two reference
-client builds, and writes the evidence record to the JSON file. Add `--contained` (with
-`ROUTESPEC_CONTAINER_CLI` set) to run every subject case confined, with attested launches.
-
-Containment in the service: start it with `--subject-root <checkout> --container-cli '<json>'
---launcher packages/containment/src/attesting-launcher.ts --launcher-key <key file>` and start
-cases with `POST /__routespec/v1/case-runs/{id}/contained-start`; the case token goes only to the
-confined subject. Details in the runbook.
-
-## Verify
-
-| Command                       | What it does                                                                                                                                                                                                            |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm run check`              | typecheck (all projects), ESLint, Prettier check, the Vitest suite, repository secret scan                                                                                                                              |
-| `pnpm test`                   | Vitest suite for every package (`packages/*/test`, `apps/*/test`)                                                                                                                                                       |
-| `pnpm run test:e2e:real`      | builds the console, starts a real control service seeded through the API by official-SDK subjects, runs Playwright + axe (T-047..T-052)                                                                                 |
-| `pnpm run test:delivery`      | clones HEAD into an empty directory, installs offline, builds, runs the full journey, regressions, uninstall and reinstall (T-054, T-055), and the contained journey when an engine is configured (about three minutes) |
-| `pnpm run test:containment`   | container runtime tests: real escape attempts, container-host access (T-036), and contained cases through the control service (NOT_RUN with a reason when no engine is reachable)                                       |
-| `pnpm run test:e2e`           | console fixture suite (simulated API; development only)                                                                                                                                                                 |
-| `pnpm run audit:supply-chain` | offline lockfile, license, and install-script audit                                                                                                                                                                     |
-
-Node prints an `ExperimentalWarning` for `node:sqlite`; it is expected.
-
-## How it fits together
-
-```mermaid
-flowchart LR
-  subgraph Client["Your installed client (own process)"]
-    SDK["official 1Click SDK 0.1.26"] --- AD["RouteSpec adapter"]
-  end
-  subgraph RS["RouteSpec (loopback only)"]
-    API["control API and console<br/>M08, M09"]
-    RUN["gate service, reports, bundles<br/>M06"]
-    PX["networkless proxy and case supervisor<br/>M02"]
-    SC["scenario runtime, virtual clock<br/>M03"]
-    J[("SQLite journal<br/>M01")]
-    K["invariant kernel<br/>M04"]
-    RG["capture to regression<br/>M05"]
-  end
-  CLI["routespec CLI and CI action<br/>M06, M10"] --> RUN
-  AD -->|"HTTP to 127.0.0.1, case token"| PX
-  API --> RUN
-  RUN --> PX
-  PX --> SC
-  PX --> J
-  J --> K
-  K --> RUN
-  J --> RG
-  RG --> RUN
-  LD["live-dry adapter, own process, dry:true only<br/>M07"] -.->|"explicit user action"| OFF["official endpoint"]
-```
-
-The scenario runtime never has a network path or a provider credential. The live-dry adapter is
-a separate process with its own compatibility ledger; its result never changes a local verdict.
-
-## Layout
-
-```text
-packages/contracts         M00  closed versioned schemas, enums, rs-canon/1 digests, oneclick-v0 protocol profile
-packages/store             M01  single-writer node:sqlite WAL journal, migrations 001-009, fenced tokens, recovery, reviews
-packages/proxy             M02  networkless loopback proxy, case supervisor, redaction, interceptor channel
-packages/client-adapter    M02  attaches the pinned official SDK to the proxy
-packages/scenario          M03  data-only scenario DSL, compiler, virtual clock, deterministic faults, core scenarios
-packages/kernel            M04  pure invariant kernel INV-01..INV-08, evidence classes and scopes
-packages/regressions       M05  quarantine, sanitization, mapping, replay verification, review, promotion, corpora
-packages/runner            M06  gate service, aggregation, JSON/JUnit/SARIF reports, checksummed bundles
-packages/cli               M06  `routespec` CLI and the reviewed launcher
-packages/live-dry-adapter  M07  separately launched dry-quote adapter (official SDK pin lives here)
-packages/control-api       M08  loopback control API, attestation, build matrix, console hosting
-apps/console               M09  accessible React console over the control API
-packages/ci                M10  `routespec-ci` (trust classification, redacted uploads, SBOM); .github/
-packages/hardening         M11  path policy, canary scanner, OS views, supply-chain audit
-packages/security-suite    M11  security acceptance tests against the assembled product
-packages/delivery          M12  clean install, end-to-end journey (uncontained and contained), delivery tests
-packages/containment       M14  container launcher, loopback tunnel, containment verification, attesting launcher
-docs/adr                        architecture decision records 0001-0026
-docs/runbooks                   container-containment.md (WSL 2 + Docker Engine), interceptor-profile-review.md
-docs/status                     per-module evidence
-docs/spec                       sealed specification pack (never edited)
-```
-
-Branches: each module was built on its own `feat/routespec-mNN-*` branch and merged into `main`
-with `--no-ff`; every branch is kept. M00–M18 are the build modules, M19 the reviewer kits, and
-M40 onward the hackathon write-up and screening fixes. The `feat/routespec-m20-*` to
-`feat/routespec-m29-*` branches are not modules: they are security-fix branches, one per audit
-finding (m20 vuln-0001, m21 vuln-0002, m22 vuln-0003, m23 RS-01, m24 RS-02, m25 RS-03, m26 RS-04,
-m27 RS-05, m28 RS-06, m29 RS-07; see [Security](#security)).
-
-## Module notes
-
-- **Proxy and adapter (M02).** The proxy serves only `/v0/quote`, `/v0/deposit/submit`, and
-  `/v0/status` on 127.0.0.1; unknown routes never pass through.
-- **Kernel (M04).** A pure function from a journal snapshot to verdicts with separate evidence
-  class, scope, and reason. Declared hooks alone are REVIEW for protected effects.
-- **Capture-to-regression (M05).** A failing installed case is captured, quarantined, sanitized,
-  mapped, replay-verified (including a separate process), reviewed (8 decisions plus a
-  confirmation phrase), and promoted into a new scenario and a new corpus. It counts as fixed
-  only after a different build passes the promoted case through the normal path.
-- **Release-evidence refusal and profile review (M16).** One journal-derived classification
-  (`GET /imports/{id}/release-evidence`, `routespec regression evidence`) decides whether a
-  capture is release evidence; promotion, corpora, gate aggregation (`routespec-gate@1.2.0`),
-  and export all apply it. Reviewers are separate principals (migration 009) enrolled with a
-  local confirmation; a review is an Ed25519 signature over a server-built statement
-  (`routespec profile review-sign` signs offline), immutable, and revocable only by an
-  append-only record. INV-04 (`routespec-kernel@1.1.0`) needs an effective review recorded before
-  the case input closed, so gate runs pinned to the 1.0.0 evaluator are `GATE_EVALUATOR_STALE`.
-- **Release gates (M06).** Gate runs are immutable; an interrupted case never contributes PASS;
-  reports come from one persisted evaluation; `export plan|write|verify` produces a redacted,
-  checksummed (unsigned) bundle, and artifact readiness never changes the decision. Bundles are
-  `routespec.bundle/2` since M16: they declare `evidenceUse` and carry the signed profile
-  reviews, which `verify` checks offline.
-- **Live dry adapter (M07).** At most one `dry: true` quote to the pinned official origin, with
-  every committed or fund-moving request denied before credential, DNS, or socket. Run only on
-  your explicit action: see `docs/USER-NEXT-STEPS.md`.
-- **Control API (M08).** Host, Origin, and Fetch-Metadata are checked on every request; no CORS
-  is granted; attester enrollment needs a second local confirmation code.
-- **Console (M09).** Renders persisted records only and never computes a verdict; keyboard
-  complete, WCAG 2.2 AA checked with axe, responsive from 375 px.
-- **CI (M10).** `routespec-ci run --config routespec.ci.json` through the reviewed launcher;
-  pull-request and fork jobs get no provider secrets and upload only redacted reports; CI builds
-  stay `USER_ASSERTED_LOCAL`. Hosted runs: `ci` and `routespec-gate` green on GitHub Actions
-  (see [Honest status](#honest-status)).
-- **Containment (M14).** `@routespec/containment` detects the engine, starts the subject's process
-  tree in a container whose only channel is a stdio tunnel to the proxy and the interceptor sink,
-  verifies the engine's record and the container's self-observation (fail closed), and supplies
-  the attesting launcher. The service binds the interceptor at the case's current epoch, releases
-  protected effects only after ground truth proves accepted completion, and journals an immutable
-  containment record per case. Gate runs may select one effect policy per scenario.
-- **Container-host access (M17).** The T-036 runtime test starts RouteSpec's real listeners on
-  this host and tries every port at every host, engine-host, gateway, and loopback address from a
-  bridge container, a host-network container, and the confined subject, with a positive control
-  that proves the attempts are not vacuous. The launcher now requires `Seccomp: 2` in the
-  container's self-observation and closes every tunnel connection with the subject.
-- **Hardening (M11).** `ROUTESPEC_CONFIGURED_SECRETS` (one value per line, read once) are refused
-  or redacted at every boundary; `--handoff stderr|ipc|none`; local logs in
-  `<data>/logs/control.jsonl`; `GET /__routespec/v1/metrics` (no telemetry); retention purge with
-  a dry run and a confirmation digest.
-
-## Safety boundary
-
-RouteSpec has no funded mode. Nothing in this repository creates accounts, holds a provider
-credential, signs a transaction, moves funds, or contacts the hosted 1Click API on its own. The
-only modes are SIMULATE and REPLAY (networkless) and LIVE_DRY_PROBE (a separate adapter process,
-`dry: true` only, after an explicit user action). RouteSpec is an independent project; it shares
-no code, state, or repository with any other submission.
+MIT, see [`LICENSE`](LICENSE).

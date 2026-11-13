@@ -1,0 +1,27 @@
+{
+  "name": "@routespec/incident-corpus",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Read-only Intents Explorer importer, sanitised incident scenario templates, and the observed-incident corpus (M50).",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "routespec-incidents": "./bin/routespec-incidents.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "incidents": "node --no-warnings src/main.ts"
+  },
+  "dependencies": {
+    "@routespec/contracts": "workspace:*",
+    "@routespec/hardening": "workspace:*",
+    "@routespec/scenario": "workspace:*",
+    "@routespec/store": "workspace:*",
+    "zod": "4.6.7"
+  }
+}

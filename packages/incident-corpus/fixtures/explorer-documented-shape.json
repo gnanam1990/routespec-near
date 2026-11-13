@@ -1,0 +1,1041 @@
+{
+  "recordingKind": "DOCUMENTED_SHAPE_FIXTURE",
+  "note": "Authored by hand from the public Intents Explorer OpenAPI document. Every value is invented. This is not mainnet data and no record refers to a real swap, account or transfer.",
+  "apiSpecDigest": "sha256:eec0c12615083b0b409ec746fac96183b81c7c74359dc7fffecacf62b77ffb5e",
+  "observations": [
+    {
+      "observedAt": "2026-11-13T12:00:00.000Z",
+      "transactions": [
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0001",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0001",
+          "recipient": "fixture-recipient-0001.near",
+          "status": "SUCCESS",
+          "createdAt": "2026-11-13T11:58:00.000Z",
+          "createdAtTimestamp": 1794571080,
+          "intentHashes": "FixtureIntentHash0001",
+          "referral": "fixture-referral",
+          "amountInFormatted": "22.130001",
+          "amountOutFormatted": "22.110001",
+          "appFees": [
+            {
+              "recipient": "fixture-fee-recipient-0001.near",
+              "fee": 50
+            }
+          ],
+          "nearTxHashes": [
+            "FixtureNearTxHash0001"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0001"
+          ],
+          "destinationChainTxHashes": [
+            "0xfixturedestinationtxhash0001"
+          ],
+          "amountIn": "22130001",
+          "amountInUsd": "22.120001",
+          "amountOut": "22110001",
+          "amountOutUsd": "22.100001",
+          "refundTo": "fixture-refund-account-0001.near",
+          "senders": [
+            "0xfixturesender0001"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0002",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0002",
+          "recipient": "fixture-recipient-0002.near",
+          "status": "REFUNDED",
+          "createdAt": "2026-11-13T11:10:00.000Z",
+          "createdAtTimestamp": 1794568200,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "22.130002",
+          "amountOutFormatted": "22.110002",
+          "appFees": [],
+          "nearTxHashes": [
+            "FixtureNearTxHash0002"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0002"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "22130002",
+          "amountInUsd": "22.120002",
+          "amountOut": "22110002",
+          "amountOutUsd": "22.100002",
+          "refundTo": "fixture-refund-account-0002.near",
+          "senders": [
+            "0xfixturesender0002"
+          ],
+          "refundReason": "NO_LIQUIDITY",
+          "refundFee": "100002",
+          "refundFeeFormatted": "0.00100002",
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0003",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0003",
+          "recipient": "fixture-recipient-0003.near",
+          "status": "REFUNDED",
+          "createdAt": "2026-11-13T10:30:00.000Z",
+          "createdAtTimestamp": 1794565800,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "22.130003",
+          "amountOutFormatted": "22.110003",
+          "appFees": [],
+          "nearTxHashes": [
+            "FixtureNearTxHash0003"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0003"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "22130003",
+          "amountInUsd": "22.120003",
+          "amountOut": "22110003",
+          "amountOutUsd": "22.100003",
+          "refundTo": "fixture-refund-account-0003.near",
+          "senders": [
+            "0xfixturesender0003"
+          ],
+          "refundReason": "PARTIAL_DEPOSIT",
+          "refundFee": "100003",
+          "refundFeeFormatted": "0.00100003",
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0004",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0004",
+          "recipient": "fixture-recipient-0004.near",
+          "status": "REFUNDED",
+          "createdAt": "2026-11-13T11:55:00.000Z",
+          "createdAtTimestamp": 1794570900,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "22.130004",
+          "amountOutFormatted": "22.110004",
+          "appFees": [],
+          "nearTxHashes": [
+            "FixtureNearTxHash0004"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0004"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "22130004",
+          "amountInUsd": "22.120004",
+          "amountOut": "22110004",
+          "amountOutUsd": "22.100004",
+          "refundTo": "fixture-refund-account-0004.near",
+          "senders": [
+            "0xfixturesender0004"
+          ],
+          "refundReason": "AMOUNT_LESS_THAN_MIN_AMOUNT_OUT",
+          "refundFee": "100004",
+          "refundFeeFormatted": "0.00100004",
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0005",
+          "depositMemo": "12345",
+          "depositAddressAndMemo": "fixture-deposit-address-0005_12345",
+          "recipient": "fixture-recipient-0005.near",
+          "status": "REFUNDED",
+          "createdAt": "2026-11-13T11:53:00.000Z",
+          "createdAtTimestamp": 1794570780,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "22.130005",
+          "amountOutFormatted": "22.110005",
+          "appFees": [],
+          "nearTxHashes": [
+            "FixtureNearTxHash0005"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0005"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "22130005",
+          "amountInUsd": "22.120005",
+          "amountOut": "22110005",
+          "amountOutUsd": "22.100005",
+          "refundTo": "fixture-refund-account-0005.near",
+          "senders": [
+            "0xfixturesender0005"
+          ],
+          "refundReason": "AMOUNT_LESS_THAN_MIN_AMOUNT_OUT",
+          "refundFee": "100005",
+          "refundFeeFormatted": "0.00100005",
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0006",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0006",
+          "recipient": "fixture-recipient-0006.near",
+          "status": "REFUNDED",
+          "createdAt": "2026-11-13T07:00:00.000Z",
+          "createdAtTimestamp": 1794553200,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "22.130006",
+          "amountOutFormatted": "22.110006",
+          "appFees": [],
+          "nearTxHashes": [
+            "FixtureNearTxHash0006"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0006"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "22130006",
+          "amountInUsd": "22.120006",
+          "amountOut": "22110006",
+          "amountOutUsd": "22.100006",
+          "refundTo": "fixture-refund-account-0006.near",
+          "senders": [
+            "0xfixturesender0006"
+          ],
+          "refundReason": null,
+          "refundFee": "100006",
+          "refundFeeFormatted": "0.00100006",
+          "depositType": "INTENTS",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "INTENTS"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0007",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0007",
+          "recipient": "fixture-recipient-0007.near",
+          "status": "FAILED",
+          "createdAt": "2026-11-13T11:48:00.000Z",
+          "createdAtTimestamp": 1794570480,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "22.130007",
+          "amountOutFormatted": "22.110007",
+          "appFees": [],
+          "nearTxHashes": [
+            "FixtureNearTxHash0007"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0007"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "22130007",
+          "amountInUsd": "22.120007",
+          "amountOut": "22110007",
+          "amountOutUsd": "22.100007",
+          "refundTo": "fixture-refund-account-0007.near",
+          "senders": [
+            "0xfixturesender0007"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0008",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0008",
+          "recipient": "fixture-recipient-0008.near",
+          "status": "FAILED",
+          "createdAt": "2026-11-13T11:30:00.000Z",
+          "createdAtTimestamp": 1794569400,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "22.130008",
+          "amountOutFormatted": "22.110008",
+          "appFees": [],
+          "nearTxHashes": [],
+          "originChainTxHashes": [],
+          "destinationChainTxHashes": [],
+          "amountIn": "22130008",
+          "amountInUsd": "22.120008",
+          "amountOut": "22110008",
+          "amountOutUsd": "22.100008",
+          "refundTo": "fixture-refund-account-0008.near",
+          "senders": [
+            "0xfixturesender0008"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0009",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0009",
+          "recipient": "fixture-recipient-0009.near",
+          "status": "PROCESSING",
+          "createdAt": "2026-11-13T10:00:00.000Z",
+          "createdAtTimestamp": 1794564000,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "0",
+          "amountOutFormatted": "0",
+          "appFees": [],
+          "nearTxHashes": [],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0009"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "0",
+          "amountInUsd": "0",
+          "amountOut": "0",
+          "amountOutUsd": "0",
+          "refundTo": "fixture-refund-account-0009.near",
+          "senders": [
+            "0xfixturesender0009"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0010",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0010",
+          "recipient": "fixture-recipient-0010.near",
+          "status": "PROCESSING",
+          "createdAt": "2026-11-13T11:20:00.000Z",
+          "createdAtTimestamp": 1794568800,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "0",
+          "amountOutFormatted": "0",
+          "appFees": [],
+          "nearTxHashes": [],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0010"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "0",
+          "amountInUsd": "0",
+          "amountOut": "0",
+          "amountOutUsd": "0",
+          "refundTo": "fixture-refund-account-0010.near",
+          "senders": [
+            "0xfixturesender0010"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0011",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0011",
+          "recipient": "fixture-recipient-0011.near",
+          "status": "PROCESSING",
+          "createdAt": "2026-11-13T11:40:00.000Z",
+          "createdAtTimestamp": 1794570000,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "0",
+          "amountOutFormatted": "0",
+          "appFees": [],
+          "nearTxHashes": [],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0011"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "0",
+          "amountInUsd": "0",
+          "amountOut": "0",
+          "amountOutUsd": "0",
+          "refundTo": "fixture-refund-account-0011.near",
+          "senders": [
+            "0xfixturesender0011"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0012",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0012",
+          "recipient": "fixture-recipient-0012.near",
+          "status": "PROCESSING",
+          "createdAt": "2026-11-13T11:58:00.000Z",
+          "createdAtTimestamp": 1794571080,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "0",
+          "amountOutFormatted": "0",
+          "appFees": [],
+          "nearTxHashes": [],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0012"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "0",
+          "amountInUsd": "0",
+          "amountOut": "0",
+          "amountOutUsd": "0",
+          "refundTo": "fixture-refund-account-0012.near",
+          "senders": [
+            "0xfixturesender0012"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0013",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0013",
+          "recipient": "fixture-recipient-0013.near",
+          "status": "INCOMPLETE_DEPOSIT",
+          "createdAt": "2026-11-13T08:40:00.000Z",
+          "createdAtTimestamp": 1794559200,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "0",
+          "amountOutFormatted": "0",
+          "appFees": [],
+          "nearTxHashes": [],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0013"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "0",
+          "amountInUsd": "0",
+          "amountOut": "0",
+          "amountOutUsd": "0",
+          "refundTo": "fixture-refund-account-0013.near",
+          "senders": [
+            "0xfixturesender0013"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0014",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0014",
+          "recipient": "fixture-recipient-0014.near",
+          "status": "PENDING_DEPOSIT",
+          "createdAt": "2026-11-13T02:00:00.000Z",
+          "createdAtTimestamp": 1794535200,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "0",
+          "amountOutFormatted": "0",
+          "appFees": [],
+          "nearTxHashes": [],
+          "originChainTxHashes": [],
+          "destinationChainTxHashes": [],
+          "amountIn": "0",
+          "amountInUsd": "0",
+          "amountOut": "0",
+          "amountOutUsd": "0",
+          "refundTo": "fixture-refund-account-0014.near",
+          "senders": [
+            "0xfixturesender0014"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        }
+      ]
+    },
+    {
+      "observedAt": "2026-11-13T13:00:00.000Z",
+      "transactions": [
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0001",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0001",
+          "recipient": "fixture-recipient-0001.near",
+          "status": "SUCCESS",
+          "createdAt": "2026-11-13T11:58:00.000Z",
+          "createdAtTimestamp": 1794571080,
+          "intentHashes": "FixtureIntentHash0001",
+          "referral": "fixture-referral",
+          "amountInFormatted": "22.130001",
+          "amountOutFormatted": "22.110001",
+          "appFees": [
+            {
+              "recipient": "fixture-fee-recipient-0001.near",
+              "fee": 50
+            }
+          ],
+          "nearTxHashes": [
+            "FixtureNearTxHash0001"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0001"
+          ],
+          "destinationChainTxHashes": [
+            "0xfixturedestinationtxhash0001"
+          ],
+          "amountIn": "22130001",
+          "amountInUsd": "22.120001",
+          "amountOut": "22110001",
+          "amountOutUsd": "22.100001",
+          "refundTo": "fixture-refund-account-0001.near",
+          "senders": [
+            "0xfixturesender0001"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0002",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0002",
+          "recipient": "fixture-recipient-0002.near",
+          "status": "REFUNDED",
+          "createdAt": "2026-11-13T11:10:00.000Z",
+          "createdAtTimestamp": 1794568200,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "22.130002",
+          "amountOutFormatted": "22.110002",
+          "appFees": [],
+          "nearTxHashes": [
+            "FixtureNearTxHash0002"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0002"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "22130002",
+          "amountInUsd": "22.120002",
+          "amountOut": "22110002",
+          "amountOutUsd": "22.100002",
+          "refundTo": "fixture-refund-account-0002.near",
+          "senders": [
+            "0xfixturesender0002"
+          ],
+          "refundReason": "NO_LIQUIDITY",
+          "refundFee": "100002",
+          "refundFeeFormatted": "0.00100002",
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0003",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0003",
+          "recipient": "fixture-recipient-0003.near",
+          "status": "REFUNDED",
+          "createdAt": "2026-11-13T10:30:00.000Z",
+          "createdAtTimestamp": 1794565800,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "22.130003",
+          "amountOutFormatted": "22.110003",
+          "appFees": [],
+          "nearTxHashes": [
+            "FixtureNearTxHash0003"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0003"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "22130003",
+          "amountInUsd": "22.120003",
+          "amountOut": "22110003",
+          "amountOutUsd": "22.100003",
+          "refundTo": "fixture-refund-account-0003.near",
+          "senders": [
+            "0xfixturesender0003"
+          ],
+          "refundReason": "PARTIAL_DEPOSIT",
+          "refundFee": "100003",
+          "refundFeeFormatted": "0.00100003",
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0004",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0004",
+          "recipient": "fixture-recipient-0004.near",
+          "status": "REFUNDED",
+          "createdAt": "2026-11-13T11:55:00.000Z",
+          "createdAtTimestamp": 1794570900,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "22.130004",
+          "amountOutFormatted": "22.110004",
+          "appFees": [],
+          "nearTxHashes": [
+            "FixtureNearTxHash0004"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0004"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "22130004",
+          "amountInUsd": "22.120004",
+          "amountOut": "22110004",
+          "amountOutUsd": "22.100004",
+          "refundTo": "fixture-refund-account-0004.near",
+          "senders": [
+            "0xfixturesender0004"
+          ],
+          "refundReason": "AMOUNT_LESS_THAN_MIN_AMOUNT_OUT",
+          "refundFee": "100004",
+          "refundFeeFormatted": "0.00100004",
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0005",
+          "depositMemo": "12345",
+          "depositAddressAndMemo": "fixture-deposit-address-0005_12345",
+          "recipient": "fixture-recipient-0005.near",
+          "status": "REFUNDED",
+          "createdAt": "2026-11-13T11:53:00.000Z",
+          "createdAtTimestamp": 1794570780,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "22.130005",
+          "amountOutFormatted": "22.110005",
+          "appFees": [],
+          "nearTxHashes": [
+            "FixtureNearTxHash0005"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0005"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "22130005",
+          "amountInUsd": "22.120005",
+          "amountOut": "22110005",
+          "amountOutUsd": "22.100005",
+          "refundTo": "fixture-refund-account-0005.near",
+          "senders": [
+            "0xfixturesender0005"
+          ],
+          "refundReason": "AMOUNT_LESS_THAN_MIN_AMOUNT_OUT",
+          "refundFee": "100005",
+          "refundFeeFormatted": "0.00100005",
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0006",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0006",
+          "recipient": "fixture-recipient-0006.near",
+          "status": "REFUNDED",
+          "createdAt": "2026-11-13T07:00:00.000Z",
+          "createdAtTimestamp": 1794553200,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "22.130006",
+          "amountOutFormatted": "22.110006",
+          "appFees": [],
+          "nearTxHashes": [
+            "FixtureNearTxHash0006"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0006"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "22130006",
+          "amountInUsd": "22.120006",
+          "amountOut": "22110006",
+          "amountOutUsd": "22.100006",
+          "refundTo": "fixture-refund-account-0006.near",
+          "senders": [
+            "0xfixturesender0006"
+          ],
+          "refundReason": null,
+          "refundFee": "100006",
+          "refundFeeFormatted": "0.00100006",
+          "depositType": "INTENTS",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "INTENTS"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0007",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0007",
+          "recipient": "fixture-recipient-0007.near",
+          "status": "FAILED",
+          "createdAt": "2026-11-13T11:48:00.000Z",
+          "createdAtTimestamp": 1794570480,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "22.130007",
+          "amountOutFormatted": "22.110007",
+          "appFees": [],
+          "nearTxHashes": [
+            "FixtureNearTxHash0007"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0007"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "22130007",
+          "amountInUsd": "22.120007",
+          "amountOut": "22110007",
+          "amountOutUsd": "22.100007",
+          "refundTo": "fixture-refund-account-0007.near",
+          "senders": [
+            "0xfixturesender0007"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0008",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0008",
+          "recipient": "fixture-recipient-0008.near",
+          "status": "FAILED",
+          "createdAt": "2026-11-13T11:30:00.000Z",
+          "createdAtTimestamp": 1794569400,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "22.130008",
+          "amountOutFormatted": "22.110008",
+          "appFees": [],
+          "nearTxHashes": [],
+          "originChainTxHashes": [],
+          "destinationChainTxHashes": [],
+          "amountIn": "22130008",
+          "amountInUsd": "22.120008",
+          "amountOut": "22110008",
+          "amountOutUsd": "22.100008",
+          "refundTo": "fixture-refund-account-0008.near",
+          "senders": [
+            "0xfixturesender0008"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0009",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0009",
+          "recipient": "fixture-recipient-0009.near",
+          "status": "PROCESSING",
+          "createdAt": "2026-11-13T10:00:00.000Z",
+          "createdAtTimestamp": 1794564000,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "0",
+          "amountOutFormatted": "0",
+          "appFees": [],
+          "nearTxHashes": [],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0009"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "0",
+          "amountInUsd": "0",
+          "amountOut": "0",
+          "amountOutUsd": "0",
+          "refundTo": "fixture-refund-account-0009.near",
+          "senders": [
+            "0xfixturesender0009"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0010",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0010",
+          "recipient": "fixture-recipient-0010.near",
+          "status": "SUCCESS",
+          "createdAt": "2026-11-13T11:20:00.000Z",
+          "createdAtTimestamp": 1794568800,
+          "intentHashes": "FixtureIntentHash0010",
+          "referral": null,
+          "amountInFormatted": "22.130010",
+          "amountOutFormatted": "22.110010",
+          "appFees": [],
+          "nearTxHashes": [
+            "FixtureNearTxHash0010"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0010"
+          ],
+          "destinationChainTxHashes": [
+            "0xfixturedestinationtxhash0010"
+          ],
+          "amountIn": "22130010",
+          "amountInUsd": "22.120010",
+          "amountOut": "22110010",
+          "amountOutUsd": "22.100010",
+          "refundTo": "fixture-refund-account-0010.near",
+          "senders": [
+            "0xfixturesender0010"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0011",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0011",
+          "recipient": "fixture-recipient-0011.near",
+          "status": "REFUNDED",
+          "createdAt": "2026-11-13T11:40:00.000Z",
+          "createdAtTimestamp": 1794570000,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "22.130011",
+          "amountOutFormatted": "0",
+          "appFees": [],
+          "nearTxHashes": [
+            "FixtureNearTxHash0011"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0011"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "22130011",
+          "amountInUsd": "22.120011",
+          "amountOut": "0",
+          "amountOutUsd": "0",
+          "refundTo": "fixture-refund-account-0011.near",
+          "senders": [
+            "0xfixturesender0011"
+          ],
+          "refundReason": "INTENT_SUBMIT_FAILED",
+          "refundFee": "100011",
+          "refundFeeFormatted": "0.00100011",
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0012",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0012",
+          "recipient": "fixture-recipient-0012.near",
+          "status": "SUCCESS",
+          "createdAt": "2026-11-13T11:58:00.000Z",
+          "createdAtTimestamp": 1794571080,
+          "intentHashes": "FixtureIntentHash0012",
+          "referral": null,
+          "amountInFormatted": "22.130012",
+          "amountOutFormatted": "22.110012",
+          "appFees": [],
+          "nearTxHashes": [
+            "FixtureNearTxHash0012"
+          ],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0012"
+          ],
+          "destinationChainTxHashes": [
+            "0xfixturedestinationtxhash0012"
+          ],
+          "amountIn": "22130012",
+          "amountInUsd": "22.120012",
+          "amountOut": "22110012",
+          "amountOutUsd": "22.100012",
+          "refundTo": "fixture-refund-account-0012.near",
+          "senders": [
+            "0xfixturesender0012"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0013",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0013",
+          "recipient": "fixture-recipient-0013.near",
+          "status": "INCOMPLETE_DEPOSIT",
+          "createdAt": "2026-11-13T08:40:00.000Z",
+          "createdAtTimestamp": 1794559200,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "0",
+          "amountOutFormatted": "0",
+          "appFees": [],
+          "nearTxHashes": [],
+          "originChainTxHashes": [
+            "0xfixtureorigintxhash0013"
+          ],
+          "destinationChainTxHashes": [],
+          "amountIn": "0",
+          "amountInUsd": "0",
+          "amountOut": "0",
+          "amountOutUsd": "0",
+          "refundTo": "fixture-refund-account-0013.near",
+          "senders": [
+            "0xfixturesender0013"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        },
+        {
+          "originAsset": "nep141:eth-0xfixtureorigintoken000000000000000000000000.omft.near",
+          "destinationAsset": "nep141:fixture-destination-token.near",
+          "depositAddress": "fixture-deposit-address-0014",
+          "depositMemo": null,
+          "depositAddressAndMemo": "fixture-deposit-address-0014",
+          "recipient": "fixture-recipient-0014.near",
+          "status": "PENDING_DEPOSIT",
+          "createdAt": "2026-11-13T02:00:00.000Z",
+          "createdAtTimestamp": 1794535200,
+          "intentHashes": null,
+          "referral": null,
+          "amountInFormatted": "0",
+          "amountOutFormatted": "0",
+          "appFees": [],
+          "nearTxHashes": [],
+          "originChainTxHashes": [],
+          "destinationChainTxHashes": [],
+          "amountIn": "0",
+          "amountInUsd": "0",
+          "amountOut": "0",
+          "amountOutUsd": "0",
+          "refundTo": "fixture-refund-account-0014.near",
+          "senders": [
+            "0xfixturesender0014"
+          ],
+          "refundReason": null,
+          "refundFee": null,
+          "refundFeeFormatted": null,
+          "depositType": "ORIGIN_CHAIN",
+          "recipientType": "DESTINATION_CHAIN",
+          "refundType": "ORIGIN_CHAIN"
+        }
+      ]
+    }
+  ]
+}

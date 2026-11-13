@@ -13,6 +13,7 @@
     "@routespec/contracts": "workspace:*",
     "@routespec/control-api": "workspace:*",
     "@routespec/hardening": "workspace:*",
+    "@routespec/incident-corpus": "workspace:*",
     "@routespec/kernel": "workspace:*",
     "@routespec/live-dry-adapter": "workspace:*",
     "@routespec/proxy": "workspace:*",

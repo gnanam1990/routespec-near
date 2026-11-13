@@ -23,7 +23,8 @@
  *   pnpm judge [--contained] [--skip-package]
  */
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ROOT, buildWorkspace, npm, packNpmPackage, stageNpmPackage } from './npm-package.ts';
@@ -124,6 +125,7 @@ function packageCheck(): { ok: boolean; detail: string } {
     npm_config_https_proxy: closed,
   });
   const entry = join(consumer, 'node_modules', staged.name, 'bin', 'routespec-ci.mjs');
+  const ciWork = mkdtempSync(join(tmpdir(), 'routespec-judge-ci-'));
   const r = node([
     entry,
     'run',
@@ -132,12 +134,14 @@ function packageCheck(): { ok: boolean; detail: string } {
     '--workspace',
     ROOT,
     '--work-dir',
-    join(dir, 'ci-work'),
+    // The CI entry point requires a work directory outside the workspace.
+    ciWork,
   ]);
+  rmSync(ciWork, { recursive: true, force: true });
   const json = JSON.parse(r.stdout) as J;
   return {
     ok: r.code === 0 && json['decision'] === 'PASS',
-    detail: `${staged.name}@${staged.version} (${packed.entryCount} files, ${packed.integrity.slice(0, 20)}…) installed offline; self-gate ${String(json['decision'])}`,
+    detail: `${staged.name}@${staged.version} (${packed.entryCount} files, ${packed.integrity.slice(0, 20)}…) installed offline; self-gate ${String(json['decision'])}${json['error'] ? ` (${String((json['error'] as J)['code'])})` : ''}`,
   };
 }
 

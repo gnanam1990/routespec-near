@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM"],
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "noEmit": true,
+    "rewriteRelativeImportExtensions": false
+  },
+  "include": [
+    "src/**/*.ts",
+    "bin/**/*.ts",
+    "test/**/*.ts",
+    "sandbox-test/**/*.ts",
+    "../../examples/agent-skill/**/*.ts"
+  ]
+}

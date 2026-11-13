@@ -19,6 +19,9 @@ verify page, tested against a local NEAR sandbox node in Chromium; Pages publica
 certified badge wait for the M47 owner steps (`docs/status/M49.md`).
 Updated by M53 on 2026-11-13: fix patterns linked to violated invariants, with the SDK usage
 found and a suggested diff (advisory; `docs/status/M53.md`).
+Updated by M52 on 2026-11-13: the MCP server (`routespec mcp`) and a skill for coding agents; a
+scripted agent session shows a real gate FAIL, the reconcile pattern, and a real gate PASS
+(`docs/status/M52.md`).
 
 | Axis                                           | State                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -91,6 +94,7 @@ tests pass for the part this host can run, with a named part BLOCKED or NOT_RUN.
 | M48    | Official example clients, pinned and contained             | this stage | PARTIAL          | M48 pin, fetch, loader, and runner tests; real contained run of the official SDK example                                                                 | no invariant evaluated: the example stops at `GET /v0/tokens`, outside the profile            | `docs/status/M48.md`         |
 | M50    | Scenarios from observed incidents (Explorer importer)      | this stage | PARTIAL          | M50 shape, sanitisation, template, import, HTTP-client, command and gate-run tests (42)                                                                  | **live import PENDING** (Explorer API key); committed corpus has 0 records                    | `docs/status/M50.md`         |
 | M53    | Fix patterns on FAIL and REVIEW                            | this stage | VERIFIED_BOUNDED | M53 catalogue, usage, rewrite and diff tests (15); CLI gate runs with patched builds (4)                                                                 | rewrite rules cover the shapes found in RouteSpec subject builds                              | `docs/status/M53.md`         |
+| M52    | Agent skill and MCP server                                 | this stage | VERIFIED_BOUNDED | M52 protocol, tool, gate, skill and demo tests (26); MCP certificate check on a local NEAR sandbox node (2)                                              | MCP gate runs are uncontained (diagnostic); a contained MCP run is not built                  | `docs/status/M52.md`         |
 
 All 59 canonical tests T-001..T-059 have an owning module above; none is claimed beyond its
 recorded scope. M09a (console shell, `eb10eb5`) is the first stage of M09.

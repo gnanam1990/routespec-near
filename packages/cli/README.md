@@ -11,8 +11,9 @@ Commands: `project create`, `revision register`, `build register`, `effect manif
 `effect policy`, `scenario validate|add`, `corpus create`, `gate create|run|evaluate|show`,
 `case recover`, `export plan|write|verify`, `probe dry` (always refused here: the live-dry probe is
 a separately authorized adapter), `certificate keygen|publish|verify|revoke-check` (M47),
-`certificate badge` (M49), `fix patterns|show` (M53). The data directory comes from `--data` or
-`ROUTESPEC_DATA_DIR`.
+`certificate badge` (M49), `fix patterns|show` (M53), and `mcp` (M52: starts the MCP server of
+`packages/mcp` on stdio; it is the one command that does not print a single JSON document). The
+data directory comes from `--data` or `ROUTESPEC_DATA_DIR`.
 
 ## Fix patterns (M53)
 

@@ -20,7 +20,11 @@ import {
 import { startExplorerFixtureServer, type FixtureServer } from './support/explorer-server.ts';
 import { WINDOW, fixtureDoc } from './support/fixture.ts';
 
-const PORT = 9511;
+/** Loopback ports for the stand-in server: `M50_FIXTURE_PORTS` (comma-separated) or this window. */
+const PORTS = (process.env['M50_FIXTURE_PORTS'] ?? '9519,9518,9517,9516')
+  .split(',')
+  .map((p) => Number(p.trim()))
+  .filter((p) => Number.isInteger(p) && p >= 1024 && p <= 65535);
 // Three base64url segments, assembled at run time; it is not a credential for any service.
 const TOKEN = ['dGVzdC1oZWFkZXI', 'dGVzdC1wYXlsb2Fk', 'dGVzdC1zaWduYXR1cmU'].join('.');
 const T1 = Date.parse('2026-11-13T12:00:00.000Z');
@@ -58,7 +62,7 @@ beforeEach(async () => {
   clock = T1;
   sleeps = [];
   server = await startExplorerFixtureServer({
-    port: PORT,
+    ports: PORTS,
     token: TOKEN,
     recording: fixtureDoc(),
     now: () => clock,

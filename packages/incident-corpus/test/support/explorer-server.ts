@@ -19,7 +19,8 @@ export interface SeenRequest {
 }
 
 export interface FixtureServer {
-  readonly origin: string;
+  /** `http://127.0.0.1:<port>` of the port that was free. */
+  origin: string;
   readonly seen: SeenRequest[];
   /** Which observation of the recording the server currently answers from. */
   observation: number;
@@ -32,7 +33,8 @@ export interface FixtureServer {
 }
 
 export async function startExplorerFixtureServer(options: {
-  port: number;
+  /** Candidate loopback ports, tried in order; the first free one is used. */
+  ports: readonly number[];
   token: string;
   recording: ExplorerRecording;
   now: () => number;
@@ -41,7 +43,7 @@ export async function startExplorerFixtureServer(options: {
   const minInterval = options.minIntervalMs ?? 5000;
   let lastAccepted = Number.NEGATIVE_INFINITY;
   const state: FixtureServer = {
-    origin: `http://127.0.0.1:${options.port}`,
+    origin: 'http://127.0.0.1:0',
     seen: [],
     observation: 0,
     failNext: null,
@@ -145,9 +147,19 @@ export async function startExplorerFixtureServer(options: {
       status,
     });
   });
-  await new Promise<void>((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(options.port, '127.0.0.1', () => resolve());
-  });
-  return state;
+  for (const port of options.ports) {
+    const bound = await new Promise<boolean>((resolve) => {
+      const onError = () => resolve(false);
+      server.once('error', onError);
+      server.listen({ host: '127.0.0.1', port, exclusive: true }, () => {
+        server.off('error', onError);
+        resolve(true);
+      });
+    });
+    if (bound) {
+      state.origin = `http://127.0.0.1:${port}`;
+      return state;
+    }
+  }
+  throw new Error(`no free loopback port among ${options.ports.join(', ')}`);
 }

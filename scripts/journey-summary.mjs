@@ -20,7 +20,21 @@ try {
 
 const out = [];
 const line = (s = '') => out.push(s);
-const inv = (c, id) => c.invariants?.find((i) => i.invariantId === id)?.status ?? '-';
+// A case can hold one result per run operation; the worst one is shown (FAIL > REVIEW > PASS).
+const RANK = { FAIL: 4, UNSUPPORTED: 3, REVIEW: 2, NOT_RUN: 1, PASS: 0 };
+const inv = (c, id) =>
+  (c.invariants ?? [])
+    .filter((i) => i.invariantId === id)
+    .map((i) => i.status)
+    .sort((a, b) => (RANK[b] ?? 0) - (RANK[a] ?? 0))[0] ?? '-';
+const clientOutcome = (c) => {
+  const o = c.jobOutcome ?? {};
+  const answered = (o.attempts ?? []).map((a) => `${a.status} ${a.code}`).join(', ');
+  if (o.result === 'HEDGED') {
+    return `client HEDGED (second quote and deposit submitted while the first was unanswered; run operations ${(c.runOperationIds ?? []).length})`;
+  }
+  return `client ${o.result ?? '-'}${answered === '' ? '' : ` (resubmissions answered: ${answered})`}`;
+};
 
 line(`journey     ${j.schema} on ${j.platform}, node ${j.node}, commit ${String(j.commit).slice(0, 12)}`);
 line(`containment ${j.containment?.mode ?? 'UNKNOWN'}`);
@@ -28,6 +42,7 @@ line();
 
 const runs = [
   ['baselineRun', 'baseline client, release corpus'],
+  ['hedgingRun', 'hedging client, slow-answer corpus'],
   ['baselineOnPromoted', 'baseline client, promoted corpus'],
   ['correctedRun', 'corrected client, promoted corpus'],
 ];
@@ -36,11 +51,8 @@ for (const [key, title] of runs) {
   if (r === undefined) continue;
   line(`${title}: gate decision ${r.decision}`);
   for (const c of r.cases ?? []) {
-    const outcome = c.jobOutcome?.result ?? '-';
-    const attempts = (c.jobOutcome?.attempts ?? []).map((a) => `${a.status} ${a.code}`).join(', ');
     line(
-      `  case ${c.ordinal} ${c.scenarioName}: client ${outcome}` +
-        `${attempts === '' ? '' : ` (resubmissions answered: ${attempts})`}` +
+      `  case ${c.ordinal} ${c.scenarioName}: ${clientOutcome(c)}` +
         ` | INV-03 ${inv(c, 'INV-03')} | INV-04 ${inv(c, 'INV-04')}` +
         ` | effect coverage ${c.effectCoverage?.basis ?? '-'} | case verdict ${c.verdict}`,
     );

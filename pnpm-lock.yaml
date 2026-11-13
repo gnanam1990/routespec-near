@@ -240,6 +240,21 @@ importers:
         specifier: workspace:*
         version: link:../scenario
 
+  packages/distribution:
+    devDependencies:
+      '@playwright/test':
+        specifier: 1.65.0
+        version: 1.65.0
+      '@routespec/cli':
+        specifier: workspace:*
+        version: link:../cli
+      '@routespec/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@routespec/scenario':
+        specifier: workspace:*
+        version: link:../scenario
+
   packages/hardening:
     dependencies:
       '@routespec/contracts':

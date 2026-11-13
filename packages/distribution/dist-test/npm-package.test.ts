@@ -23,6 +23,7 @@ import {
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { parseScenarioSource } from '@routespec/scenario';
 import {
   ROOT,
   npm,
@@ -56,11 +57,12 @@ function run(
   entry: string,
   args: readonly string[],
   cwd: string,
+  options: { program?: string; env?: Record<string, string> } = {},
 ): Promise<{ code: number | null; stdout: string; stderr: string; json: J | null }> {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [entry, ...args], {
+    const child = spawn(options.program ?? process.execPath, [entry, ...args], {
       cwd,
-      env: hostEnv(),
+      env: hostEnv(options.env),
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let stdout = '';
@@ -191,4 +193,36 @@ describe('M54 npm package', () => {
     expect(r.code, r.stderr.slice(-2000)).toBe(0);
     expect(r.json).toMatchObject({ verified: true, decision: 'PASS', findings: [] });
   });
+
+  // The step hands withheld values to Node over file descriptor 3 from a bash process
+  // substitution, as a Linux runner does; Git Bash on Windows cannot pass that descriptor to a
+  // native Node process, so this check runs on Linux only (the in-repository action's step test,
+  // SEC vuln-0001, has the same limit).
+  it.skipIf(process.platform !== 'linux')(
+    'the Marketplace gate step script runs the installed package to PASS and withholds a CI token',
+    async () => {
+      const action = parseScenarioSource(
+        readFileSync(join(ROOT, 'packages', 'distribution', 'marketplace', 'action.yml'), 'utf8'),
+        'yaml',
+        { maxSourceBytes: 256 * 1024, maxDepth: 32, maxAliases: 0, maxStringLength: 16 * 1024 },
+      ) as J;
+      const gate = ((action['runs'] as J)['steps'] as J[]).find((s) => s['id'] === 'gate') as J;
+      const runnerTemp = join(work, 'runner-temp');
+      mkdirSync(runnerTemp, { recursive: true });
+      const r = await run('-c', [gate['run'] as string], ROOT, {
+        program: 'bash',
+        env: {
+          ROUTESPEC_PACKAGE_DIR: installed.split('\\').join('/'),
+          ROUTESPEC_CI_CONFIG: '.github/routespec/routespec.ci.json',
+          GITHUB_WORKSPACE: ROOT,
+          RUNNER_TEMP: runnerTemp,
+          GITHUB_TOKEN: 'm54-withheld-test-value',
+        },
+      });
+      expect(r.code, r.stderr.slice(-2000)).toBe(0);
+      expect(r.json).toMatchObject({ decision: 'PASS', conclusion: 'success' });
+      expect(r.json?.['withheldEnvironment']).toEqual(['GITHUB_TOKEN']);
+      expect(r.stdout).not.toContain('m54-withheld-test-value');
+    },
+  );
 });

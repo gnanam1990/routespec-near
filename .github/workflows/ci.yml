@@ -43,6 +43,10 @@ jobs:
       - name: Cross-platform canonical parity (T-027 and T-009 regressions)
         shell: bash
         run: pnpm exec vitest run packages/contracts/test/t027-canonical-result.test.ts packages/scenario/test/t009-replay-digest.test.ts
+      - name: Distribution (npm package installed offline, Marketplace step, static console demo)
+        if: matrix.os == 'ubuntu-24.04'
+        shell: bash
+        run: pnpm run test:distribution
       - name: Software bill of materials
         shell: bash
         run: node --no-warnings packages/ci/bin/routespec-ci.mjs sbom --lock pnpm-lock.yaml --out sbom.cdx.json

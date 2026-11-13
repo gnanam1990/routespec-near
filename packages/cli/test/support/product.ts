@@ -18,6 +18,12 @@ import { CORE_SCENARIO_SOURCES, compileScenario } from '@routespec/scenario';
 import { GateJournal, RouteSpecStore, type BuildAttestationPolicy } from '@routespec/store';
 import type { EnforcementMode } from '@routespec/contracts';
 import { CLI_ENTRY, runWithLauncher, type LauncherResult } from '../../src/launcher.ts';
+import {
+  SLOW_COMMIT_ANSWER,
+  SLOW_COMMIT_ANSWER_SOURCE,
+  SLOW_COMMIT_SETTLES,
+  SLOW_COMMIT_SETTLES_SOURCE,
+} from './slow-commit-answer.ts';
 
 export const LIVE_INVARIANTS = ['INV-01', 'INV-02', 'INV-03', 'INV-05', 'INV-06', 'INV-07', 'INV-08'];
 
@@ -33,7 +39,13 @@ export function tempDir(prefix = 'routespec-m06-'): { dir: string; cleanup: () =
   };
 }
 
-export type SubjectBuild = 'reconciling-client' | 'naive-client' | 'impatient-client';
+/** Installed builds; `m53-patched-*` are builds patched with a suggested fix diff (M53). */
+export type SubjectBuild =
+  | 'reconciling-client'
+  | 'naive-client'
+  | 'impatient-client'
+  | 'hedging-client'
+  | `m53-patched-${string}`;
 
 export function subjectScript(build: SubjectBuild): string {
   return fileURLToPath(new URL(`./subject/${build}.ts`, import.meta.url));
@@ -58,6 +70,8 @@ export function scenarioSource(id: string): string {
         '{ id: refund-settled, fact: REFUND, assetId: nep141:origin.sim, amount: "300000", recipient: refund.sim }',
       );
   }
+  if (id === SLOW_COMMIT_ANSWER) return SLOW_COMMIT_ANSWER_SOURCE;
+  if (id === SLOW_COMMIT_SETTLES) return SLOW_COMMIT_SETTLES_SOURCE;
   const s = CORE_SCENARIO_SOURCES[id];
   if (!s) throw new Error(`unknown scenario ${id}`);
   return s;

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@routespec/contracts": "workspace:*",
+    "@routespec/fix-patterns": "workspace:*",
     "@routespec/hardening": "workspace:*",
     "@routespec/kernel": "workspace:*",
     "@routespec/proxy": "workspace:*",

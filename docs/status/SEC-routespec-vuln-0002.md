@@ -1,6 +1,6 @@
 # SEC vuln-0002 — Credential shapes missed after a word character: status evidence
 
-- Source: external automated scan, finding vuln-0002 (LOW, CWE-693). Verified independently on
+- Source: Strix 1.7.0 automated pentest scan, self-run, finding vuln-0002 (LOW, CWE-693). Verified independently on
   the real modules before any change.
 - State: **FIXED** on `feat/routespec-m21-secret-pattern-anchors` (base `f20917f`).
 - No new ADR: the change tightens existing detectors within ADR-0016 (security hardening) and

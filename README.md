@@ -19,11 +19,13 @@ Built during NEAR HACKATHON (2026-11). License: MIT ([`LICENSE`](LICENSE)).
   client against eight invariants (for example: reconcile before retrying under uncertainty, and
   hold protected side effects until accepted completion evidence exists). The result comes with a checksummed evidence bundle and JSON, JUnit,
   and SARIF reports.
-- **What you will see.** The repository ships two client builds that use the pinned official
+- **What you will see.** The repository ships three client builds that use the pinned official
   SDK. The naive build resubmits and gives up without reconciling: its gate result is REVIEW.
-  The corrected build reconciles through the read-only status route: its gate result is PASS
-  when subjects run contained (Docker), and REVIEW without Docker because RouteSpec will not
-  count a client's own hooks as proof of its side effects.
+  A second naive build "hedges" a slow deposit submission by placing a second order while the
+  first is still unanswered: its gate result is FAIL (INV-03), with or without Docker. The
+  corrected build reconciles through the read-only status route: its gate result is PASS when
+  subjects run contained (Docker), and REVIEW without Docker because RouteSpec will not count a
+  client's own hooks as proof of its side effects.
 - **No funds, no keys.** RouteSpec never signs, holds a credential, or moves funds. Everything in
   the judge path below runs offline on 127.0.0.1.
 
@@ -31,8 +33,8 @@ Built during NEAR HACKATHON (2026-11). License: MIT ([`LICENSE`](LICENSE)).
 
 Needs Node.js 22.18 or later, pnpm 10, and git. No Docker, no account, no API key. Every command
 below was run from a fresh clone of `main` on Windows 11 (Git Bash and PowerShell) on 2026-11-13.
-On Linux and macOS the commands are the same; they were not run on those hosts for this record
-(see [Status](#honest-status)).
+On Linux and macOS the commands are the same; they were not run by hand on those hosts for this
+record, but `pnpm run check` runs there in CI (see [Status](#honest-status)).
 
 **1. Install and build** (about 1 minute)
 
@@ -46,7 +48,11 @@ pnpm run build:console
 ```
 
 See: `pnpm install` ends with `Done`; both builds exit 0 (the console build prints a `dist/`
-file list).
+file list). `pnpm install` also prints a boxed notice `Ignored build scripts: esbuild` and
+suggests `pnpm approve-builds`. That is expected and harmless: pnpm 10 does not run dependency
+install scripts unless approved, and esbuild (used by Vite for the console build) gets its
+platform binary from its `@esbuild/*` optional package instead. Nothing below needs
+`pnpm approve-builds`.
 
 **2. Run the whole product journey** (about 10 seconds)
 
@@ -56,9 +62,10 @@ node scripts/journey-summary.mjs .data/journey.json
 ```
 
 `.data/` is ignored by git. The journey starts the real control service, registers a project
-and both client builds through the public API, runs each build as its own process, captures the
-failure, promotes it to a regression, reruns, exports a bundle, crashes and restarts the service,
-and verifies the bundle offline. No verdict is hand-written.
+and the three client builds through the public API, runs each build as its own process, captures
+the failure, promotes it to a regression, reruns, exports a bundle, crashes and restarts the
+service, and verifies the bundle offline. No verdict is hand-written: every verdict below is the
+invariant kernel's result over what the client process actually sent.
 
 See (abridged):
 
@@ -66,6 +73,8 @@ See (abridged):
 containment UNCONTAINED
 baseline client, release corpus: gate decision REVIEW
   case 0 accepted-then-lost-response: client GAVE_UP (resubmissions answered: 401 RS_TOKEN_REVOKED, ...) | INV-03 REVIEW | INV-04 REVIEW | ...
+hedging client, slow-answer corpus: gate decision FAIL
+  case 0 slow-commit-answer: client HEDGED (second quote and deposit submitted while the first was unanswered; run operations 2) | INV-03 FAIL | INV-04 REVIEW | effect coverage DECLARED_HOOKS_ONLY | case verdict FAIL
 corrected client, promoted corpus: gate decision REVIEW
   case 0 accepted-then-lost-response: client RECONCILED | INV-03 PASS | INV-04 REVIEW | effect coverage DECLARED_HOOKS_ONLY | ...
 capture as release evidence: refused 422 RS_CAPTURE_NOT_RELEASE_EVIDENCE (DECLARED_HOOKS_ONLY, ...)
@@ -75,10 +84,24 @@ crash recovery: epoch 1 -> 2, stale token RS_TOKEN_REVOKED, second mutation RS_T
 ```
 
 Read it as: the naive client lost the response, its resubmissions were refused, and it never
-reached an accepted terminal status (INV-03 REVIEW). The corrected client reconciled to
-`SUCCESS` (INV-03 PASS). Both gates stay REVIEW here only because, without containment, the
-side-effect check (INV-04) has nothing but the client's own hooks, and the uncontained capture is
-refused as release evidence. Step 4 shows the contained run where the corrected build passes.
+reached an accepted terminal status (INV-03 REVIEW).
+
+The hedging client ([`hedging-client.ts`](packages/regressions/test/support/subject/hedging-client.ts))
+is the FAIL case. It ran the `slow-commit-answer` scenario
+([`scenarios.ts`](packages/delivery/src/scenarios.ts)), where the simulated service accepts the
+deposit submission but holds its answer until the client reads status. After 750 ms without an
+answer the client requested a fresh quote under a new order key, submitted a second deposit, and
+cancelled the first request. The journal shows a quote finalization and a second commit accepted
+after the first commit and before any terminal status for it, so the kernel returns INV-03 FAIL
+(a mutation was accepted while a commit outcome was still unknown). The case, the gate, the
+console, and the CLI (`gate show`, exit code 2) all report FAIL. The scenario states no expected
+verdict, and RouteSpec did not refuse the second order: when it arrived, no response had been
+lost yet, so there was nothing to fence.
+
+The corrected client reconciled to `SUCCESS` (INV-03 PASS). Its gate stays REVIEW here only
+because, without containment, the side-effect check (INV-04) has nothing but the client's own
+hooks, and the uncontained capture is refused as release evidence. Step 4 shows the contained run
+where the corrected build passes.
 
 **3. Open the console on the same data**
 
@@ -87,10 +110,13 @@ node packages/control-api/src/main.ts --data .data/demo/data --console apps/cons
 ```
 
 See: one JSON line with the origin, then `routespec: console http://127.0.0.1:<port>/#token=...`.
-Open that URL (the token is removed from the address bar on load). The Releases page lists four
+Open that URL (the token is removed from the address bar on load). The Releases page lists five
 gate runs for `release-candidate-1` with Verdict, Evidence, Subject identity ("User-asserted local
 build"), Effect coverage ("Declared hooks only — REVIEW"), and Enforcement ("Local advisory").
-"Open gate run" shows each case with its invariants, run operations, and the export panel. Stop
+The Gate summary at the top shows the most recent gate run (the corrected build), says so, and
+names its gate run id; select a row in the matrix to see another. The second row, Verdict FAIL,
+is the hedging build: "Open gate run" shows its case with INV-03 FAIL. "Open gate run" shows each
+case with its invariants, run operations, and the export panel. Stop
 the service with Ctrl+C. Reloading the page drops the session by design; start the service again
 for a new link.
 
@@ -120,6 +146,8 @@ See:
 containment CONTAINED
 baseline client, release corpus: gate decision REVIEW
   case 0 accepted-then-lost-response: client GAVE_UP (resubmissions answered: 403 RS_TOKEN_PHASE_DENIED, ...) | INV-03 REVIEW | INV-04 PASS | effect coverage INDEPENDENT_BOUNDARY_INTERCEPT | ...
+hedging client, slow-answer corpus: gate decision FAIL
+  case 0 slow-commit-answer: client HEDGED (second quote and deposit submitted while the first was unanswered; run operations 2) | INV-03 FAIL | INV-04 PASS | effect coverage INDEPENDENT_BOUNDARY_INTERCEPT | case verdict FAIL
 corrected client, promoted corpus: gate decision PASS
   case 0 accepted-then-lost-response: client RECONCILED | INV-03 PASS | INV-04 PASS | effect coverage INDEPENDENT_BOUNDARY_INTERCEPT | case verdict PASS
 capture as release evidence: accepted
@@ -127,6 +155,7 @@ promoted as RELEASE_EVIDENCE
 regression status CORRECTED_RUN_PASSED
 ```
 
+Containment does not change the hedging verdict: INV-03 is judged from the journal either way.
 Opening the console on `.data/demo-contained/data` (step 3) shows the last gate run as PASS with
 "Trusted launcher attestation" and "Independent boundary". Each subject ran in a container with
 no network except a loopback tunnel to RouteSpec, a read-only root, no capabilities, a seccomp
@@ -141,9 +170,9 @@ was verified for this record; the plain Linux `["docker"]` variant was not run h
 pnpm run check
 ```
 
-See: typecheck, ESLint, Prettier, Vitest, and the repository secret scan; on the fresh clone:
-`Test Files 85 passed | 1 skipped (86)`, `Tests 722 passed | 6 skipped (728)`,
-`secret-scan: clean`. One earlier full run on the same clone had a single timing failure in
+See: typecheck, ESLint, Prettier, Vitest, and the repository secret scan; on this record's commit (2026-11-13, Windows 11):
+`Test Files 86 passed | 1 skipped (87)`, `Tests 727 passed | 6 skipped (733)`,
+`secret-scan: clean`. One earlier full run (M40, fresh clone) had a single timing failure in
 T-042 (an endless chunked body cut-off) under full parallel load; it passed on three isolated
 reruns and on the next full run. Longer suites (`test:delivery`, `test:e2e:real`,
 `test:containment`) are listed under [Verify](#verify).
@@ -192,8 +221,12 @@ starts, runs the networkless gate (simulate and replay only), and stages redacte
    reported as `CI_CHECK` or `REQUIRED_CHECK_UNVERIFIED`; RouteSpec never claims it blocks a
    merge. The action does not use containment.
 
-The action's behaviour was tested with a simulated runner environment (T-056, T-058). A run on
-GitHub's hosted runners has not been observed by this build (see Status).
+The action's behaviour was tested with a simulated runner environment (T-056, T-058), and it has
+run on GitHub's hosted runners: the repository's self-gate workflow `routespec-gate`
+(ubuntu-24.04) succeeded on `main` at `ab9b89f`
+([run 43272644038](https://github.com/gnanam1990/routespec-near/actions/runs/43272644038)) and at
+`bfd3065` ([run 43357797080](https://github.com/gnanam1990/routespec-near/actions/runs/43357797080)).
+The step exits 0 only for a PASS decision, so the sample subject's gate decision was PASS.
 
 ## NEAR integration: exactly what is used
 
@@ -215,32 +248,47 @@ Full record: [`BUILD-STATUS.md`](BUILD-STATUS.md); per-module evidence in
 [`docs/status/`](docs/status/); what only the owner can do:
 [`docs/USER-NEXT-STEPS.md`](docs/USER-NEXT-STEPS.md).
 
-- **Claim level: no `WORKING_*` level is claimed.** `WORKING_LOCAL` still needs (1) a green
-  clean-checkout run on a real CI service and (2) a review of the interceptor profile by a
-  reviewer independent of the operator. The journeys use a locally generated test reviewer key.
+- **Claim level: no `WORKING_*` level is claimed.** The real CI run (RP-05) is now observed (next
+  item). `WORKING_LOCAL` still needs (1) a review of the canary interceptor profile by a reviewer
+  independent of the operator, with their own key (RP-02/RP-06), (2) a contained gate run in a
+  data directory that holds that review, so INV-04 and the capture classification rest on it,
+  and (3) a rerun of `pnpm run test:delivery` with the engine configured on that same commit. The
+  journeys review the profile with a locally generated test key held by the operator, so (1) is
+  not met.
+- **Real CI (RP-05): observed.** GitHub Actions `ci` ran green from a clean checkout of `main` at
+  `ab9b89f` on ubuntu-24.04, windows-2022, and macos-15
+  ([run 43272644091](https://github.com/gnanam1990/routespec-near/actions/runs/43272644091)), and
+  again at `bfd3065`
+  ([run 43357797047](https://github.com/gnanam1990/routespec-near/actions/runs/43357797047));
+  `routespec-gate` ran green on both commits (see the CI section). Commits made after `bfd3065`
+  are covered only once they are pushed and their runs are green.
 - **What ran:** modules M00–M18 and ten security fixes, merged locally; the uncontained and
-  contained journeys from a fresh clone (above); `pnpm run check`; the console against the real
-  service (Playwright + axe, Chromium); container escape and container-host access tests on
-  Docker Engine in WSL 2. All on Windows 11 x64.
+  contained journeys (above); `pnpm run check`; the console against the real service
+  (Playwright + axe, Chromium); container escape and container-host access tests on Docker
+  Engine in WSL 2, all on Windows 11 x64; and `pnpm run check` on Linux and macOS through the CI
+  runs above.
 - **What ran on testnet:** nothing (see NEAR integration).
-- **Not done:** the official `dry: true` probe (needs a user-held 1Click JWT); Linux and macOS
-  host runs; a hosted GitHub Actions run (owner's action, not observed here); Firefox, WebKit,
-  and screen readers; an independent human security review; plain Linux Docker and rootless
-  engines. RouteSpec has no funded mode and no hosted deployment.
+- **Not done:** the independent interceptor profile review (above); the official `dry: true`
+  probe (needs a user-held 1Click JWT); the contained journey and `test:delivery` on Linux and
+  macOS hosts; Firefox, WebKit, and screen readers; an independent human security review; plain
+  Linux Docker and rootless engines. RouteSpec has no funded mode and no hosted deployment.
 
 ## Security
 
-Two external audits were run against this code, and every confirmed finding is fixed. Each fix
-started from a failing test on the real code and has its own evidence record:
+Two security audits were run against this code by the team itself. Both were self-run; neither
+is a third-party audit. Every confirmed finding was first reproduced with a failing test on the
+real code, then fixed, and each has its own evidence record in [`docs/status/`](docs/status/):
 
-- **Automated penetration-test scan**: 3 findings, all fixed —
+- **[Strix](https://github.com/usestrix/strix) 1.7.0**, an open-source automated
+  penetration-testing agent, run by the team against this repository: 3 findings, all fixed —
   [vuln-0001](docs/status/SEC-routespec-vuln-0001.md) (medium, withheld CI credentials readable
   through `/proc/<pid>/environ`), [vuln-0002](docs/status/SEC-routespec-vuln-0002.md) (low,
   credential shapes missed after a word character),
   [vuln-0003](docs/status/SEC-routespec-vuln-0003.md) (low, auth-failure budget locked out the
   operator).
-- **Security audit following Cloudflare's open-source security-audit methodology**: 7 findings,
-  all fixed — [RS-01](docs/status/SEC-routespec-RS-01.md) (medium, unauthenticated interceptor
+- **Cloudflare's open-source
+  [security-audit skill](https://github.com/cloudflare/security-audit-skill) methodology**,
+  applied by the team to this repository: 7 findings, all fixed — [RS-01](docs/status/SEC-routespec-RS-01.md) (medium, unauthenticated interceptor
   sink), [RS-02](docs/status/SEC-routespec-RS-02.md) (contained subject could write to the host
   control channel), [RS-03](docs/status/SEC-routespec-RS-03.md) (pre-authentication rate budget),
   [RS-04](docs/status/SEC-routespec-RS-04.md) (quarantine dropped blocking findings past 512),
@@ -250,7 +298,9 @@ started from a failing test on the real code and has its own evidence record:
   RS-07 are low.
 
 Known remaining limits are stated in those records (for example, hostile code inside the CI
-action process is not contained). An independent human security review is still NOT_RUN.
+action process is not contained). An independent human security review is still NOT_RUN. The
+fix branches are `feat/routespec-m20-*` to `feat/routespec-m29-*`, one per finding (see
+[Layout](#layout)).
 
 ## Hackathon disclosure
 
@@ -300,15 +350,16 @@ This repository implements it module by module (M00–M18).
   signature by an enrolled reviewer whose key is not a launcher key; INV-04 needs an effective
   review. The journeys use a locally generated **test** reviewer key; an independent review is
   NOT_RUN ([runbook](docs/runbooks/interceptor-profile-review.md)).
-- **No `WORKING_*` gate level is claimed.** `WORKING_LOCAL` still needs a green clean-checkout
-  run on a real CI service (RP-05; the repository owner reports that GitHub run separately) and
-  a review of the interceptor profile by a reviewer independent of the operator, followed by a
-  contained gate run on that review (RP-02/RP-06). The official live dry probe (RP-07) has not
-  been run; it needs your own provider JWT.
+- **No `WORKING_*` gate level is claimed.** The green clean-checkout run on a real CI service
+  (RP-05) is now observed: GitHub Actions `ci` run 43272644091 on `ab9b89f` (ubuntu-24.04,
+  windows-2022, macos-15). `WORKING_LOCAL` still needs a review of the interceptor profile by a
+  reviewer independent of the operator, followed by a contained gate run on that review
+  (RP-02/RP-06) and a `test:delivery` rerun on that commit. The official live dry probe (RP-07)
+  has not been run; it needs your own provider JWT.
 - Enforcement is advisory: `LOCAL_ADVISORY`, `CI_CHECK`, or `REQUIRED_CHECK_UNVERIFIED`.
   RouteSpec never says it blocks a merge or a release.
-- Not run: Linux and macOS hosts (here), Firefox and WebKit, screen readers, an independent
-  security review. What you can do next: [`docs/USER-NEXT-STEPS.md`](docs/USER-NEXT-STEPS.md).
+- Not run: the contained journey on Linux and macOS hosts, Firefox and WebKit, screen readers,
+  an independent security review. What you can do next: [`docs/USER-NEXT-STEPS.md`](docs/USER-NEXT-STEPS.md).
 
 ### Dependencies
 
@@ -433,11 +484,18 @@ packages/hardening         M11  path policy, canary scanner, OS views, supply-ch
 packages/security-suite    M11  security acceptance tests against the assembled product
 packages/delivery          M12  clean install, end-to-end journey (uncontained and contained), delivery tests
 packages/containment       M14  container launcher, loopback tunnel, containment verification, attesting launcher
-docs/adr                        architecture decision records 0001-0021
+docs/adr                        architecture decision records 0001-0025
 docs/runbooks                   container-containment.md (WSL 2 + Docker Engine), interceptor-profile-review.md
 docs/status                     per-module evidence
 docs/spec                       sealed specification pack (never edited)
 ```
+
+Branches: each module was built on its own `feat/routespec-mNN-*` branch and merged into `main`
+with `--no-ff`; every branch is kept. M00–M18 are the build modules, M19 the reviewer kits, and
+M40 onward the hackathon write-up and screening fixes. The `feat/routespec-m20-*` to
+`feat/routespec-m29-*` branches are not modules: they are security-fix branches, one per audit
+finding (m20 vuln-0001, m21 vuln-0002, m22 vuln-0003, m23 RS-01, m24 RS-02, m25 RS-03, m26 RS-04,
+m27 RS-05, m28 RS-06, m29 RS-07; see [Security](#security)).
 
 ## Module notes
 
@@ -471,7 +529,8 @@ docs/spec                       sealed specification pack (never edited)
   complete, WCAG 2.2 AA checked with axe, responsive from 375 px.
 - **CI (M10).** `routespec-ci run --config routespec.ci.json` through the reviewed launcher;
   pull-request and fork jobs get no provider secrets and upload only redacted reports; CI builds
-  stay `USER_ASSERTED_LOCAL`. Remote runs have not happened yet.
+  stay `USER_ASSERTED_LOCAL`. Hosted runs: `ci` and `routespec-gate` green on GitHub Actions
+  (see [Honest status](#honest-status)).
 - **Containment (M14).** `@routespec/containment` detects the engine, starts the subject's process
   tree in a container whose only channel is a stdio tunnel to the proxy and the interceptor sink,
   verifies the engine's record and the container's self-observation (fail closed), and supplies

@@ -1,6 +1,6 @@
 # SEC RS-03 — Pre-authentication read/mutation budget: status evidence
 
-- Source: external security audit, finding RS-03 (low, availability only; a variant of
+- Source: self-run audit, Cloudflare security-audit skill methodology, finding RS-03 (low, availability only; a variant of
   vuln-0003). Re-confirmed with a failing test on the real control server before any change.
 - State: **FIXED** on `feat/routespec-m25-preauth-rate-budget` (base `c588307`, `main` merged in
   before the final run).

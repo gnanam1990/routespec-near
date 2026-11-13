@@ -7,7 +7,7 @@
 
 ## Context
 
-An external automated scan reported that the control API's failed-authentication window was a
+A Strix 1.7.0 automated pentest scan, run by the team, reported that the control API's failed-authentication window was a
 process-wide lockout. ADR-0013 said "when it is exhausted every request gets 429". The rate
 limiter is a single fixed window shared by every client, and the service is reachable by any local
 process on the loopback port with no peer authentication. Fifty bad-token requests in ten seconds
@@ -46,7 +46,7 @@ genuine token presented during the window is not a guess.
 ## Amendment — budgets charged only after authentication (SEC RS-03)
 
 - Date: 2026-11-12
-- Source: external security audit, finding RS-03 (low, availability only).
+- Source: self-run audit, Cloudflare security-audit skill methodology, finding RS-03 (low, availability only).
 
 Decision 3 left the read/mutation budgets charged before authentication, so a credential-less
 local flood with a valid Host header (just over 500 POSTs or 2000 GETs in one 10 s window) made

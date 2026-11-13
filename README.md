@@ -489,7 +489,7 @@ packages/hardening         M11  path policy, canary scanner, OS views, supply-ch
 packages/security-suite    M11  security acceptance tests against the assembled product
 packages/delivery          M12  clean install, end-to-end journey (uncontained and contained), delivery tests
 packages/containment       M14  container launcher, loopback tunnel, containment verification, attesting launcher
-docs/adr                        architecture decision records 0001-0025
+docs/adr                        architecture decision records 0001-0026
 docs/runbooks                   container-containment.md (WSL 2 + Docker Engine), interceptor-profile-review.md
 docs/status                     per-module evidence
 docs/spec                       sealed specification pack (never edited)

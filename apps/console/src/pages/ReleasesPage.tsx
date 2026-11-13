@@ -85,7 +85,7 @@ export function ReleasesPage() {
                   aria-label="Revision matrix (scrolls horizontally)"
                   tabIndex={0}
                 >
-                  <table className="table" aria-describedby="matrix-count">
+                  <table className="table table-matrix" aria-describedby="matrix-count">
                     <thead>
                       <tr>
                         <th scope="col">Revision</th>

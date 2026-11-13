@@ -88,10 +88,14 @@ export function Shell({ children }: { children: ReactNode }) {
           <Icon name="menu" />
           <span className="visually-hidden">{navOpen ? 'Close navigation' : 'Open navigation'}</span>
         </button>
-        <span className="brand">RouteSpec</span>
+        <span className="brand">
+          <BrandMark />
+          RouteSpec
+        </span>
         <span className="badge tone-neutral local-badge">
           <Icon name="shield" /> <span className="badge-label">Local only</span>
         </span>
+        <span className="header-divider" aria-hidden="true" />
         <label className="project-select">
           <span className="visually-hidden">Current project</span>
           <span aria-hidden="true" className="small muted">
@@ -173,5 +177,28 @@ export function Shell({ children }: { children: ReactNode }) {
         {announcement}
       </div>
     </div>
+  );
+}
+
+/** Product mark: two route nodes joined by a checked path. Decorative; the name is text. */
+function BrandMark() {
+  return (
+    <svg
+      className="icon brand-mark"
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="5.5" cy="6" r="2.5" />
+      <circle cx="18.5" cy="18" r="2.5" />
+      <path d="M8 6h6.5a3.5 3.5 0 0 1 0 7h-5a3.5 3.5 0 0 0 0 7H16" />
+    </svg>
   );
 }

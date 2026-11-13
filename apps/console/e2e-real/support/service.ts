@@ -47,6 +47,8 @@ const store = RouteSpecStore.open({ path: join(dir, 'journal.db'), clock });
 const consoleDir = fileURLToPath(new URL('../../dist', import.meta.url));
 const server = await ControlServer.start({
   store,
+  // Optional fixed loopback port for manual runs (screenshots, demo recording); ephemeral otherwise.
+  ...(process.env['ROUTESPEC_REAL_PORT'] ? { port: Number(process.env['ROUTESPEC_REAL_PORT']) } : {}),
   dataDirectory: dir,
   consoleDir,
   leaseTtlMs: LEASE_TTL_MS,

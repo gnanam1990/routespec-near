@@ -1,16 +1,17 @@
 /*
- * RouteSpec console design tokens (UI-SPEC 5). Components consume only these semantic tokens.
- * Blue = available action; green is reserved for a proven PASS outcome.
+ * RouteSpec console design tokens (UI-SPEC 5; ADR 0026). Components consume only these semantic
+ * tokens. Blue = available action; green is reserved for a proven PASS outcome.
  */
 :root {
-  /* Typography: bundled IBM Plex Sans / JetBrains Mono, then reviewed system fallbacks. */
+  /* Typography: bundled IBM Plex Sans / JetBrains Mono (same-origin), then system fallbacks. */
   --font-sans: 'IBM Plex Sans', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono:
     'JetBrains Mono', ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   --text-body: 1rem; /* 16px */
-  --text-dense: 0.875rem; /* 14px */
-  --text-label: 0.8125rem; /* 13px */
+  --text-dense: 0.875rem; /* 14px: dense cells, controls */
+  --text-label: 0.8125rem; /* 13px: labels, badges, metadata */
   --leading-body: 1.5;
+  --leading-dense: 1.45;
   --h1-size: 1.75rem;
   --h1-leading: 2.125rem; /* 28/34 */
   --h2-size: 1.375rem;
@@ -19,12 +20,17 @@
   --h3-leading: 1.5rem; /* 18/24 */
   --h4-size: 1rem;
   --h4-leading: 1.375rem; /* 16/22 */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --tracking-tight: -0.011em;
 
   /* 4px grid */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
+  --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
   --space-12: 48px;
@@ -33,11 +39,15 @@
   --radius-control: 6px;
   --radius-card: 8px;
   --control-height: 36px;
+  --control-height-sm: 28px;
   --touch-target: 44px;
   --focus-width: 2px;
+  --icon-sm: 16px;
+  --icon-md: 20px;
 
   /* Fixed layer tokens; no arbitrary z-index values. */
   --layer-base: 0;
+  --layer-raised: 1;
   --layer-sticky: 100;
   --layer-popover: 200;
   --layer-dialog: 300;
@@ -48,8 +58,10 @@
   --motion-ease: cubic-bezier(0.2, 0, 0, 1);
 
   --header-height: 56px;
+  --nav-width: 240px;
   --bottom-nav-height: 64px;
   --prose-width: 72ch;
+  --content-max: 1600px;
 }
 
 /* Light theme (default) */
@@ -60,8 +72,10 @@
   --surface: #ffffff;
   --surface-subtle: #f1f5f9;
   --surface-raised: #ffffff;
+  --surface-hover: #f8fafc;
   --border: #cbd5e1;
-  --border-strong: #64748b;
+  --border-subtle: #e2e8f0;
+  --border-strong: #7c8aa0;
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --action: #1d4ed8;
@@ -70,22 +84,32 @@
   --focus: #1d4ed8;
   --focus-halo: #ffffff;
   --danger-action: #991b1b;
+  --danger-action-hover: #7f1d1d;
   --danger-action-on: #ffffff;
-  --selected: #e0e7ff;
+  --selected: #eff6ff;
+  --selected-text: #1e40af;
+  --selected-border: #93c5fd;
 
   --pass-text: #166534;
   --pass-surface: #dcfce7;
+  --pass-border: #86efac;
   --fail-text: #991b1b;
   --fail-surface: #fee2e2;
+  --fail-border: #fca5a5;
   --review-text: #92400e;
   --review-surface: #fef3c7;
+  --review-border: #fcd34d;
   --private-text: #6d28d9;
   --private-surface: #ede9fe;
+  --private-border: #c4b5fd;
   --neutral-text: #475569;
   --neutral-surface: #f1f5f9;
+  --neutral-border: #cbd5e1;
 
-  --shadow-popover: 0 4px 12px rgb(15 23 42 / 0.12);
-  --shadow-modal: 0 16px 40px rgb(15 23 42 / 0.24);
+  --shadow-none: none;
+  --shadow-popover: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 24px rgb(15 23 42 / 0.12);
+  --shadow-modal: 0 2px 4px rgb(15 23 42 / 0.08), 0 24px 48px rgb(15 23 42 / 0.22);
+  --scrim: rgb(15 23 42 / 0.5);
   --skeleton: #e2e8f0;
 }
 
@@ -96,8 +120,10 @@
     --surface: #111827;
     --surface-subtle: #0f172a;
     --surface-raised: #182235;
+    --surface-hover: #162032;
     --border: #475569;
-    --border-strong: #94a3b8;
+    --border-subtle: #273449;
+    --border-strong: #7c8aa0;
     --text-primary: #f8fafc;
     --text-secondary: #cbd5e1;
     --action: #60a5fa;
@@ -106,22 +132,32 @@
     --focus: #93c5fd;
     --focus-halo: #0b1220;
     --danger-action: #fca5a5;
+    --danger-action-hover: #fecaca;
     --danger-action-on: #1f0707;
-    --selected: #1e293b;
+    --selected: #172554;
+    --selected-text: #dbeafe;
+    --selected-border: #3b82f6;
 
     --pass-text: #bbf7d0;
     --pass-surface: #14532d;
+    --pass-border: #15803d;
     --fail-text: #fecaca;
     --fail-surface: #7f1d1d;
+    --fail-border: #b91c1c;
     --review-text: #fde68a;
     --review-surface: #713f12;
+    --review-border: #a16207;
     --private-text: #ddd6fe;
     --private-surface: #4c1d95;
+    --private-border: #7c3aed;
     --neutral-text: #cbd5e1;
     --neutral-surface: #1e293b;
+    --neutral-border: #475569;
 
-    --shadow-popover: 0 4px 12px rgb(0 0 0 / 0.5);
-    --shadow-modal: 0 16px 40px rgb(0 0 0 / 0.6);
+    --shadow-none: none;
+    --shadow-popover: 0 8px 24px rgb(0 0 0 / 0.5);
+    --shadow-modal: 0 24px 48px rgb(0 0 0 / 0.6);
+    --scrim: rgb(2 6 23 / 0.7);
     --skeleton: #1e293b;
   }
 }
@@ -132,8 +168,10 @@
   --surface: #111827;
   --surface-subtle: #0f172a;
   --surface-raised: #182235;
+  --surface-hover: #162032;
   --border: #475569;
-  --border-strong: #94a3b8;
+  --border-subtle: #273449;
+  --border-strong: #7c8aa0;
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --action: #60a5fa;
@@ -142,22 +180,32 @@
   --focus: #93c5fd;
   --focus-halo: #0b1220;
   --danger-action: #fca5a5;
+  --danger-action-hover: #fecaca;
   --danger-action-on: #1f0707;
-  --selected: #1e293b;
+  --selected: #172554;
+  --selected-text: #dbeafe;
+  --selected-border: #3b82f6;
 
   --pass-text: #bbf7d0;
   --pass-surface: #14532d;
+  --pass-border: #15803d;
   --fail-text: #fecaca;
   --fail-surface: #7f1d1d;
+  --fail-border: #b91c1c;
   --review-text: #fde68a;
   --review-surface: #713f12;
+  --review-border: #a16207;
   --private-text: #ddd6fe;
   --private-surface: #4c1d95;
+  --private-border: #7c3aed;
   --neutral-text: #cbd5e1;
   --neutral-surface: #1e293b;
+  --neutral-border: #475569;
 
-  --shadow-popover: 0 4px 12px rgb(0 0 0 / 0.5);
-  --shadow-modal: 0 16px 40px rgb(0 0 0 / 0.6);
+  --shadow-none: none;
+  --shadow-popover: 0 8px 24px rgb(0 0 0 / 0.5);
+  --shadow-modal: 0 24px 48px rgb(0 0 0 / 0.6);
+  --scrim: rgb(2 6 23 / 0.7);
   --skeleton: #1e293b;
 }
 
@@ -166,5 +214,6 @@
   :root {
     --focus: Highlight;
     --border: CanvasText;
+    --border-subtle: CanvasText;
   }
 }

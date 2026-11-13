@@ -20,6 +20,14 @@ body {
   font-size: var(--text-body);
   line-height: var(--leading-body);
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--selected);
+  color: var(--selected-text);
 }
 
 h1,
@@ -38,18 +46,31 @@ figure {
 .h1 {
   font-size: var(--h1-size);
   line-height: var(--h1-leading);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
 }
 .h2 {
   font-size: var(--h2-size);
   line-height: var(--h2-leading);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
 }
 .h3 {
   font-size: var(--h3-size);
   line-height: var(--h3-leading);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   margin-bottom: var(--space-2);
+}
+.h4 {
+  font-size: var(--h4-size);
+  line-height: var(--h4-leading);
+  font-weight: var(--weight-semibold);
+}
+/* Headings that receive route focus keep a visible ring with breathing room around the text. */
+h1[tabindex='-1'],
+h2[tabindex='-1'] {
+  border-radius: var(--radius-tag);
+  outline-offset: 4px;
 }
 
 p + p {
@@ -58,7 +79,8 @@ p + p {
 
 a {
   color: var(--action);
-  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
 a:hover {
   color: var(--action-hover);
@@ -69,6 +91,9 @@ code,
   font-family: var(--font-mono);
   font-size: 0.9em;
   font-variant-numeric: tabular-nums;
+  font-feature-settings:
+    'zero' 0,
+    'calt' 0;
 }
 
 .num {

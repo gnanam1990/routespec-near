@@ -266,7 +266,7 @@ export function ResourceView<T>({
   const stale = state.status === 'error' || connection === 'DISCONNECTED';
   if (state.status === 'success' && isEmpty?.(state.data)) return <>{empty}</>;
   return (
-    <div className={stale ? 'is-stale' : undefined} data-stale={stale ? 'true' : 'false'}>
+    <div className={`resource${stale ? ' is-stale' : ''}`} data-stale={stale ? 'true' : 'false'}>
       {stale ? (
         <Notice tone="review" icon="clock" title={`Stale: showing the last ${label} received`} role="status">
           <p>

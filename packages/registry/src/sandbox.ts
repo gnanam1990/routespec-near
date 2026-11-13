@@ -12,7 +12,7 @@
  * nearcore sandbox archive is downloaded inside the container on first use, checked against a
  * pinned SHA-256, and cached under `.data/registry/sandbox-cache`.
  */
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -112,6 +112,7 @@ export async function startSandbox(cli: ContainerCli, port: number): Promise<San
   );
   if (started.exitCode !== 0)
     throw new Error(`sandbox container did not start: ${started.stderr.slice(-400)}`);
+  follow(cli, containerName);
   const deadline = Date.now() + 240_000;
   for (;;) {
     if (await rpcReady(rpcUrl)) break;
@@ -136,9 +137,28 @@ export async function startSandbox(cli: ContainerCli, port: number): Promise<San
   return { rpcUrl, containerName, rootSecret: parsed.secret_key };
 }
 
+const followers = new Map<string, ChildProcess>();
+
+/**
+ * Keep one engine client attached to the container while the suite runs. With Docker Engine
+ * inside WSL 2 the distribution can be stopped when no client session is open, which would take
+ * the detached sandbox node with it in the middle of a run (seen twice while building M47).
+ */
+function follow(cli: ContainerCli, containerName: string): void {
+  const [program, ...lead] = cli.argv as [string, ...string[]];
+  const child = spawn(program, [...lead, 'logs', '--follow', '--tail', '0', containerName], {
+    stdio: 'ignore',
+    windowsHide: true,
+  });
+  child.on('error', () => undefined);
+  followers.set(containerName, child);
+}
+
 /** Remove the container this harness started (by its exact name). */
 export async function stopSandbox(cli: ContainerCli, containerName: string): Promise<void> {
   if (!/^routespec-registry-sandbox-\d+-\d+$/.test(containerName)) return;
+  followers.get(containerName)?.kill();
+  followers.delete(containerName);
   await runEngine(cli, ['rm', '--force', containerName], 60_000);
 }
 

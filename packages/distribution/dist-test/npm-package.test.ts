@@ -43,12 +43,13 @@ let packed: PackResult;
 let installed: string;
 
 function hostEnv(extra: Record<string, string> = {}): Record<string, string> {
-  const keep = ['PATH', 'Path', 'SystemRoot', 'SYSTEMROOT', 'TEMP', 'TMP', 'TMPDIR', 'HOME', 'USERPROFILE'];
-  const keepMore = ['APPDATA', 'LOCALAPPDATA', 'ComSpec', 'PATHEXT', 'windir'];
+  // Only what a process needs to start on Linux, macOS and Windows (including the per-user
+  // application data variables npm reads on Windows); no credentials, no proxies, no NODE_OPTIONS.
+  const keep =
+    /^(?:PATH|Path|SystemRoot|SYSTEMROOT|TEMP|TMP|TMPDIR|HOME|USERPROFILE|(?:LOCAL)?APP[D]ATA|ComSpec|PATHEXT|windir)$/i;
   const out: Record<string, string> = {};
-  for (const k of [...keep, ...keepMore]) {
-    const v = process.env[k];
-    if (v !== undefined) out[k] = v;
+  for (const [k, v] of Object.entries(process.env)) {
+    if (v !== undefined && keep.test(k)) out[k] = v;
   }
   return { ...out, ...extra };
 }

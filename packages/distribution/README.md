@@ -1,16 +1,16 @@
 # @routespec/distribution
 
-Owner module: M54. Decisions: `docs/adr/0031-distribution-npm-marketplace-console-demo.md`.
+Owner module: M54. Decisions: `docs/adr/0032-distribution-npm-marketplace-console-demo.md`.
 Status and evidence: `docs/status/M54.md`. Nothing in this package publishes anything; the
 publish steps are the repository owner's.
 
-| Part                    | Where                                          | Command                                                         |
-| ----------------------- | ---------------------------------------------- | --------------------------------------------------------------- |
-| npm package `routespec` | `src/npm-package.ts`, `npm/`                   | `pnpm run package:npm` (tarball in `.data/npm`)                 |
-| Marketplace action      | `marketplace/` (root of a separate repository) | —                                                               |
-| Console demo recording  | `src/console-demo/record.ts`, `console-demo/`  | `pnpm run demo:record -- --data ... --journey ... --bundle ...` |
-| Console demo site       | `src/console-demo/build.ts`                    | `pnpm run demo:console` (site in `.data/console-demo-site`)     |
-| Judge command           | `src/judge.ts`                                 | `pnpm judge [--contained] [--skip-package]`                     |
+| Part                    | Where                                          | Command                                                                   |
+| ----------------------- | ---------------------------------------------- | ------------------------------------------------------------------------- |
+| npm package `routespec` | `src/npm-package.ts`, `npm/`                   | `pnpm run package:npm` (tarball in `.data/npm`)                           |
+| Marketplace action      | `marketplace/` (root of a separate repository) | —                                                                         |
+| Console demo recording  | `src/console-demo/record.ts`, `console-demo/`  | `pnpm run demo:record -- --data ... --journey ... --bundle ...`           |
+| Console demo site       | `src/console-demo/build.ts`                    | `pnpm run demo:console` (deployed by `routespec-pages` under `/console/`) |
+| Judge command           | `src/judge.ts`                                 | `pnpm judge [--contained] [--skip-package]`                               |
 
 Tests: `test/` runs in `pnpm test` (closure and audit of the package build, Marketplace metadata,
 release workflow policy, the committed recording). `dist-test/` is `pnpm run test:distribution`:

@@ -10,6 +10,9 @@
  *   bundle digest (see `aggregateRelease`). Exit 0 only for PASS.
  * - `certificate revoke-check`: report whether the attesters of a bundle's certificates (or the
  *   named attester keys) are still enrolled.
+ * - `certificate badge` (M49): write the shields.io endpoint JSON of the "RouteSpec Certified"
+ *   badge for a bundle digest, a bundle, or a project's newest certificate. The status is the
+ *   digest-only release decision (the same the verify page computes in a browser).
  *
  * These are the only RouteSpec commands that contact a network, and only a NEAR JSON-RPC
  * endpoint the operator names (`--network` or `--rpc`). Gate runs and evaluations stay
@@ -24,6 +27,7 @@ import { RouteSpecError } from '@routespec/contracts';
 import { resolveInputFile, resolveOutputFile } from '@routespec/hardening';
 import {
   aggregateRelease,
+  badgeStatus,
   CERTIFICATE_POLICIES,
   CERTIFICATE_VERDICTS,
   generateSigner,
@@ -31,15 +35,19 @@ import {
   isProjectKey,
   isPublicKeyText,
   isRegistryAccountId,
+  latestCertificate,
+  MAX_PAGE,
   NEAR_NETWORKS,
   NearRpc,
   publicKeyText,
   RegistryClient,
+  shieldsBadge,
   signCertificate,
   signerFromSecret,
   signerToPem,
   signingPayload,
   type AttesterState,
+  type BadgeStatus,
   type CertificateFields,
   type CertificatePolicy,
   type CertificateVerdict,
@@ -218,6 +226,35 @@ async function attesterStates(
   const out: Record<string, AttesterState | null> = {};
   for (const key of [...new Set(keys)]) out[key] = await client.getAttester(key);
   return out;
+}
+
+/** How far back from a project's newest certificate `certificate badge --project-key` looks. */
+const PROJECT_LOOKBACK = 200;
+const CODE_HASH = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+const BADGE_LABEL = /^[A-Za-z0-9][A-Za-z0-9 ._()-]{0,39}$/;
+/** Registry read failures that `certificate badge --write-on-error` turns into an "unverified" badge. */
+const BADGE_READ_ERRORS: readonly string[] = [
+  'RS_REGISTRY_UNAVAILABLE',
+  'RS_REGISTRY_REJECTED',
+  'RS_IDENTITY_MISMATCH',
+];
+
+async function latestProjectCertificate(
+  client: RegistryClient,
+  project: string,
+  trusted: readonly string[],
+): Promise<{ certificate: OnchainCertificate | null; total: number }> {
+  const total = await client.projectCertificateCount(project);
+  for (let end = total; end > 0 && total - end < PROJECT_LOOKBACK; end -= MAX_PAGE) {
+    const from = Math.max(0, end - MAX_PAGE);
+    const found = latestCertificate(
+      await client.certificatesByProject(project, from, end - from),
+      project,
+      trusted,
+    );
+    if (found !== null) return { certificate: found, total };
+  }
+  return { certificate: null, total };
 }
 
 function exitForDecision(decision: CertificateVerdict): ExitCode {
@@ -579,6 +616,126 @@ export const CERTIFICATE_COMMANDS: Readonly<Record<string, CertificateCommand>> 
           },
           certificates: release.certificates.map((a) => ({ ...byId.get(a.id), assessment: a })),
           note: 'Signatures were verified locally. Enrolment and revocation are as reported by the RPC endpoint.',
+        },
+      };
+    },
+  },
+  'certificate badge': {
+    needsData: false,
+    spec: {
+      flags: {
+        bundle: { kind: 'string' },
+        digest: { kind: 'string' },
+        'project-key': { kind: 'string' },
+        attester: { kind: 'multi' },
+        'known-code-hash': { kind: 'multi' },
+        label: { kind: 'string' },
+        out: { kind: 'string', required: true },
+        'write-on-error': { kind: 'boolean' },
+        ...CHAIN_FLAGS,
+      },
+    },
+    run: async (args) => {
+      const project = args.strings['project-key'] ?? null;
+      const given = ['bundle', 'digest', 'project-key'].filter((f) => args.strings[f] !== undefined);
+      if (given.length !== 1) usage('Give exactly one of --bundle, --digest, or --project-key.');
+      if (project !== null && !isProjectKey(project)) usage('The project key is not valid.');
+      const label = args.strings['label'] ?? 'RouteSpec';
+      if (!BADGE_LABEL.test(label)) usage('The badge label is 1-40 letters, digits, spaces or . _ ( ) -.');
+      const knownCodeHashes = [...new Set(args.multi['known-code-hash'] ?? [])];
+      for (const h of knownCodeHashes) {
+        if (!CODE_HASH.test(h))
+          usage('A code hash is the base58 NEAR code hash.', { flag: 'known-code-hash' });
+      }
+      const trustedAttesters = attesterFlags(args);
+      registryFromArgs(args);
+      const out = resolveOutputFile(args.strings['out'] as string, 'RS_EXPORT_PATH_INVALID');
+      if (out.exists) {
+        throw new RouteSpecError(
+          'RS_EXPORT_OVERWRITE_DENIED',
+          'The badge file already exists; nothing was written.',
+        );
+      }
+      let bundleDigest = bundleDigestFromArgs(args);
+
+      let status: BadgeStatus;
+      let detail: Record<string, unknown>;
+      try {
+        const { client, network, codeHash } = await connect(args);
+        const codeHashKnown = knownCodeHashes.length === 0 ? null : knownCodeHashes.includes(codeHash);
+        let certificateId: number | null = null;
+        let projectCertificates: number | null = null;
+        if (project !== null) {
+          const latest = await latestProjectCertificate(client, project, trustedAttesters);
+          projectCertificates = latest.total;
+          bundleDigest = latest.certificate?.bundleDigest ?? null;
+          certificateId = latest.certificate?.id ?? null;
+        }
+        let release: ReturnType<typeof aggregateRelease> | null = null;
+        let readAtBlockHeight: number | null = null;
+        if (bundleDigest !== null) {
+          const { certificates, blockHeight } = await client.certificatesByBundle(bundleDigest);
+          readAtBlockHeight = blockHeight;
+          const attesters = await attesterStates(client, [
+            ...certificates.map((c) => c.attester),
+            ...trustedAttesters,
+          ]);
+          release = aggregateRelease({
+            registry: client.accountId,
+            bundleDigest,
+            local: null,
+            certificates,
+            attesters,
+            policy: 'REQUIRE_ONCHAIN_ATTESTER',
+            trustedAttesters,
+          });
+        }
+        // A project with no (pinned) certificate has nothing to verify: that is "no certificate",
+        // not an unread registry.
+        if (release !== null) status = badgeStatus(release, codeHashKnown);
+        else status = codeHashKnown === false ? 'REGISTRY_CODE_UNKNOWN' : 'NO_CERTIFICATE';
+        detail = {
+          bundleDigest,
+          project,
+          projectCertificates,
+          latestCertificateId: certificateId,
+          registry: { accountId: client.accountId, network, codeHash, codeHashKnown, readAtBlockHeight },
+          release:
+            release === null
+              ? null
+              : {
+                  decision: release.decision,
+                  acceptedCertificateIds: release.acceptedCertificateIds,
+                  findings: release.findings,
+                  trustedAttesters,
+                },
+        };
+      } catch (error) {
+        if (
+          !args.booleans.has('write-on-error') ||
+          !(error instanceof RouteSpecError) ||
+          !BADGE_READ_ERRORS.includes(error.code)
+        ) {
+          throw error;
+        }
+        status = 'UNVERIFIED';
+        const reason = error.details['reason'];
+        detail = {
+          bundleDigest,
+          project,
+          error: { code: error.code, reason: typeof reason === 'string' ? reason.slice(0, 80) : null },
+        };
+      }
+      const badge = shieldsBadge(status, label);
+      writeFileSync(out.path, JSON.stringify(badge, null, 2) + '\n', { encoding: 'utf8', flag: 'wx' });
+      return {
+        exitCode: EXIT.PASS,
+        result: {
+          status,
+          badge,
+          ...detail,
+          badgeWritten: true,
+          note: 'Digest-only status under require-onchain-attester; signatures were verified locally. Enrolment and revocation are as reported by the RPC endpoint.',
         },
       };
     },

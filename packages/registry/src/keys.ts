@@ -15,9 +15,8 @@ import {
   type KeyObject,
 } from 'node:crypto';
 import { RouteSpecError } from '@routespec/contracts';
+import { base58DecodeChecked, base58Encode } from './key-text.ts';
 
-const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-const ALPHABET_INDEX = new Map([...ALPHABET].map((c, i) => [c, i]));
 const PKCS8_ED25519_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
 const SPKI_ED25519_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
 const MAX_SECRET_TEXT = 16 * 1024;
@@ -26,49 +25,13 @@ function keyError(message: string): never {
   throw new RouteSpecError('RS_CERTIFICATE_KEY_INVALID', message);
 }
 
-export function base58Encode(bytes: Uint8Array): string {
-  let zeros = 0;
-  while (zeros < bytes.length && bytes[zeros] === 0) zeros++;
-  const digits: number[] = [];
-  for (let i = zeros; i < bytes.length; i++) {
-    let carry = bytes[i] as number;
-    for (let j = 0; j < digits.length; j++) {
-      carry += (digits[j] as number) << 8;
-      digits[j] = carry % 58;
-      carry = Math.floor(carry / 58);
-    }
-    while (carry > 0) {
-      digits.push(carry % 58);
-      carry = Math.floor(carry / 58);
-    }
-  }
-  let out = '1'.repeat(zeros);
-  for (let i = digits.length - 1; i >= 0; i--) out += ALPHABET[digits[i] as number];
-  return out;
-}
+export { base58Encode, isPublicKeyText } from './key-text.ts';
 
 export function base58Decode(text: string): Uint8Array {
-  if (text.length > 512) keyError('Base58 text is too long.');
-  let zeros = 0;
-  while (zeros < text.length && text[zeros] === '1') zeros++;
-  const bytes: number[] = [];
-  for (let i = zeros; i < text.length; i++) {
-    const value = ALPHABET_INDEX.get(text[i] as string);
-    if (value === undefined) keyError('Text is not base58.');
-    let carry = value;
-    for (let j = 0; j < bytes.length; j++) {
-      carry += (bytes[j] as number) * 58;
-      bytes[j] = carry & 0xff;
-      carry >>= 8;
-    }
-    while (carry > 0) {
-      bytes.push(carry & 0xff);
-      carry >>= 8;
-    }
-  }
-  const out = new Uint8Array(zeros + bytes.length);
-  for (let i = 0; i < bytes.length; i++) out[zeros + i] = bytes[bytes.length - 1 - i] as number;
-  return out;
+  const bytes = base58DecodeChecked(text);
+  if (bytes === 'TOO_LONG') keyError('Base58 text is too long.');
+  if (bytes === 'NOT_BASE58') keyError('Text is not base58.');
+  return bytes;
 }
 
 /** `ed25519:<base58>` for a 32-byte public key. */
@@ -85,15 +48,6 @@ export function parsePublicKey(text: string): Uint8Array {
   const bytes = base58Decode(text.slice(8));
   if (bytes.length !== 32) keyError('An Ed25519 public key has 32 bytes.');
   return bytes;
-}
-
-export function isPublicKeyText(text: unknown): text is string {
-  if (typeof text !== 'string') return false;
-  try {
-    return publicKeyText(parsePublicKey(text)) === text;
-  } catch {
-    return false;
-  }
 }
 
 function publicKeyObject(publicKey: Uint8Array): KeyObject {

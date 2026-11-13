@@ -1,13 +1,15 @@
 /**
  * M54: the static read-only console demo, built for GitHub Pages and driven in Chromium.
  *
- * The site is served the way GitHub Pages serves a project site: under `/routespec-near/`, static
- * files only, and `404.html` for any other path. The test opens the site, follows the console to
- * the corrected build's gate run (PASS, contained), opens a deep link directly, and checks that a
- * mutation is refused as read-only and that no request leaves the site's own origin.
+ * The demo is built into `console/` of a site served the way GitHub Pages serves this project
+ * site: under `/routespec-near/`, static files only, and the site root's `404.html` for any other
+ * path (the RouteSpec Pages site holds the verify page at its root and the demo below it). The
+ * test opens the demo, opens a deep link to the corrected build's gate run (PASS, contained) that
+ * only the root fallback can serve, and checks that a mutation is refused as read-only and that
+ * no request leaves the site's own origin.
  */
 import { createServer, type Server } from 'node:http';
-import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { extname, join, normalize } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -16,7 +18,8 @@ import { buildConsoleDemo } from '../src/console-demo/build.ts';
 import { DEMO_DIR } from '../src/console-demo/record.ts';
 
 const PORT = 9582;
-const BASE = '/routespec-near/';
+const SITE_BASE = '/routespec-near/';
+const BASE = '/routespec-near/console/';
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -31,6 +34,7 @@ const TYPES: Record<string, string> = {
 
 const work = mkdtempSync(join(tmpdir(), 'routespec-m54-site-'));
 let site: string;
+let demoDir: string;
 let server: Server;
 let browser: Browser;
 const snapshot = JSON.parse(readFileSync(join(DEMO_DIR, 'snapshot.json'), 'utf8')) as {
@@ -40,9 +44,11 @@ const snapshot = JSON.parse(readFileSync(join(DEMO_DIR, 'snapshot.json'), 'utf8'
 const projectId = snapshot.responses['GET /projects']?.body.items?.[0]?.projectId as string;
 
 function serveFile(path: string): { status: number; body: Buffer; type: string } {
-  const rel = normalize(decodeURIComponent(path.slice(BASE.length))).replace(/^([/\\])+/, '');
+  const rel = normalize(decodeURIComponent(path.slice(SITE_BASE.length))).replace(/^([/\\])+/, '');
   if (!rel.startsWith('..')) {
-    const file = join(site, rel === '' ? 'index.html' : rel);
+    // Like Pages: a directory is served by its index.html.
+    const named = join(site, rel);
+    const file = existsSync(named) && statSync(named).isDirectory() ? join(named, 'index.html') : named;
     try {
       if (statSync(file).isFile()) {
         return {
@@ -59,10 +65,11 @@ function serveFile(path: string): { status: number; body: Buffer; type: string }
 }
 
 beforeAll(async () => {
-  site = buildConsoleDemo({ out: join(work, 'site'), base: BASE });
+  site = join(work, 'site');
+  demoDir = buildConsoleDemo({ out: join(site, 'console'), base: BASE, rootFallback: site });
   server = createServer((req, res) => {
     const path = new URL(req.url ?? '/', ORIGIN).pathname;
-    const r = path.startsWith(BASE)
+    const r = path.startsWith(SITE_BASE)
       ? serveFile(path)
       : { status: 404, body: Buffer.from('not here'), type: 'text/plain' };
     res.writeHead(r.status, { 'content-type': r.type });
@@ -87,12 +94,13 @@ describe('M54 static console demo site', () => {
       'demo/snapshot.json',
       'demo/evidence-bundle.tar',
     ]) {
-      expect(statSync(join(site, f)).isFile(), f).toBe(true);
+      expect(statSync(join(demoDir, f)).isFile(), f).toBe(true);
     }
-    expect(readFileSync(join(site, 'demo', 'snapshot.json'))).toEqual(
+    expect(readFileSync(join(site, '404.html'), 'utf8')).toContain(JSON.stringify(BASE));
+    expect(readFileSync(join(demoDir, 'demo', 'snapshot.json'))).toEqual(
       readFileSync(join(DEMO_DIR, 'snapshot.json')),
     );
-    expect(readFileSync(join(site, 'index.html'), 'utf8')).toContain(`${BASE}assets/`);
+    expect(readFileSync(join(demoDir, 'index.html'), 'utf8')).toContain(`${BASE}assets/`);
   });
 
   it('renders the recorded contained run read-only, from its own origin only', async () => {
@@ -108,8 +116,11 @@ describe('M54 static console demo site', () => {
     expect(await banner.textContent()).toContain(snapshot.source.commit.slice(0, 12));
     expect(await page.locator('.connection').textContent()).toContain('Read-only demo snapshot');
 
-    // Deep link straight to the corrected build's gate run (served through 404.html, as on Pages).
-    await page.goto(`${ORIGIN}${BASE}projects/${projectId}/gate-runs/${snapshot.source.correctedGateRunId}`);
+    // Deep link straight to the corrected build's gate run: the server has no such file, so the
+    // site root's 404.html hands it to the demo, which restores the route.
+    const deep = `${BASE}projects/${projectId}/gate-runs/${snapshot.source.correctedGateRunId}`;
+    await page.goto(`${ORIGIN}${deep}`);
+    await expect.poll(() => new URL(page.url()).pathname, { timeout: 15_000 }).toBe(deep);
     await expect.poll(() => page.locator('main').textContent(), { timeout: 15_000 }).toContain('PASS');
     const main = (await page.locator('main').textContent()) ?? '';
     expect(main).toContain('INV-03');

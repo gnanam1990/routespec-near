@@ -22,6 +22,13 @@ const basename = import.meta.env.BASE_URL.replace(/\/$/, '');
 if (import.meta.env['VITE_ROUTESPEC_DEMO'] === '1') {
   // Static read-only demo (M54): records come from a snapshot recorded from the real control API
   // over a contained run; there is no service, no token, and no mutation.
+  // A deep link that reached the site's root 404 page arrives as `?route=<path>` (see the demo
+  // build's root fallback); put it back into the address bar before the router reads it.
+  const route = new URLSearchParams(window.location.search).get('route');
+  // Only a path below the demo's base is accepted (never another origin or a scheme).
+  if (route !== null && /^[A-Za-z0-9._~%/?=&-]*$/.test(route) && !route.startsWith('/')) {
+    window.history.replaceState(null, '', `${import.meta.env.BASE_URL}${route}`);
+  }
   void (async () => {
     const response = await fetch(`${import.meta.env.BASE_URL}demo/snapshot.json`, { cache: 'no-store' });
     const snapshot = parseDemoSnapshot(await response.json());

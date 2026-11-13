@@ -1,4 +1,4 @@
-# ADR-0031 — Distribution: npm package, Marketplace action, static console demo, judge command (M54)
+# ADR-0032 — Distribution: npm package, Marketplace action, static console demo, judge command (M54)
 
 - Status: accepted
 - Date: 2026-11-13
@@ -55,9 +55,13 @@ store, the gate, or any verdict.
    (`packages/distribution/console-demo/`) carries `provenance.json` with the digests the build
    and the tests check. The console served by the local service is unchanged (base `/`, no
    demo code path taken).
-6. **Pages deployment is manual.** `.github/workflows/console-demo-pages.yml` (`workflow_dispatch`
-   only) builds the site from the committed recording and deploys it; only the deploy job gets
-   `pages: write` and `id-token: write`. It records nothing.
+6. **The demo shares the repository's one Pages site.** A repository has a single GitHub Pages
+   site, and M49 (ADR-0031) already deploys the verify page to its root from
+   `.github/workflows/routespec-pages.yml`. M54 adds one build step to that workflow: the demo is
+   built from the committed recording into `console/` (`/routespec-near/console/`), and a root
+   `404.html` (written only when the site has none) hands deep links below that path to the demo
+   as `?route=`, which the demo restores before routing. The step records nothing and adds no
+   permission, secret or action.
 7. **`pnpm judge` runs real steps and reports their own results.** Build, the uncontained journey,
    the contained journey when an engine is configured, the demo recording check with the CLI's
    offline bundle verification, and the npm package installed offline gating the self-gate
@@ -68,10 +72,8 @@ store, the gate, or any verdict.
 
 - `npx routespec` and the Marketplace action work only after the owner publishes the package and
   creates the action repository; until then they are PENDING. Nothing was published by M54.
-- The Pages workflow pins `actions/upload-pages-artifact` and `actions/deploy-pages` by commit
-  from the maintainers' release tags as known to the builder; they were not resolved against
-  GitHub during this build (no remote operation was allowed). The owner checks them before the
-  first run (`docs/status/M54.md`).
+- The demo is deployed whenever M49's Pages workflow deploys (on push to `main` once Pages is
+  enabled). Its action pins are M49's, which M49 resolved against the release tags.
 - The demo is as old as its recording. Re-recording after a product change is one command
   (`pnpm run demo:record -- ...`); the snapshot digest changes and the tests follow the
   provenance file.

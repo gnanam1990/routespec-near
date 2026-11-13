@@ -1,9 +1,9 @@
 /**
- * M54: policy checks of the two release workflows. Both run only when the owner starts them
- * (`workflow_dispatch`), pin every third-party action by commit, keep expressions out of scripts,
- * and get write-capable permissions only in the one job that needs them: `id-token` for npm
- * provenance in the publish job, `pages` and `id-token` for the Pages deployment job. The only
- * secret either workflow references is the npm token, in the publish step's environment.
+ * M54: policy checks of the npm publish workflow (runs only when the owner starts it, pins every
+ * action by commit, keeps expressions out of scripts, `id-token` only in the publish job, the npm
+ * token only in the publish step) and of the console demo step that M54 adds to the M49 Pages
+ * workflow (it builds from the committed recording and records nothing; M49's own test covers
+ * that workflow's triggers and permissions).
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -22,7 +22,7 @@ const jobs = (doc: J): Record<string, J> => doc['jobs'] as Record<string, J>;
 const steps = (job: J): J[] => (job['steps'] as J[] | undefined) ?? [];
 
 describe('M54 release workflows', () => {
-  for (const name of ['npm-publish.yml', 'console-demo-pages.yml']) {
+  for (const name of ['npm-publish.yml']) {
     it(`${name}: manual trigger, read-only default, pinned actions, no expressions in scripts`, () => {
       const { doc } = load(name);
       expect(Object.keys(doc['on'] as J)).toEqual(['workflow_dispatch']);
@@ -54,14 +54,15 @@ describe('M54 release workflows', () => {
     ).toBeLessThan(names.indexOf('Publish the packed tarball with provenance'));
   });
 
-  it('console-demo-pages: builds from the committed recording, deploys from a separate job', () => {
-    const { text, doc } = load('console-demo-pages.yml');
+  it('routespec-pages: builds the demo from the committed recording below the verify page', () => {
+    const { text, doc } = load('routespec-pages.yml');
     expect(text).not.toContain('secrets.');
     const build = jobs(doc)['build'] as J;
-    const deploy = jobs(doc)['deploy'] as J;
-    expect(build['permissions']).toBeUndefined();
-    expect(deploy['permissions']).toEqual({ pages: 'write', 'id-token': 'write' });
-    expect(steps(build).some((s) => String(s['run'] ?? '').includes('pnpm run demo:console'))).toBe(true);
-    expect(steps(build).some((s) => String(s['run'] ?? '').includes('demo:record'))).toBe(false);
+    const names = steps(build).map((s) => s['name'] as string);
+    const demo = steps(build).find((s) => String(s['run'] ?? '').includes('pnpm run demo:console')) as J;
+    expect(demo['run']).toContain('--out apps/verify/dist/console --base /routespec-near/console/');
+    expect(demo['run']).toContain('--root-fallback apps/verify/dist');
+    expect(names.indexOf(demo['name'] as string)).toBeLessThan(names.indexOf('Upload the site'));
+    expect(text).not.toContain('demo:record');
   });
 });

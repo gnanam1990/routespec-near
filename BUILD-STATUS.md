@@ -14,6 +14,9 @@ live import is pending the owner's Explorer API key (`docs/status/M50.md`).
 Updated by M47 on 2026-11-13: release certificates and the `routespec-registry` contract, tested
 on a local NEAR sandbox node; deployment and the first certificate are owner actions
 (`docs/status/M47.md`).
+Updated by M49 on 2026-11-13: the "RouteSpec Certified" badge (`certificate badge`) and the static
+verify page, tested against a local NEAR sandbox node in Chromium; Pages publication and a
+certified badge wait for the M47 owner steps (`docs/status/M49.md`).
 
 | Axis                                           | State                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -274,6 +277,19 @@ sandbox containers, crates on the host, and two read-only JSON-RPC calls to
 `https://test.rpc.fastnear.com`. No transaction was sent to NEAR testnet or mainnet and no
 account was created.
 
+## Certified badge and verify page (M49)
+
+State: **PARTIAL**. `routespec certificate badge` writes the shields.io endpoint JSON of the
+"RouteSpec Certified" badge; `apps/verify` is a static page that computes a bundle digest in the
+browser and reads the registry over read-only RPC, using the same aggregation as
+`certificate verify --digest` (ADR-0031). Evidence in `docs/status/M49.md`: unit tests for the
+browser core (shared vectors, Node parity), badge, link rules and Pages workflow policy, and a
+near-sandbox suite where the badge, the CLI and the built page in Chromium agree at every step
+(no certificate, PASS, FAIL, revoked attester). **Not published**: GitHub Pages and the
+`routespec-pages` workflow are NOT_RUN on GitHub; with the registry not yet deployed the badge reads
+"unverified". M49 outbound requests: read-only JSON-RPC calls to `https://test.rpc.fastnear.com`
+and two read-only GitHub API queries for action tag commits.
+
 ## Distribution (M54)
 
 State: **PARTIAL**. `pnpm run package:npm` builds the compiled, self-contained `routespec@0.1.0`
@@ -283,7 +299,7 @@ Marketplace action (`packages/distribution/marketplace/`, root of a separate rep
 that exact release and runs `npm audit signatures` first. The static read-only console demo is
 recorded from the real control API over a real contained journey (corrected build PASS, hedging
 build FAIL) and ships that run's evidence bundle. `pnpm judge` runs the reviewer checks in one
-command (ADR-0031). Nothing was published: the npm release, the Marketplace listing and the Pages
+command (ADR-0032). Nothing was published: the npm release, the Marketplace listing and the Pages
 deployment are owner actions (`docs/status/M54.md`).
 
 ## External action ledger

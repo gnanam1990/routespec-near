@@ -1,0 +1,77 @@
+# RouteSpec Certified: build the static verify page and the badge JSON, and publish both to
+# GitHub Pages. Runs on push to main, after the certificate workflow finishes on main, once a day
+# (so a revocation reaches the badge without a new commit), and by hand. Never on a pull request.
+#
+# This workflow holds no secret. The badge is computed from public registry state over read-only
+# NEAR RPC by `routespec certificate badge`; a registry that cannot be read gives an "unverified"
+# badge. Optional repository variables:
+#   ROUTESPEC_REGISTRY_ACCOUNT, ROUTESPEC_MAINNET_REGISTRY_ACCOUNT, ROUTESPEC_BADGE_PROJECT,
+#   ROUTESPEC_BADGE_ATTESTERS, ROUTESPEC_REGISTRY_CODE_HASHES
+# Pages must be enabled with "GitHub Actions" as the source.
+name: routespec-pages
+on:
+  push:
+    branches: [main]
+  workflow_run:
+    workflows: [routespec-certificate]
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: routespec-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: '22.23.1'
+      - name: Install pinned dependencies
+        shell: bash
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Build the verify page
+        shell: bash
+        run: pnpm --filter @routespec/verify-page build
+      - name: Write the page configuration and the badges
+        shell: bash
+        env:
+          ROUTESPEC_REGISTRY_ACCOUNT: ${{ vars.ROUTESPEC_REGISTRY_ACCOUNT }}
+          ROUTESPEC_MAINNET_REGISTRY_ACCOUNT: ${{ vars.ROUTESPEC_MAINNET_REGISTRY_ACCOUNT }}
+          ROUTESPEC_BADGE_PROJECT: ${{ vars.ROUTESPEC_BADGE_PROJECT }}
+          ROUTESPEC_BADGE_ATTESTERS: ${{ vars.ROUTESPEC_BADGE_ATTESTERS }}
+          ROUTESPEC_REGISTRY_CODE_HASHES: ${{ vars.ROUTESPEC_REGISTRY_CODE_HASHES }}
+        run: node --no-warnings apps/verify/scripts/site.ts --dist apps/verify/dist
+      - name: Add the read-only console demo (M54, committed recording of a contained run)
+        shell: bash
+        run: pnpm run demo:console -- --out apps/verify/dist/console --base /routespec-near/console/ --root-fallback apps/verify/dist
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: apps/verify/dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

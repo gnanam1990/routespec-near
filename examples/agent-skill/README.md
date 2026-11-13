@@ -79,4 +79,4 @@ runs the gate again (PASS). The agent's choices are scripted; the gate runs are 
 MCP gate runs are uncontained (`DECLARED_HOOKS_ONLY`): the client runs as a local Node process,
 the same trust as running its tests. They are diagnostic, not release evidence. INV-04
 (protected effects) is judged only in a contained run and is not required here. See
-`docs/adr/0032-mcp-server-and-agent-skill.md`.
+`docs/adr/0033-mcp-server-and-agent-skill.md`.

@@ -1,10 +1,10 @@
-# ADR-0032 — MCP server and coding agent skill (M52)
+# ADR-0033 — MCP server and coding agent skill (M52)
 
 - Status: accepted
 - Date: 2026-11-13
 - Module: M52 (agent skill and MCP server). Builds on ADR-0012 (runner, CLI, release gates),
   ADR-0009 (invariant kernel), ADR-0029 (release certificates). Changes none of them.
-- Numbering: 0031 was taken by M49 (badge and verify page), merged in parallel.
+- Numbering: 0031 and 0032 were taken by M49 (badge) and M53 (fix patterns), merged in parallel.
 
 ## Context
 

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https: http://127.0.0.1:* http://localhost:*; base-uri 'none'; form-action 'none'; object-src 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      name="description"
+      content="Check a RouteSpec release certificate: the bundle digest is computed in your browser and the routespec-registry contract on NEAR is read directly."
+    />
+    <title>RouteSpec Certified</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="top">
+      <div class="wrap">
+        <p class="product"><span class="mark" aria-hidden="true"></span>RouteSpec</p>
+        <p class="tag">Release certificate check</p>
+      </div>
+    </header>
+    <main id="main" class="wrap">
+      <h1>Is this release RouteSpec Certified?</h1>
+      <p class="lede">
+        Give the evidence bundle of a release, its digest, or a project. This page computes the bundle digest
+        in your browser, reads the <code>routespec-registry</code> contract on NEAR directly, and checks every
+        certificate signature itself. Nothing is uploaded anywhere.
+      </p>
+
+      <form id="verify-form" class="panel" novalidate>
+        <fieldset>
+          <legend>What to check</legend>
+          <div class="field">
+            <label for="bundle-file">Evidence bundle (.tar)</label>
+            <div id="drop" class="drop">
+              <input id="bundle-file" name="bundle" type="file" accept=".tar,application/x-tar" />
+              <p class="hint">Or drop the file here. Its bytes stay in this browser.</p>
+            </div>
+            <p id="bundle-digest" class="computed" aria-live="polite"></p>
+          </div>
+          <div class="field">
+            <label for="digest">Or a bundle digest</label>
+            <input
+              id="digest"
+              name="digest"
+              type="text"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="sha256:…"
+            />
+          </div>
+          <div class="field">
+            <label for="project">Or a project (its newest certificate)</label>
+            <input id="project" name="project" type="text" spellcheck="false" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="network">Network</label>
+            <select id="network" name="network"></select>
+          </div>
+          <details class="advanced">
+            <summary>Registry and attester keys</summary>
+            <div class="field">
+              <label for="registry">Registry account</label>
+              <input id="registry" name="registry" type="text" spellcheck="false" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="attesters"
+                >Pinned attester keys, one per line (empty: any attester in good standing)</label
+              >
+              <textarea id="attesters" name="attesters" rows="3" spellcheck="false"></textarea>
+            </div>
+          </details>
+          <div class="actions">
+            <button id="verify" type="submit">Check certificate</button>
+          </div>
+        </fieldset>
+      </form>
+
+      <section id="result" class="result" aria-live="polite" aria-busy="false" hidden></section>
+
+      <section class="about">
+        <h2>What a certificate proves</h2>
+        <p>
+          An attester key that the registry owner enrolled, and has not revoked, signed these values: the
+          bundle digest, the gate verdict, the corpus digest, the client artifact digest, the commit and a
+          timestamp. The signature is checked here, so the RPC endpoint cannot invent a certificate.
+        </p>
+        <p>
+          It does not prove that the gate was run honestly, that the build is the one the commit produces, or
+          that the project blocks releases on it. The RPC endpoint is trusted to report enrolment and
+          revocation; it could hide a certificate. For more assurance, pin the attester key and run
+          <code>routespec certificate verify</code> with the bundle, which also verifies the bundle contents.
+        </p>
+      </section>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

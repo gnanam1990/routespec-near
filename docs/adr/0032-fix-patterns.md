@@ -1,4 +1,4 @@
-# ADR-0031 — Fix patterns on FAIL and REVIEW (M53)
+# ADR-0032 — Fix patterns on FAIL and REVIEW (M53)
 
 - Status: accepted
 - Date: 2026-11-13

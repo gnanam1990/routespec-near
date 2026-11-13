@@ -21,4 +21,4 @@ loads the TypeScript compiler, so the CLI imports it only when advice is asked f
 `fix show`.
 
 Tests: `npx vitest run packages/fix-patterns packages/cli/test/m53-fix-advice.test.ts`.
-Decisions: `docs/adr/0031-fix-patterns.md`. Status: `docs/status/M53.md`.
+Decisions: `docs/adr/0032-fix-patterns.md`. Status: `docs/status/M53.md`.

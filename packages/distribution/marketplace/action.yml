@@ -1,0 +1,96 @@
+# RouteSpec gate for GitHub Marketplace (M54). This file is the root `action.yml` of a separate,
+# single-action repository (GitHub Marketplace lists only a repository whose root holds exactly one
+# action and no workflow files). It runs the same gate as `.github/actions/routespec-gate` in the
+# RouteSpec repository, but installs RouteSpec from npm at one exact version instead of building
+# the repository checkout, and verifies the registry signatures and provenance of what it
+# installed before anything runs.
+#
+# Security properties (ADR-0015, ADR-0032):
+# - every third-party action is pinned to a full commit SHA;
+# - inputs reach the shell only through environment variables, never through an expression
+#   inside a script;
+# - the npm package is installed at an exact version with install scripts disabled, and
+#   `npm audit signatures` must pass;
+# - provider secrets and CI runtime tokens are removed before the entry point starts, so neither
+#   it nor anything it starts or loads has them in an environment block;
+# - enforcement is CI_CHECK or REQUIRED_CHECK_UNVERIFIED, always unverified and never blocking;
+# - the step exits 0 only for a PASS decision.
+name: RouteSpec 1Click release gate
+description: Networkless release gate for NEAR Intents 1Click clients. PASS, FAIL or REVIEW, with redacted reports.
+author: gnanam1990
+branding:
+  icon: shield
+  color: blue
+inputs:
+  config:
+    description: Path of the routespec.ci-config/1 file, relative to the workspace.
+    required: true
+  node-version:
+    description: Exact Node.js version used to run RouteSpec.
+    required: false
+    default: '22.23.1'
+outputs:
+  conclusion:
+    description: success, failure, review_required, not_run, identity_mismatch, configuration_error, internal_error, or policy_denied.
+    value: ${{ steps.gate.outputs.conclusion }}
+  decision:
+    description: Gate decision (PASS, FAIL, REVIEW, NOT_RUN) or NONE.
+    value: ${{ steps.gate.outputs.decision }}
+  exit-code:
+    description: RouteSpec exit code.
+    value: ${{ steps.gate.outputs.exit-code }}
+  trust:
+    description: Job trust (TRUSTED, PULL_REQUEST, FORK, UNTRUSTED).
+    value: ${{ steps.gate.outputs.trust }}
+  enforcement-mode:
+    description: CI_CHECK or REQUIRED_CHECK_UNVERIFIED (never verified, never blocking).
+    value: ${{ steps.gate.outputs.enforcement-mode }}
+  artifact-ready:
+    description: Whether the redacted evidence bundle was written (independent of the decision).
+    value: ${{ steps.gate.outputs.artifact-ready }}
+  upload-directory:
+    description: Directory holding only the staged, scanned upload files and upload-manifest.json.
+    value: ${{ steps.gate.outputs.upload-directory }}
+  retention-days:
+    description: Bounded retention for the uploaded artifact.
+    value: ${{ steps.gate.outputs.retention-days }}
+  certificate-bundle:
+    description: The staged evidence bundle a separate certificate step may certify (empty unless a trusted job staged it).
+    value: ${{ steps.gate.outputs.certificate-bundle }}
+  certificate-journal:
+    description: The journal directory of this run, for the separate certificate step.
+    value: ${{ steps.gate.outputs.certificate-journal }}
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      with:
+        node-version: ${{ inputs.node-version }}
+    - name: Install RouteSpec from npm (exact version, signatures verified)
+      shell: bash
+      env:
+        ROUTESPEC_NPM_SPEC: routespec@0.1.0
+        ROUTESPEC_INSTALL_DIR: ${{ runner.temp }}/routespec-action
+      run: |
+        mkdir -p "$ROUTESPEC_INSTALL_DIR"
+        cd "$ROUTESPEC_INSTALL_DIR"
+        printf '{"name":"routespec-action-install","private":true}\n' > package.json
+        npm install --ignore-scripts --no-audit --no-fund --save-exact "$ROUTESPEC_NPM_SPEC"
+        npm audit signatures
+    - name: Run RouteSpec gate
+      id: gate
+      shell: bash
+      env:
+        ROUTESPEC_PACKAGE_DIR: ${{ runner.temp }}/routespec-action/node_modules/routespec
+        ROUTESPEC_CI_CONFIG: ${{ inputs.config }}
+      # Withheld credentials must not reach the action process's environment block at all: deleting
+      # them inside Node leaves them readable through /proc/<pid>/environ on Linux. The shell drops
+      # their export flag, replaces itself with Node (exec, so no process keeps the original block),
+      # and hands the values over a pipe for the in-memory leak scan only.
+      run: |
+        withheld="$(node --no-warnings "$ROUTESPEC_PACKAGE_DIR/bin/withheld-names.mjs")"
+        for name in $withheld; do export -n "$name"; done
+        export ROUTESPEC_CI_WITHHELD_FD=3
+        exec node --no-warnings "$ROUTESPEC_PACKAGE_DIR/bin/routespec-ci.mjs" run --config "$ROUTESPEC_CI_CONFIG" \
+          3< <(for name in $withheld; do printf '%s=%s\0' "$name" "${!name}"; done)

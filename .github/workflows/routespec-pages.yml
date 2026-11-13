@@ -54,6 +54,9 @@ jobs:
           ROUTESPEC_BADGE_ATTESTERS: ${{ vars.ROUTESPEC_BADGE_ATTESTERS }}
           ROUTESPEC_REGISTRY_CODE_HASHES: ${{ vars.ROUTESPEC_REGISTRY_CODE_HASHES }}
         run: node --no-warnings apps/verify/scripts/site.ts --dist apps/verify/dist
+      - name: Add the read-only console demo (M54, committed recording of a contained run)
+        shell: bash
+        run: pnpm run demo:console -- --out apps/verify/dist/console --base /routespec-near/console/ --root-fallback apps/verify/dist
       - name: Upload the site
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:

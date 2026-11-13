@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { ApiError } from '../api/errors.ts';
 import type { ConnectionState, ControlClient, MutationResult } from '../api/client.ts';
+import type { DemoSource } from '../api/static-demo.ts';
 
 interface ConsoleContextValue {
   readonly client: ControlClient;
@@ -19,11 +20,21 @@ interface ConsoleContextValue {
   readonly reconnect: () => void;
   readonly announce: (message: string) => void;
   readonly announcement: string;
+  /** Set only in the static read-only demo build (M54): where the recorded records came from. */
+  readonly demo: DemoSource | null;
 }
 
 const ConsoleContext = createContext<ConsoleContextValue | null>(null);
 
-export function ConsoleProvider({ client, children }: { client: ControlClient; children: ReactNode }) {
+export function ConsoleProvider({
+  client,
+  children,
+  demo = null,
+}: {
+  client: ControlClient;
+  children: ReactNode;
+  demo?: DemoSource | null;
+}) {
   const [connection, setConnection] = useState<ConnectionState>(client.connectionState);
   const [reloadEpoch, setReloadEpoch] = useState(0);
   const [announcement, setAnnouncement] = useState('');
@@ -35,8 +46,8 @@ export function ConsoleProvider({ client, children }: { client: ControlClient; c
     window.setTimeout(() => setAnnouncement(message), 30);
   }, []);
   const value = useMemo(
-    () => ({ client, connection, reloadEpoch, reconnect, announce, announcement }),
-    [client, connection, reloadEpoch, reconnect, announce, announcement],
+    () => ({ client, connection, reloadEpoch, reconnect, announce, announcement, demo }),
+    [client, connection, reloadEpoch, reconnect, announce, announcement, demo],
   );
   return <ConsoleContext.Provider value={value}>{children}</ConsoleContext.Provider>;
 }

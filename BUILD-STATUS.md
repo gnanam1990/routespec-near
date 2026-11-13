@@ -95,6 +95,7 @@ tests pass for the part this host can run, with a named part BLOCKED or NOT_RUN.
 | M50    | Scenarios from observed incidents (Explorer importer)      | this stage | PARTIAL          | M50 shape, sanitisation, template, import, HTTP-client, command and gate-run tests (42)                                                                  | **live import PENDING** (Explorer API key); committed corpus has 0 records                    | `docs/status/M50.md`         |
 | M53    | Fix patterns on FAIL and REVIEW                            | this stage | VERIFIED_BOUNDED | M53 catalogue, usage, rewrite and diff tests (15); CLI gate runs with patched builds (4)                                                                 | rewrite rules cover the shapes found in RouteSpec subject builds                              | `docs/status/M53.md`         |
 | M52    | Agent skill and MCP server                                 | this stage | VERIFIED_BOUNDED | M52 protocol, tool, gate, skill and demo tests (26); MCP certificate check on a local NEAR sandbox node (2)                                              | MCP gate runs are uncontained (diagnostic); a contained MCP run is not built                  | `docs/status/M52.md`         |
+| M54    | Distribution: npm, Marketplace, console demo, judge        | this stage | PARTIAL          | M54 package, Marketplace, workflow and recording tests; `test:distribution` (installed tarball, demo site)                                               | **npm publish, Marketplace listing, Pages deploy PENDING** (owner)                            | `docs/status/M54.md`         |
 
 All 59 canonical tests T-001..T-059 have an owning module above; none is claimed beyond its
 recorded scope. M09a (console shell, `eb10eb5`) is the first stage of M09.
@@ -295,6 +296,18 @@ near-sandbox suite where the badge, the CLI and the built page in Chromium agree
 `routespec-pages` workflow are NOT_RUN on GitHub; with the registry not yet deployed the badge reads
 "unverified". M49 outbound requests: read-only JSON-RPC calls to `https://test.rpc.fastnear.com`
 and two read-only GitHub API queries for action tag commits.
+
+## Distribution (M54)
+
+State: **PARTIAL**. `pnpm run package:npm` builds the compiled, self-contained `routespec@0.1.0`
+npm package (bins `routespec`, `routespec-ci`); the distribution suite installs its tarball
+offline outside the repository and gates the self-gate configuration to PASS with it. The
+Marketplace action (`packages/distribution/marketplace/`, root of a separate repository) installs
+that exact release and runs `npm audit signatures` first. The static read-only console demo is
+recorded from the real control API over a real contained journey (corrected build PASS, hedging
+build FAIL) and ships that run's evidence bundle. `pnpm judge` runs the reviewer checks in one
+command (ADR-0032). Nothing was published: the npm release, the Marketplace listing and the Pages
+deployment are owner actions (`docs/status/M54.md`).
 
 ## External action ledger
 

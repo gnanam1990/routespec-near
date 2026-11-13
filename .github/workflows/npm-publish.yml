@@ -1,0 +1,47 @@
+# Publishes the `routespec` npm package with npm provenance (M54). Manual only: the repository
+# owner starts it from the Actions tab after a release commit is on main. It builds the package
+# from the compiled workspace, runs the distribution suite against the packed tarball (installed
+# offline, its commands run for real), and publishes exactly that tarball. `--provenance` asks npm
+# to attach a signed statement that ties the tarball to this repository, commit, and run, which is
+# why this job, and only this job, may request an OIDC token.
+name: npm-publish
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: '22.23.1'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install pinned dependencies
+        shell: bash
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm --filter @routespec/security-suite exec playwright install --with-deps chromium
+      - name: Build and pack the package
+        shell: bash
+        run: pnpm run package:npm
+      - name: Distribution suite (installed tarball, Marketplace step, console demo)
+        shell: bash
+        run: pnpm run test:distribution
+      - name: Publish the packed tarball with provenance
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          tarball="$(ls .data/npm/routespec-*.tgz)"
+          npm publish "$tarball" --provenance --access public

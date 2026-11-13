@@ -26,6 +26,8 @@ const CONNECTION_TEXT = {
   UNKNOWN: { label: 'Connecting to local service', icon: 'clock', tone: 'neutral' },
 } as const;
 
+const DEMO_CONNECTION_TEXT = { label: 'Read-only demo snapshot', icon: 'archive', tone: 'neutral' } as const;
+
 export function useCurrentProjectId(): string | null {
   const location = useLocation();
   const match = matchPath({ path: '/projects/:projectId/*' }, location.pathname);
@@ -33,7 +35,7 @@ export function useCurrentProjectId(): string | null {
 }
 
 export function Shell({ children }: { children: ReactNode }) {
-  const { connection, reconnect, announcement } = useConsole();
+  const { connection, reconnect, announcement, demo } = useConsole();
   const projectId = useCurrentProjectId();
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,7 +63,7 @@ export function Shell({ children }: { children: ReactNode }) {
     target?.focus({ preventScroll: false });
   }, [location.pathname]);
 
-  const conn = CONNECTION_TEXT[connection];
+  const conn = demo === null ? CONNECTION_TEXT[connection] : DEMO_CONNECTION_TEXT;
   const projectList = projects.state.data?.items ?? [];
 
   return (
@@ -137,6 +139,21 @@ export function Shell({ children }: { children: ReactNode }) {
           </label>
         </div>
       </header>
+      {demo !== null ? (
+        <div className="global-banner tone-neutral" role="note" data-testid="demo-banner">
+          <Icon name="archive" />
+          <span>
+            Read-only demo. Every record on these pages was recorded from the real RouteSpec control API
+            serving a {demo.containment.toLowerCase()} run (commit <code>{demo.commit.slice(0, 12)}</code>,{' '}
+            {demo.platform}, recorded {demo.recordedAt.slice(0, 10)}). Nothing here is live and nothing can be
+            changed. The run&apos;s evidence bundle:{' '}
+            <a href={`${import.meta.env.BASE_URL}demo/evidence-bundle.tar`} download>
+              evidence-bundle.tar
+            </a>{' '}
+            (<code>{demo.bundleDigest.slice(0, 19)}…</code>).
+          </span>
+        </div>
+      ) : null}
       {connection === 'DISCONNECTED' ? (
         <div className="global-banner tone-review" role="status">
           <Icon name="disconnected" /> The local service is not reachable. Displayed records are frozen and

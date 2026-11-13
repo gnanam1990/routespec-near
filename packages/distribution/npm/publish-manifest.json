@@ -1,0 +1,22 @@
+{
+  "name": "routespec",
+  "version": "0.1.0",
+  "description": "Local, networkless release check for NEAR Intents 1Click clients: deterministic fault schedules, a pure invariant kernel, PASS/FAIL/REVIEW with a checksummed evidence bundle.",
+  "keywords": ["near", "near-intents", "1click", "release-gate", "fault-injection", "testing"],
+  "license": "MIT",
+  "homepage": "https://github.com/gnanam1990/routespec-near#readme",
+  "bugs": "https://github.com/gnanam1990/routespec-near/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gnanam1990/routespec-near.git"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org/"
+  }
+}

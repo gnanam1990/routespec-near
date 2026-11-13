@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Gate runner, bounded case scheduler, release-gate aggregation, reports, and redacted evidence bundles (M06).",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": {

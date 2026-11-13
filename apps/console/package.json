@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Local accessible React console (M09) over the typed control API. Renders persisted records only; never computes a verdict.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",

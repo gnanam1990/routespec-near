@@ -42,6 +42,9 @@
     },
     {
       "path": "packages/ci"
+    },
+    {
+      "path": "packages/incident-corpus"
     }
   ]
 }

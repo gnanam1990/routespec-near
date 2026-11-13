@@ -33,7 +33,7 @@ export function tempDir(prefix = 'routespec-m06-'): { dir: string; cleanup: () =
   };
 }
 
-export type SubjectBuild = 'reconciling-client' | 'naive-client';
+export type SubjectBuild = 'reconciling-client' | 'naive-client' | 'impatient-client';
 
 export function subjectScript(build: SubjectBuild): string {
   return fileURLToPath(new URL(`./subject/${build}.ts`, import.meta.url));

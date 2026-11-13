@@ -1,0 +1,50 @@
+{
+  "manifestVersion": "routespec.observed-corpus/1",
+  "corpusLabel": "mainnet-observed-2026-11",
+  "importStatus": "PENDING_LIVE_IMPORT",
+  "source": {
+    "kind": "INTENTS_EXPLORER_API",
+    "network": "mainnet",
+    "endpoint": "GET https://explorer.near-intents.org/api/v0/transactions",
+    "apiSpecDigest": "sha256:eec0c12615083b0b409ec746fac96183b81c7c74359dc7fffecacf62b77ffb5e"
+  },
+  "scenarioProvenanceClass": "ISSUE_DERIVED_NOT_REPRODUCED",
+  "window": {
+    "startTimestamp": null,
+    "endTimestamp": null
+  },
+  "observedAtHour": null,
+  "recheckedAtHour": null,
+  "stuckAfterSec": 900,
+  "statusesQueried": [],
+  "counts": {
+    "recordsRead": 0,
+    "pagesRead": 0,
+    "truncated": false,
+    "rejectedShape": 0,
+    "documentedShapeDeviations": 0,
+    "duplicates": 0,
+    "notIncident": {
+      "ordinarySuccess": 0,
+      "inFlightYoung": 0,
+      "unusedQuote": 0
+    },
+    "incidents": 0,
+    "byClass": {
+      "STUCK": 0,
+      "REFUNDED": 0,
+      "FAILED": 0,
+      "LATE_SUCCESS": 0
+    },
+    "byRefundReason": {},
+    "byDepositType": {},
+    "byRecipientType": {},
+    "byRefundType": {},
+    "rechecked": 0,
+    "recheckNotFound": 0,
+    "recheckSkipped": 0,
+    "rateLimited": 0
+  },
+  "templates": [],
+  "manifestDigest": "sha256:ea8a07893f1a05f7f22f6edec7eba645364313057306133be5ac7b71f47d6bb4"
+}

@@ -20,7 +20,12 @@ import { performance } from 'node:perf_hooks';
 import { RouteSpecError, isRouteSpecError } from '@routespec/contracts';
 import { pinResolvedAddresses, type CompiledOrigin } from './address-policy.ts';
 import type { ProviderCredentialVault } from './credential.ts';
-import { isIssuedAllowance, type AllowedDryQuote } from './policy.ts';
+import {
+  isIssuedAllowance,
+  isIssuedTokenListAllowance,
+  type AllowedDryQuote,
+  type AllowedTokenList,
+} from './policy.ts';
 
 export interface ResolvedAnswer {
   readonly address: string;
@@ -188,13 +193,74 @@ export async function sendDryQuote(input: {
   readonly counters: EgressCounters;
   readonly limits?: EgressLimits;
 }): Promise<EgressOutcome> {
-  const { allowance, vault, origin, transport, counters } = input;
-  const limits = input.limits ?? DEFAULT_EGRESS_LIMITS;
+  const { allowance, vault } = input;
   if (!isIssuedAllowance(allowance)) {
     throw new RouteSpecError('RS_MODE_POLICY_DENIED', 'Egress requires a policy-issued allowance.', {
       details: { credentialAttached: false, dnsAttempted: false, upstreamAttempted: false },
     });
   }
+  return pinnedExchange({
+    origin: input.origin,
+    transport: input.transport,
+    counters: input.counters,
+    limits: input.limits ?? DEFAULT_EGRESS_LIMITS,
+    method: 'POST',
+    path: '/v0/quote',
+    body: allowance.forwardBody,
+    assertUsable: () => vault.assertUsable(),
+    authorization: () => vault.authorizationFor(allowance),
+  });
+}
+
+/** The token list is larger than a quote; it gets its own response bound (ADR-0027). */
+export const TOKEN_LIST_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Read the official token list from the pinned origin (fidelity matrix, ADR-0027): one bare GET
+ * over the same resolved, validated and pinned connection. The provider credential is never
+ * attached: the vault is not an input here.
+ */
+export async function sendTokenListRequest(input: {
+  readonly allowance: AllowedTokenList;
+  readonly origin: CompiledOrigin;
+  readonly transport: EgressTransport;
+  readonly counters: EgressCounters;
+  readonly limits?: EgressLimits;
+}): Promise<EgressOutcome> {
+  if (!isIssuedTokenListAllowance(input.allowance)) {
+    throw new RouteSpecError('RS_MODE_POLICY_DENIED', 'Egress requires a policy-issued allowance.', {
+      details: { credentialAttached: false, dnsAttempted: false, upstreamAttempted: false },
+    });
+  }
+  const limits = input.limits ?? DEFAULT_EGRESS_LIMITS;
+  return pinnedExchange({
+    origin: input.origin,
+    transport: input.transport,
+    counters: input.counters,
+    limits: {
+      ...limits,
+      maxResponseBytes: Math.max(limits.maxResponseBytes, TOKEN_LIST_MAX_RESPONSE_BYTES),
+    },
+    method: 'GET',
+    path: '/v0/tokens',
+    body: null,
+    assertUsable: () => undefined,
+    authorization: () => null,
+  });
+}
+
+async function pinnedExchange(input: {
+  readonly origin: CompiledOrigin;
+  readonly transport: EgressTransport;
+  readonly counters: EgressCounters;
+  readonly limits: EgressLimits;
+  readonly method: 'POST' | 'GET';
+  readonly path: '/v0/quote' | '/v0/tokens';
+  readonly body: Buffer | null;
+  readonly assertUsable: () => void;
+  readonly authorization: () => string | null;
+}): Promise<EgressOutcome> {
+  const { origin, transport, counters, limits, body } = input;
   const start = performance.now();
   const elapsed = () => Math.round(performance.now() - start);
   let dnsMs: number | null = null;
@@ -220,7 +286,7 @@ export async function sendDryQuote(input: {
   });
 
   try {
-    vault.assertUsable();
+    input.assertUsable();
   } catch {
     return fail('TOKEN_EXPIRED');
   }
@@ -291,23 +357,25 @@ export async function sendDryQuote(input: {
   }
   socket.on('error', () => undefined);
 
-  // 4. Credential only now, for this issued allowance.
+  // 4. Credential only now, for this issued allowance (never for the token-list read).
   let authorization: string | null;
   try {
-    authorization = vault.authorizationFor(allowance);
+    authorization = input.authorization();
   } catch {
     socket.destroy();
     return fail('TOKEN_EXPIRED');
   }
   const headers: Record<string, string> = {
     host: origin.hostname,
-    'content-type': 'application/json',
     accept: 'application/json',
     'accept-encoding': 'identity',
     'user-agent': UPSTREAM_USER_AGENT,
-    'content-length': String(allowance.forwardBody.length),
     connection: 'close',
   };
+  if (body !== null) {
+    headers['content-type'] = 'application/json';
+    headers['content-length'] = String(body.length);
+  }
   if (authorization !== null) {
     headers['authorization'] = authorization;
     boundary.credentialAttached = true;
@@ -336,8 +404,8 @@ export async function sendDryQuote(input: {
     );
     const req = httpRequest({
       createConnection: () => socket,
-      method: 'POST',
-      path: '/v0/quote',
+      method: input.method,
+      path: input.path,
       headers,
       setHost: false,
       maxHeaderSize: limits.maxHeaderBytes,
@@ -390,6 +458,7 @@ export async function sendDryQuote(input: {
         });
       });
     });
-    req.end(allowance.forwardBody);
+    if (body === null) req.end();
+    else req.end(body);
   });
 }

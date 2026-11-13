@@ -32,6 +32,8 @@ export interface Upstream {
   readonly received: ReceivedRequest[];
   tlsConnections: number;
   mode: UpstreamMode;
+  /** When set, `GET /v0/tokens` answers with this value (SIMULATED token list). */
+  tokens: unknown;
   close(): Promise<void>;
 }
 
@@ -57,7 +59,11 @@ export function dryQuoteResponse(request: Record<string, unknown>) {
 
 export async function startUpstream(cert: TestCert, mode: UpstreamMode = 'quote'): Promise<Upstream> {
   const received: ReceivedRequest[] = [];
-  const state = { mode, tlsConnections: 0 };
+  const state: { mode: UpstreamMode; tlsConnections: number; tokens: unknown } = {
+    mode,
+    tlsConnections: 0,
+    tokens: undefined,
+  };
   const server: Server = createServer({ key: cert.key, cert: cert.cert }, (req, res) => {
     let body = '';
     req.on('data', (c: Buffer) => (body += c.toString('utf8')));
@@ -76,6 +82,11 @@ export async function startUpstream(cert: TestCert, mode: UpstreamMode = 'quote'
         parsed = JSON.parse(body) as Record<string, unknown>;
       } catch {
         parsed = {};
+      }
+      if (req.method === 'GET' && req.url === '/v0/tokens' && state.tokens !== undefined) {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify(state.tokens));
+        return;
       }
       switch (state.mode) {
         case 'quote': {
@@ -142,6 +153,12 @@ export async function startUpstream(cert: TestCert, mode: UpstreamMode = 'quote'
     },
     set mode(m: UpstreamMode) {
       state.mode = m;
+    },
+    get tokens() {
+      return state.tokens;
+    },
+    set tokens(t: unknown) {
+      state.tokens = t;
     },
     async close() {
       server.closeAllConnections();

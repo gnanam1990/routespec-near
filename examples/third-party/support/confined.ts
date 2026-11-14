@@ -80,6 +80,10 @@ export async function loadPinnedEntry(pin: PinnedSource, options: LoadOptions): 
   // so both spellings belong to the pinned tree; otherwise its imports would escape the hooks.
   const realDirUrl = pathToFileURL(realpathSync(dir)).href.replace(/\/?$/, '/');
   const prefixes = realDirUrl === dirUrl ? [dirUrl] : [dirUrl, realDirUrl];
+  // The entry is named by the hooks themselves, in the spelling of `dir`, never by Node's own
+  // resolution: so the entry and everything it imports are always read, digest-checked and
+  // confined by these hooks, whatever links lie on the way to the tree.
+  const entryUrl = new URL(pin.entry, dirUrl).href;
   const pinned = new Map(pin.files.map((f) => [f.path, f.sha256]));
   const record: LoadRecord = {
     entry: pin.entry,
@@ -104,6 +108,7 @@ export async function loadPinnedEntry(pin: PinnedSource, options: LoadOptions): 
   // (a dynamic import after its first await) is held to the same rules.
   registerHooks({
     resolve(specifier, context, nextResolve) {
+      if (specifier === entryUrl) return { url: entryUrl, shortCircuit: true };
       const from = context.parentURL === undefined ? null : relOf(context.parentURL);
       if (from === null) return nextResolve(specifier, context);
       if (pin.allowedImports.includes(specifier)) {
@@ -139,7 +144,7 @@ export async function loadPinnedEntry(pin: PinnedSource, options: LoadOptions): 
       return { format: 'module', source, shortCircuit: true };
     },
   });
-  await import(new URL(pin.entry, dirUrl).href);
+  await import(entryUrl);
   return record;
 }
 

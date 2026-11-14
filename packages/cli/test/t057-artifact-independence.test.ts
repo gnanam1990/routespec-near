@@ -229,7 +229,7 @@ describe('T-057 — Gate decision is independent of artifact readiness', () => {
         confirm,
         '--overwrite',
       ]);
-      expect(again.exitCode, g.label).toBe(0);
+      expect(again.exitCode, `${g.label} ${again.stdout}`).toBe(0);
       expect(again.json).toMatchObject({ overwrote: true, artifactReady: true });
       const final = await evaluate(g);
       expect(final).toMatchObject({

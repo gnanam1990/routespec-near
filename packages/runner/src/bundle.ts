@@ -28,6 +28,8 @@
 import { createHash, createPublicKey, randomBytes, verify as verifySignature } from 'node:crypto';
 import {
   closeSync,
+  constants as fsConstants,
+  copyFileSync,
   fsyncSync,
   linkSync,
   lstatSync,
@@ -676,16 +678,21 @@ function rebuild(
  * process (for example a malware scanner), which makes the replacing rename fail with EPERM,
  * EACCES, or EBUSY; that is retried for a bounded time, then reported as a write failure.
  * Under heavy parallel load (a full test run, a CI agent) a scanner can hold the file for more
- * than a second, so the window is about 8 s with a growing back-off (M12 delivery runs).
+ * than a second, so the window is about 8 s with a growing back-off (M12 delivery runs). The
+ * read-back of the published file gets the same treatment (M61), and a write failure reports
+ * the operating system's error class and call.
  */
 export const RENAME_RETRY_WINDOW_MS = 8_000;
 
 function renameReplacing(from: string, to: string): void {
+  retryTransient(() => renameSync(from, to));
+}
+
+function retryTransient<T>(fn: () => T): T {
   const started = Date.now();
   for (let attempt = 0; ; attempt++) {
     try {
-      renameSync(from, to);
-      return;
+      return fn();
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
       const transient = code === 'EPERM' || code === 'EACCES' || code === 'EBUSY';
@@ -771,10 +778,14 @@ export function writeExport(
       // is itself replaced: rename never follows its destination.
       renameReplacing(tmp, full);
     } else {
-      // No overwrite confirmation: publish with an exclusive hard link, which fails if any entry
-      // (file, link, or junction) appeared at the target after the check.
+      // No overwrite confirmation: publish exclusively, failing if any entry (file, link, or
+      // junction) appeared at the target after the check. POSIX uses a hard link. Windows uses an
+      // exclusive copy instead: once the temporary name of a hard-linked pair is deleted while
+      // another process (a scanner) still has it open, the shared file stays delete-pending and a
+      // later confirmed overwrite of the published name failed with EPERM for 20 s and more (M61).
       try {
-        linkSync(tmp, full);
+        if (process.platform === 'win32') copyFileSync(tmp, full, fsConstants.COPYFILE_EXCL);
+        else linkSync(tmp, full);
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
           throw new RouteSpecError(
@@ -786,12 +797,14 @@ export function writeExport(
       }
       rmSync(tmp, { force: true });
     }
-    if (sha256(readFileSync(full)) !== outputDigest) {
+    if (sha256(retryTransient(() => readFileSync(full))) !== outputDigest) {
       throw new RouteSpecError('RS_EXPORT_WRITE_FAILED', 'Written bundle does not match its digest.');
     }
   } catch (error) {
     rmSync(tmp, { force: true });
     const code = error instanceof RouteSpecError ? error.code : 'RS_EXPORT_WRITE_FAILED';
+    // The operating system's error class and call (never a path), so a failed write says why.
+    const os = error instanceof RouteSpecError ? null : (error as NodeJS.ErrnoException);
     gates.recordExportWrite({
       exportId,
       expectedRevision: plan.revision,
@@ -806,7 +819,11 @@ export function writeExport(
       'RS_EXPORT_WRITE_FAILED',
       'The bundle could not be written; artifact readiness stays false.',
       {
-        details: { cause: code },
+        details: {
+          cause: code,
+          ...(typeof os?.code === 'string' ? { osCode: os.code } : {}),
+          ...(typeof os?.syscall === 'string' ? { syscall: os.syscall } : {}),
+        },
       },
     );
   }

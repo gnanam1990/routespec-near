@@ -4,7 +4,7 @@ import { useMutation, useResource } from '../app/context.tsx';
 import { usePageTitle } from '../app/usePageTitle.ts';
 import type { CaseRun, ExportPlan, GateRun, Page } from '../api/schemas.ts';
 import { Digest } from '../components/Digest.tsx';
-import { StatusAxisGroup, StatusBadge } from '../components/Status.tsx';
+import { CaseTally, StatusAxisGroup, StatusBadge } from '../components/Status.tsx';
 import {
   ErrorNotice,
   KeyValues,
@@ -124,30 +124,38 @@ export function GateRunPage() {
             ) : null}
             <div className="summary-grid">
               <StatusAxisGroup axes={g} title="Gate status" />
-              <div>
-                <h3 className="h3">Bounded parallelism</h3>
-                <KeyValues
-                  items={[
-                    ['Declared', <span className="mono num">{g.parallelism.declared}</span>],
-                    ['Running', <span className="mono num">{g.parallelism.running}</span>],
-                    ['Queued (waiting for a slot)', <span className="mono num">{g.parallelism.queued}</span>],
-                    ['Mode', <span className="mono">{g.mode}</span>],
-                  ]}
-                />
-                <h3 className="h3">Counts</h3>
-                <KeyValues
-                  items={[
-                    ['Cases', <span className="mono num">{g.counts.total}</span>],
-                    ['Passed', <span className="mono num">{g.counts.passed}</span>],
-                    ['Failed', <span className="mono num">{g.counts.failed}</span>],
-                    ['Review', <span className="mono num">{g.counts.review}</span>],
-                    [
-                      'Unsupported required',
-                      <span className="mono num">{g.counts.unsupportedRequired}</span>,
-                    ],
-                    ['Not run', <span className="mono num">{g.counts.notRun}</span>],
-                  ]}
-                />
+              <div className="summary-side">
+                <div className="summary-block">
+                  <h3 className="h3">Counts</h3>
+                  <CaseTally counts={g.counts} />
+                  <KeyValues
+                    items={[
+                      ['Cases', <span className="mono num">{g.counts.total}</span>],
+                      ['Passed', <span className="mono num">{g.counts.passed}</span>],
+                      ['Failed', <span className="mono num">{g.counts.failed}</span>],
+                      ['Review', <span className="mono num">{g.counts.review}</span>],
+                      [
+                        'Unsupported required',
+                        <span className="mono num">{g.counts.unsupportedRequired}</span>,
+                      ],
+                      ['Not run', <span className="mono num">{g.counts.notRun}</span>],
+                    ]}
+                  />
+                </div>
+                <div className="summary-block">
+                  <h3 className="h3">Bounded parallelism</h3>
+                  <KeyValues
+                    items={[
+                      ['Declared', <span className="mono num">{g.parallelism.declared}</span>],
+                      ['Running', <span className="mono num">{g.parallelism.running}</span>],
+                      [
+                        'Queued (waiting for a slot)',
+                        <span className="mono num">{g.parallelism.queued}</span>,
+                      ],
+                      ['Mode', <span className="mono">{g.mode}</span>],
+                    ]}
+                  />
+                </div>
               </div>
             </div>
             {g.findings.length > 0 ? (

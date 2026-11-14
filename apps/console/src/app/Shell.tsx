@@ -8,14 +8,16 @@ import { useTheme, type ThemeChoice } from './theme.ts';
 interface NavItem {
   readonly label: string;
   readonly icon: IconName;
+  /** Position in the evidence chain (release -> gate run -> operation -> regression); decorative. */
+  readonly step?: string;
   readonly to: (projectId: string | null) => string | null;
 }
 
 const NAV: readonly NavItem[] = [
-  { label: 'Releases', icon: 'layers', to: (p) => (p ? `/projects/${p}/releases` : null) },
-  { label: 'Gate runs', icon: 'play', to: (p) => (p ? `/projects/${p}/gate-runs` : null) },
-  { label: 'Operations', icon: 'activity', to: (p) => (p ? `/projects/${p}/operations` : null) },
-  { label: 'Regressions', icon: 'archive', to: (p) => (p ? `/projects/${p}/regressions` : null) },
+  { label: 'Releases', icon: 'layers', step: '01', to: (p) => (p ? `/projects/${p}/releases` : null) },
+  { label: 'Gate runs', icon: 'play', step: '02', to: (p) => (p ? `/projects/${p}/gate-runs` : null) },
+  { label: 'Operations', icon: 'activity', step: '03', to: (p) => (p ? `/projects/${p}/operations` : null) },
+  { label: 'Regressions', icon: 'archive', step: '04', to: (p) => (p ? `/projects/${p}/regressions` : null) },
   { label: 'Safety & Settings', icon: 'settings', to: () => '/settings' },
 ];
 
@@ -165,15 +167,17 @@ export function Shell({ children }: { children: ReactNode }) {
           {NAV.map((item) => {
             const to = item.to(projectId);
             return (
-              <li key={item.label}>
+              <li key={item.label} className={item.step ? 'nav-chain' : 'nav-aside'}>
                 {to === null ? (
                   <span className="nav-link is-disabled" aria-disabled="true">
                     <Icon name={item.icon} /> <span>{item.label}</span>
                     <span className="visually-hidden"> (select a project first)</span>
+                    {item.step ? <NavStep step={item.step} /> : null}
                   </span>
                 ) : (
                   <NavLink className="nav-link" to={to} end={false}>
                     <Icon name={item.icon} /> <span>{item.label}</span>
+                    {item.step ? <NavStep step={item.step} /> : null}
                   </NavLink>
                 )}
               </li>
@@ -194,6 +198,15 @@ export function Shell({ children }: { children: ReactNode }) {
         {announcement}
       </div>
     </div>
+  );
+}
+
+/** Decorative chain position; the link name stays the destination label alone. */
+function NavStep({ step }: { step: string }) {
+  return (
+    <span className="nav-step" aria-hidden="true">
+      {step}
+    </span>
   );
 }
 

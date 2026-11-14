@@ -83,14 +83,14 @@ export function CaseRunPage() {
           return (
             <>
               <Section title={c.scenarioName}>
-                <dl className="axis-list">
-                  <div className="axis-row">
+                <dl className="axis-list case-axes">
+                  <div className="axis-row" data-tone={LIFECYCLE_CONTENT[c.lifecycle].tone}>
                     <dt className="axis-name">Execution state</dt>
                     <dd className="axis-value">
                       <StatusBadge content={LIFECYCLE_CONTENT[c.lifecycle]} code={c.lifecycle} />
                     </dd>
                   </div>
-                  <div className="axis-row">
+                  <div className="axis-row" data-tone={VERDICT_CONTENT[c.verdict].tone}>
                     <dt className="axis-name">Verdict</dt>
                     <dd className="axis-value">
                       <StatusBadge content={VERDICT_CONTENT[c.verdict]} code={c.verdict} />{' '}
@@ -99,13 +99,13 @@ export function CaseRunPage() {
                       </span>
                     </dd>
                   </div>
-                  <div className="axis-row">
+                  <div className="axis-row" data-tone={evidenceContent(c.evidence).tone}>
                     <dt className="axis-name">Evidence</dt>
                     <dd className="axis-value">
                       <StatusBadge content={evidenceContent(c.evidence)} />
                     </dd>
                   </div>
-                  <div className="axis-row">
+                  <div className="axis-row" data-tone={coverageContent(c.effectCoverage).tone}>
                     <dt className="axis-name">Effect coverage</dt>
                     <dd className="axis-value">
                       <StatusBadge content={coverageContent(c.effectCoverage)} />

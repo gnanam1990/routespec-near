@@ -10,6 +10,8 @@ have lost or duplicated a cross-chain order.
 
 Demo video (2 min, captions): https://gnanam1990.github.io/routespec-near/video/routespec-demo.mp4
 
+Demo post on X (video and write-up): https://x.com/0xweeky/status/2121509175180288230
+
 - **Verify page and console demo (no install):** https://gnanam1990.github.io/routespec-near/
   (verify page) and https://gnanam1990.github.io/routespec-near/console/ (read-only console
   recorded from a real contained run). Both are live on GitHub Pages, published by the

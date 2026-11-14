@@ -24,11 +24,17 @@ No route, API call, asserted copy, role, label or `data-testid` changed. No depe
 
 ## Checks run on this host
 
-| Check                                                 | Result                                    |
-| ----------------------------------------------------- | ----------------------------------------- |
-| `pnpm run check`                                      | pass (see stage handoff for final counts) |
-| `pnpm run test:e2e` (contract fixture, axe)           | 26 passed                                 |
-| `pnpm run test:e2e:real` (real service, T-047..T-052) | 63 passed                                 |
+| Check                                                              | Result                 |
+| ------------------------------------------------------------------ | ---------------------- |
+| `pnpm run check` stages typecheck, lint, format:check, secret-scan | pass                   |
+| Unit tests (`vitest run --maxWorkers=4`, after merging `main`)     | 1007 passed, 6 skipped |
+| `pnpm run test:e2e` (contract fixture, axe)                        | 26 passed              |
+| `pnpm run test:e2e:real` (real service, T-047..T-052)              | 63 passed              |
+
+Unit-test note: three default-parallelism runs of `pnpm run check` after merging `main` each
+failed exactly one different timing-sensitive backend test (T-025 kill timing, T-042 socket reset,
+T-057 timeout) while the host was loaded; each passes alone, this branch changes no backend
+file, and the full unit suite passes with four workers.
 
 Rendered review: every console route at 1440 and 390 CSS px, light and dark, device scale 2,
 inspected and iterated (tally stroke artefact, dark verdict wash and header contrast, mobile

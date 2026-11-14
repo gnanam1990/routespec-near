@@ -230,8 +230,24 @@ export class ScenarioProxy {
     return this.server.address() as AddressInfo;
   }
 
+  /**
+   * Stop the proxy. Resolves only after every open connection has closed and its response
+   * 'close' handlers (undelivered-response reports) have run, so none of them runs after the
+   * caller goes on to close the journal.
+   */
   async close(): Promise<void> {
-    for (const s of this.sockets) s.destroy();
+    this.barriers.clear();
+    const closed = [...this.sockets].map(
+      (s) =>
+        new Promise<void>((resolve) => {
+          if (s.closed) resolve();
+          else s.once('close', () => resolve());
+          s.destroy();
+        }),
+    );
+    await Promise.all(closed);
+    // A response's 'close' is emitted on the tick after its socket's 'close'.
+    await new Promise<void>((resolve) => setImmediate(resolve));
     await new Promise<void>((resolve) => this.server.close(() => resolve()));
   }
 

@@ -60,6 +60,8 @@ interface CaseState {
   readonly clientInstanceId: string;
   fence: ExecutionFence;
   fencedForUncertainty: boolean;
+  /** Client input is closed (teardown or abort): the client can no longer act on this case. */
+  inputClosed: boolean;
   readonly uncertain: UncertainOutcomeEvent[];
   summary: RuntimeSummary | null;
 }
@@ -123,6 +125,7 @@ export class CaseSupervisor implements CaseRuntimeRegistry {
       clientInstanceId,
       fence: { caseRunId: input.caseRunId, leaseOwnerDigest: this.owner, fencingEpoch: started.fencingEpoch },
       fencedForUncertainty: false,
+      inputClosed: false,
       uncertain: [],
       summary: null,
     });
@@ -152,10 +155,19 @@ export class CaseSupervisor implements CaseRuntimeRegistry {
     return this.cases.get(caseRunId)?.uncertain ?? [];
   }
 
-  /** INV-03: fence immediately and issue exactly one reconciliation-only token. */
+  /**
+   * INV-03: fence immediately and issue exactly one reconciliation-only token.
+   *
+   * The proxy learns that a response was not delivered when its socket closes, and that close
+   * can arrive after the case's client input was closed (the subject process exits, or the proxy
+   * shuts down, after teardown or abort). By then the case's tokens are revoked, it is being or
+   * has been evaluated (or was aborted), and the undelivered response is already in the journal
+   * (never marked delivered). Such a late report must not move the fence of a closed case or
+   * reach the store, which may already be closed.
+   */
   onUncertainOutcome(event: UncertainOutcomeEvent): void {
     const state = this.cases.get(event.caseRunId);
-    if (!state) return;
+    if (!state || state.inputClosed) return;
     state.uncertain.push(event);
     if (state.fencedForUncertainty) return;
     state.fencedForUncertainty = true;
@@ -259,6 +271,7 @@ export class CaseSupervisor implements CaseRuntimeRegistry {
         ? this.finishInput(caseRunId)
         : { summary: state.summary, evidenceIds: [] as string[] };
     const { revokedTokens } = this.store.closeCaseInput(state.fence);
+    state.inputClosed = true;
     return { ...finished, revokedTokens };
   }
 
@@ -304,6 +317,7 @@ export class CaseSupervisor implements CaseRuntimeRegistry {
     const state = this.cases.get(caseRunId);
     if (!state) throw new RouteSpecError('RS_NOT_FOUND', 'Case is not supervised here.');
     this.store.abortCase(state.fence, reason);
+    state.inputClosed = true;
     if (state.summary === null) state.summary = state.runtime.finish();
   }
 }

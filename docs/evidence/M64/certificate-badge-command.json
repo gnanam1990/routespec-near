@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "command": "certificate badge",
+  "cli": "routespec-cli@1.0.0",
+  "exitCode": 0,
+  "status": "CERTIFIED_PASS",
+  "badge": {
+    "schemaVersion": 1,
+    "label": "RouteSpec testnet",
+    "message": "certified PASS",
+    "color": "brightgreen",
+    "cacheSeconds": 3600
+  },
+  "bundleDigest": "sha256:7b29fdec98e5065b2b6e4e983211b3bec76ab47150d0b4616e0484599863c191",
+  "project": "gnanam1990/routespec-near",
+  "projectCertificates": 1,
+  "latestCertificateId": 0,
+  "registry": {
+    "accountId": "gnanam1990-routespec.testnet",
+    "network": "testnet",
+    "codeHash": "DgYXio822TH3CGJqfKU8gDFFSSqmxurWAwG1i4Jhqo5P",
+    "codeHashKnown": true,
+    "readAtBlockHeight": 277596179
+  },
+  "release": {
+    "decision": "PASS",
+    "acceptedCertificateIds": [0],
+    "findings": ["BUNDLE_NOT_CHECKED_LOCALLY"],
+    "trustedAttesters": []
+  },
+  "badgeWritten": true,
+  "note": "Digest-only status under require-onchain-attester; signatures were verified locally. Enrolment and revocation are as reported by the RPC endpoint."
+}

@@ -6,6 +6,7 @@ have lost or duplicated a cross-chain order.
 
 [![ci](https://github.com/gnanam1990/routespec-near/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gnanam1990/routespec-near/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![RouteSpec Certified](https://img.shields.io/endpoint?url=https%3A%2F%2Fgnanam1990.github.io%2Froutespec-near%2Fbadge%2Ftestnet.json)](https://gnanam1990.github.io/routespec-near/?project=gnanam1990%2Froutespec-near&network=testnet)
 
 Demo video: **pending (owner)**. Not recorded yet; until it is, the judge path below is the demo.
 
@@ -15,7 +16,9 @@ Demo video: **pending (owner)**. Not recorded yet; until it is, the judge path b
   GitHub Pages enabled; **not live yet, both URLs return 404**. The deploy job fails until Pages is
   switched on in the repository settings (Source: GitHub Actions), an owner step
   ([M49](docs/status/M49.md), [M54](docs/status/M54.md)). The CI badge reflects the latest pushed
-  commit; see [Honest status](#honest-status).
+  commit; see [Honest status](#honest-status). The "RouteSpec Certified" badge is read from the
+  testnet registry by that workflow, so its image shows only once Pages is live; the same check,
+  run read-only on 2026-11-14, gives `certified PASS` ([M64](docs/status/M64.md)).
 - **Hosted app:** pending. RouteSpec is local-first; the judge path below runs on your machine.
 - **Engineering reference:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Evidence per module:
   [`docs/status/`](docs/status/). Claim record: [`BUILD-STATUS.md`](BUILD-STATUS.md).
@@ -35,7 +38,8 @@ Demo video: **pending (owner)**. Not recorded yet; until it is, the judge path b
   double-delivers or ships on a refund. RouteSpec tests exactly that boundary of a NEAR Intents
   integration, using the pinned official SDK unchanged, and checks its simulator against the real
   1Click API with `dry: true` quotes (no funds). Release decisions can be recorded as signed
-  certificates in a NEAR contract (built and sandbox-tested; testnet deployment pending).
+  certificates in a NEAR contract: deployed on NEAR testnet, with the first certificate (PASS)
+  published and verified ([See it on chain](#see-it-on-chain)).
 
 ### The story in one run: FAIL, then REVIEW, then PASS
 
@@ -96,34 +100,45 @@ placeholder commit id).
 
 ## See it on chain
 
-**No NEAR testnet or mainnet transaction has been sent yet, so there is no explorer link to
-show.** The on-chain part, release certificates in the `routespec-registry` contract
-([`contracts/routespec-registry`](contracts/routespec-registry/crates/routespec-registry/src/lib.rs)),
-is built and was run against a real local NEAR node; deploying it to testnet and publishing the
-first certificate are owner steps ([runbook](docs/runbooks/release-certificates.md)). Every recorded run
-that touched NEAR, and where it ran:
+The audited `routespec-registry` contract
+([`contracts/routespec-registry`](contracts/routespec-registry/crates/routespec-registry/src/lib.rs))
+runs on NEAR testnet and holds the first release certificate: a signed PASS for the contained
+corrected-release bundle of this repository ([M64](docs/status/M64.md), evidence in
+[`docs/evidence/M64/`](docs/evidence/M64/)). The owner signed every transaction below; RouteSpec's
+gate itself never sends one.
+
+- **Registry**: [`gnanam1990-routespec.testnet`](https://testnet.nearblocks.io/address/gnanam1990-routespec.testnet), code hash `DgYXio822TH3CGJqfKU8gDFFSSqmxurWAwG1i4Jhqo5P` (the reproducible audited build: wasm `sha256:bc6d8b9d…7b656`, [M47A](docs/status/M47A.md), `pnpm run registry:reproduce`). Deployed and initialised in [`3r9eBfTy…qPahrrKDN`](https://testnet.nearblocks.io/txns/3r9eBfTyPDnSeMnnXxvC3d8WpoXdkWZCmgsvPLXgnXsE).
+- **Attester**: `ed25519:664yZqbt7371fnDajRZtqppRSDyPU3xiYArLcfeoV9Wx`, enrolled in [`45g6hTQt…DckcVoMX`](https://testnet.nearblocks.io/txns/45g6hTQtH9z5nGuuonYwDMUtA8wkQwkXmxe5DckcVoMX), not revoked.
+- **Certificate `0`**: verdict **PASS**, project `gnanam1990/routespec-near`, bundle `sha256:7b29fdec…3c191`, commit `d38879b`, published in [`85TtCahz…KZepyaJf`](https://testnet.nearblocks.io/txns/85TtCahz5wVzzjCski3oLgahVL6PCbgBca3tKZepyaJf).
+
+Verify it yourself. With the bundle (produced by the contained journey,
+`pnpm run delivery:journey -- --work .data/demo-contained --out .data/journey-contained.json --no-ui --contained`):
+
+```sh
+node --no-warnings packages/cli/bin/routespec.mjs certificate verify --bundle .data/demo-contained/out/routespec-corrected-release.tar --registry gnanam1990-routespec.testnet --network testnet --attester ed25519:664yZqbt7371fnDajRZtqppRSDyPU3xiYArLcfeoV9Wx --code-hash DgYXio822TH3CGJqfKU8gDFFSSqmxurWAwG1i4Jhqo5P
+```
+
+On 2026-11-14 it returns `release.decision` **PASS** with no findings for the owner's bundle; a
+wrong code hash is refused and an unenrolled key gives REVIEW ([M64](docs/status/M64.md)). A
+bundle you build yourself has its own digest, so it needs its own certificate. Without a bundle,
+read the certificate with no key and no transaction:
+
+```sh
+curl -s https://test.rpc.fastnear.com -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"query","params":{"request_type":"call_function","finality":"final","account_id":"gnanam1990-routespec.testnet","method_name":"get_certificate","args_base64":"eyJpZCI6MH0="}}'
+```
+
+(`eyJpZCI6MH0=` is `{"id":0}`; the result bytes are the certificate JSON.) The verify page
+([config](apps/verify/public/config.json)) reads the same registry once Pages is live.
+
+Every recorded run that touched NEAR, and where it ran:
 
 - **One `dry: true` quote, wNEAR -> USDC, official SDK profile**. Where it ran: official 1Click API (mainnet service, no funds). Result: `OFFICIAL_ENDPOINT_COMPATIBLE`, HTTP 201. Evidence: [M42](docs/status/M42.md).
 - **Fidelity matrix, 26 routes, `dry: true` only**. Where it ran: official 1Click API (mainnet service, no funds). Result: `NO_DRIFT`: 24 compatible, 0 incompatible, 2 unknown. Evidence: [M51](docs/status/M51.md).
 - **Registry contract: enrol, publish, tamper, replay, deposit, revoke (20 tests)**. Where it ran: local nearcore 2.14.0 sandbox node. Result: pass. Evidence: [test](packages/registry/sandbox-test/registry-contract.sandbox.test.ts), [M47](docs/status/M47.md), [M47A](docs/status/M47A.md).
 - **CLI publishes and verifies real bundles (14) and CI certificate step (5)**. Where it ran: local nearcore sandbox node. Result: pass. Evidence: [M47](docs/status/M47.md).
 - **Badge, CLI and built verify page agree (11; Chromium)**. Where it ran: local nearcore sandbox node. Result: pass (no certificate, PASS, FAIL, revoked attester). Evidence: [test](apps/verify/sandbox-test/m49-certified-badge.sandbox.test.ts), [M49](docs/status/M49.md).
-- **Registry deployment, attester enrolment, first certificate**. Where it ran: NEAR testnet. Result: **pending (owner)**. Evidence: [runbook](docs/runbooks/release-certificates.md).
-
-Reproducible contract build: wasm `sha256:bc6d8b9d…7b656`, NEAR code hash
-`DgYXio822TH3CGJqfKU8gDFFSSqmxurWAwG1i4Jhqo5P` ([M47A](docs/status/M47A.md),
-`pnpm run registry:reproduce`). The verify page expects the registry at
-`gnanam1990-routespec.testnet` ([config](apps/verify/public/config.json)); its explorer page,
-empty until deployment, is <https://testnet.nearblocks.io/address/gnanam1990-routespec.testnet>.
-
-Read-only check (no key, no transaction):
-
-```sh
-curl -s https://test.rpc.fastnear.com -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"query","params":{"request_type":"view_account","finality":"final","account_id":"gnanam1990-routespec.testnet"}}'
-```
-
-On 2026-11-13 it returns `UNKNOWN_ACCOUNT` (not deployed). After deployment its `code_hash`
-must equal `DgYXio822TH3CGJqfKU8gDFFSSqmxurWAwG1i4Jhqo5P`.
+- **Registry deployment, attester enrolment, first certificate (3 owner transactions)**. Where it ran: NEAR testnet. Result: certificate `0` PASS; `certificate verify` PASS and badge `certified PASS`, re-run read-only. Evidence: [M64](docs/status/M64.md).
+- **Mainnet registry and certificate**. Where it ran: none. Result: **pending (owner)**.
 
 ## Try it in 10 minutes
 
@@ -237,8 +252,8 @@ step (publish, deploy, a key, or a second person).
 - **Release-evidence refusal and signed interceptor profile review** (M16): [M16](docs/status/M16.md).
 - **One pinned official SDK example run contained**; it stopped at `GET /v0/tokens`, so no invariant was evaluated (M48): [M48](docs/status/M48.md).
 - **Observed-incident corpus and read-only Explorer importer**; live import pending an Explorer API key, corpus has 0 records (M50): [M50](docs/status/M50.md).
-- **On-chain release certificates and attester registry**, sandbox-tested; testnet deployment pending (M47, M47A): [contract](contracts/routespec-registry/), [M47](docs/status/M47.md).
-- **"RouteSpec Certified" badge and static verify page**, sandbox-tested; Pages publish pending, and no badge is shown here because no certificate exists (M49): [verify](apps/verify/), [M49](docs/status/M49.md).
+- **On-chain release certificates and attester registry**, sandbox-tested and deployed on NEAR testnet with the first PASS certificate; mainnet pending (M47, M47A, M64): [contract](contracts/routespec-registry/), [M47](docs/status/M47.md), [M64](docs/status/M64.md).
+- **"RouteSpec Certified" badge and static verify page**, sandbox-tested; the badge check reads `certified PASS` from testnet (M64); Pages publish pending, so the badge image above shows once Pages is live (M49): [verify](apps/verify/), [M49](docs/status/M49.md).
 - **Fix patterns**: for a FAIL or REVIEW, the SDK calls found and a suggested diff (M53): [fix-patterns](packages/fix-patterns/src/), [example](docs/demo/m53-fix-advice-hedging.md).
 - **MCP server and coding-agent skill** (`routespec mcp`, five tools); scripted session shows a real FAIL then PASS (M52): [skill](examples/agent-skill/SKILL.md), [transcript](examples/agent-skill/demo/TRANSCRIPT.md).
 - **Delivery and upkeep**: clean-clone end-to-end delivery tests (M12), dependency upgrades (M13),
@@ -294,11 +309,11 @@ hostile code inside the CI action process is not contained).
 - **Contained journey (corrected PASS)**. Where it ran: local, Docker Engine in WSL 2. State: real; plain Linux Docker and rootless engines NOT_RUN.
 - **`pnpm run check`**. Where it ran: local and GitHub Actions (ubuntu, windows, macos). State: green locally on the m61 fixes (counts and repeat runs below); hosted `ci` green on `ab9b89f` and `bfd3065`, **red on `425d48e`**; the fixes for that red run are **not pushed yet, so hosted `ci` has not run on them** (see below).
 - **Official 1Click API**. Where it ran: real, `dry: true` only. State: `OFFICIAL_ENDPOINT_COMPATIBLE`; matrix `NO_DRIFT` 24/26.
-- **Registry contract**. Where it ran: local nearcore sandbox. State: tested; **testnet deployment, enrolment, first certificate pending (owner)**; **mainnet certificate publish pending**.
+- **Registry contract**. Where it ran: local nearcore sandbox; NEAR testnet. State: tested; deployed on testnet at `gnanam1990-routespec.testnet` with one enrolled attester and certificate `0` (PASS), verified read-only ([M64](docs/status/M64.md)); **mainnet deployment and certificate pending (owner)**; the `routespec-certificate` workflow on hosted runners not run yet.
 - **Verify page, console demo**. Where it ran: built and driven in Chromium locally. State: **Pages publish pending** (both URLs return 404 until Pages is enabled; owner step).
 - **Explorer import**. Where it ran: importer tested on a fixture. State: **live import pending** (Explorer API key).
 - **npm package, Marketplace action**. Where it ran: packed and installed offline locally. State: **publish pending (owner)**.
-- **NEAR testnet / mainnet transactions**. Where it ran: none. State: none sent.
+- **NEAR testnet / mainnet transactions**. Where it ran: NEAR testnet. State: three owner-signed testnet transactions (deploy, enrol attester, publish certificate), listed in [See it on chain](#see-it-on-chain); none on mainnet; RouteSpec itself sends none.
 - **Demo video**. Where it ran: none. State: **pending (owner)**; not recorded.
 
 Hosted CI: `ci` [run 43272644091](https://github.com/gnanam1990/routespec-near/actions/runs/43272644091)

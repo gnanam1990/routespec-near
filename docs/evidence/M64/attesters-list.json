@@ -1,0 +1,26 @@
+{
+  "request": {
+    "rpc": "https://test.rpc.fastnear.com",
+    "method": "query",
+    "request_type": "call_function",
+    "finality": "final",
+    "account_id": "gnanam1990-routespec.testnet",
+    "method_name": "list_attesters",
+    "args": {}
+  },
+  "block_height": 277596153,
+  "block_hash": "A6KaEknGLvTnftzSrfMf7BLBqNKFjr8hQQP9Ywwvo1uH",
+  "result": [
+    {
+      "public_key": "ed25519:664yZqbt7371fnDajRZtqppRSDyPU3xiYArLcfeoV9Wx",
+      "label": "release attester",
+      "enrolled_at_ms": 1794623320086,
+      "enrolled_block_height": 277595773,
+      "revoked": false,
+      "revoked_at_ms": null,
+      "revoked_block_height": null,
+      "revocation_reason": null,
+      "certificates": 1
+    }
+  ]
+}

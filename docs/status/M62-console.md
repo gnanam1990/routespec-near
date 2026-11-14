@@ -33,7 +33,7 @@ No route, API call, asserted copy, role, label or `data-testid` changed. No depe
 
 Unit-test note: three default-parallelism runs of `pnpm run check` after merging `main` each
 failed exactly one different timing-sensitive backend test (T-025 kill timing, T-042 socket reset,
-T-057 timeout) while the host was loaded; each passes alone, this branch changes no backend
+T-057 timeout) while the host was loaded; T-025 passes alone, this branch changes no backend
 file, and the full unit suite passes with four workers.
 
 Rendered review: every console route at 1440 and 390 CSS px, light and dark, device scale 2,

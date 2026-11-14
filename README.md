@@ -129,11 +129,12 @@ must equal `DgYXio822TH3CGJqfKU8gDFFSSqmxurWAwG1i4Jhqo5P`.
 
 Needs Node.js 22.18 or later, pnpm 10 and git. No Docker, no account, no API key, no network after
 install. Every command and output below was run from a fresh local clone of the code commit
-`d8ce7b9` (the m61 screening fixes; later commits change only documentation) on Windows 11 on
-2026-11-14, with pnpm already installed. CI runs `pnpm run check` on Linux, macOS and Windows.
-Times vary a lot with the host: treat the numbers below as one sample, not a promise.
+`d8ce7b9` (the m61 screening fixes) on Windows 11 on 2026-11-14, with pnpm already installed; the
+judge and `pnpm run check` were repeated, green, on a fresh clone of `main` at `51c6cbd`. CI runs
+`pnpm run check` on Linux, macOS and Windows. Times vary a lot with the host: treat the numbers
+below as one sample, not a promise.
 
-**1. Clone, install, run the one-command judge check** (45-93 seconds in three fresh-clone runs,
+**1. Clone, install, run the one-command judge check** (38-93 seconds in four fresh-clone runs,
 warm pnpm store; a first package download takes longer)
 
 ```sh

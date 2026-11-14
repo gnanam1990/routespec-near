@@ -3,7 +3,7 @@
 - Module state: **VERIFIED_BOUNDED** on win32/x64 for the console surface. No product claim level
   changes; nothing is published and no network, provider, credential or chain action is involved.
 - Branch: `feat/routespec-m62-console-redesign` (base `796c548` on `main`).
-- Decision: `docs/adr/0034-console-inspection-docket-redesign.md`.
+- Decision: `docs/adr/0035-console-inspection-docket-redesign.md`.
 - Environment: Windows 11 Home 10.0.26300 x64, Node v22, pnpm 10.34.9, Playwright Chromium.
 
 ## What changed

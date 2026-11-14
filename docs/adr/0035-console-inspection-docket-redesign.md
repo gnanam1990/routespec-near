@@ -1,4 +1,4 @@
-# ADR-0034 — Console redesign: the inspection docket
+# ADR-0035 — Console redesign: the inspection docket
 
 - Status: accepted
 - Date: 2026-11-13
@@ -63,3 +63,6 @@ No dependency was added; the existing native primitives and two CSS keyframes co
   an `aria-hidden` step number, `summary-side`/`summary-block` wrappers, a `case-axes` class, and
   the `CaseTally` SVG. On the gate-run page Counts now precede Bounded parallelism.
 - The Gate summary is full width; its supporting facts flow into as many columns as fit.
+- Coherence with the verify page (ADR-0034): both surfaces now present a decision as a ledger of
+  separately named checks in the UI-SPEC tokens and type pair; the console keeps its own
+  stylesheet and shares no CSS file with `apps/verify`, so neither redesign changes the other.

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "rpc": "https://test.rpc.fastnear.com",
+    "method": "query",
+    "request_type": "call_function",
+    "finality": "final",
+    "account_id": "gnanam1990-routespec.testnet",
+    "method_name": "get_project_certificate_count",
+    "args": {
+      "project": "gnanam1990/routespec-near"
+    }
+  },
+  "block_height": 277596157,
+  "block_hash": "3o7bDdPpXajBFSDNQ2CjNRshMYm21REz5RWmnncJDpaX",
+  "result": 1
+}

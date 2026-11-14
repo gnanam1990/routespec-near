@@ -1,0 +1,18 @@
+{
+  "request": {
+    "rpc": "https://test.rpc.fastnear.com",
+    "method": "query",
+    "request_type": "view_account",
+    "finality": "final",
+    "account_id": "gnanam1990-routespec.testnet"
+  },
+  "result": {
+    "amount": "9997566677673144100000000",
+    "block_hash": "784KsURRReuboewKTdPMR7vJ51Y93QNf3jdYpiP8gLtZ",
+    "block_height": 277596152,
+    "code_hash": "DgYXio822TH3CGJqfKU8gDFFSSqmxurWAwG1i4Jhqo5P",
+    "locked": "0",
+    "storage_paid_at": 0,
+    "storage_usage": 237635
+  }
+}

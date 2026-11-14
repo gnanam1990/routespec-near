@@ -1,0 +1,23 @@
+{
+  "request": {
+    "rpc": "https://test.rpc.fastnear.com",
+    "method": "query",
+    "request_type": "call_function",
+    "finality": "final",
+    "account_id": "gnanam1990-routespec.testnet",
+    "method_name": "get_info",
+    "args": {}
+  },
+  "block_height": 277596152,
+  "block_hash": "784KsURRReuboewKTdPMR7vJ51Y93QNf3jdYpiP8gLtZ",
+  "result": {
+    "contract": "routespec-registry",
+    "version": "1.0.0",
+    "payload_domain": "routespec.certificate/1",
+    "owner_id": "gnanam1990-routespec.testnet",
+    "attesters": 1,
+    "certificates": 1,
+    "max_future_skew_ms": 600000,
+    "max_age_ms": 2592000000
+  }
+}

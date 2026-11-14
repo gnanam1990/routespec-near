@@ -1,0 +1,58 @@
+{
+  "source": {
+    "index": "https://api-testnet.nearblocks.io/v1/account/gnanam1990-routespec.testnet/txns",
+    "confirmed_with": "https://test.rpc.fastnear.com method tx (wait_until FINAL)"
+  },
+  "account": "gnanam1990-routespec.testnet",
+  "account_explorer": "https://testnet.nearblocks.io/address/gnanam1990-routespec.testnet",
+  "transactions": [
+    {
+      "step": "account creation (by testnet faucet)",
+      "hash": "HbJyjwR2JRp2a1ctDAfXEVPdn5ziHz7USg1unhHnomv9",
+      "signer_id": "testnet",
+      "receiver_id": "gnanam1990-routespec.testnet",
+      "actions": ["CreateAccount", "Transfer", "AddKey"],
+      "status": "SuccessValue",
+      "final_execution_status": "FINAL",
+      "included_in_block_hash": "AdsnUS9xHELqSutici2y4sjwPsk2kSKVTqgW66ssi6em",
+      "block_height": 277595624,
+      "explorer": "https://testnet.nearblocks.io/txns/HbJyjwR2JRp2a1ctDAfXEVPdn5ziHz7USg1unhHnomv9"
+    },
+    {
+      "step": "deploy + new",
+      "hash": "3r9eBfTyPDnSeMnnXxvC3d8WpoXdkWZCmgsvPLXgnXsE",
+      "signer_id": "gnanam1990-routespec.testnet",
+      "receiver_id": "gnanam1990-routespec.testnet",
+      "actions": ["DeployContract", "FunctionCall:new"],
+      "status": "SuccessValue",
+      "final_execution_status": "FINAL",
+      "included_in_block_hash": "EQAYfyPiCbyuo2giERCEXKiKwHdaZLeE2u6xPahrrKDN",
+      "block_height": 277595712,
+      "explorer": "https://testnet.nearblocks.io/txns/3r9eBfTyPDnSeMnnXxvC3d8WpoXdkWZCmgsvPLXgnXsE"
+    },
+    {
+      "step": "enrol_attester",
+      "hash": "45g6hTQtH9z5nGuuonYwDMUtA8wkQwkXmxe5DckcVoMX",
+      "signer_id": "gnanam1990-routespec.testnet",
+      "receiver_id": "gnanam1990-routespec.testnet",
+      "actions": ["FunctionCall:enrol_attester"],
+      "status": "SuccessValue",
+      "final_execution_status": "FINAL",
+      "included_in_block_hash": "AL4vXwvCcQynMwnCcPckA4ke8smu2hBD739wdsWVpK48",
+      "block_height": 277595773,
+      "explorer": "https://testnet.nearblocks.io/txns/45g6hTQtH9z5nGuuonYwDMUtA8wkQwkXmxe5DckcVoMX"
+    },
+    {
+      "step": "publish (certificate 0)",
+      "hash": "85TtCahz5wVzzjCski3oLgahVL6PCbgBca3tKZepyaJf",
+      "signer_id": "gnanam1990-routespec.testnet",
+      "receiver_id": "gnanam1990-routespec.testnet",
+      "actions": ["FunctionCall:publish"],
+      "status": "SuccessValue",
+      "final_execution_status": "FINAL",
+      "included_in_block_hash": "8ik2TSNt3wbiAPGmP8sPanfb78tMXwvTBxyejMa1NrVQ",
+      "block_height": 277595799,
+      "explorer": "https://testnet.nearblocks.io/txns/85TtCahz5wVzzjCski3oLgahVL6PCbgBca3tKZepyaJf"
+    }
+  ]
+}

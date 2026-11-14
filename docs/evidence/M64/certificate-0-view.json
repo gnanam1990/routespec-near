@@ -1,0 +1,32 @@
+{
+  "request": {
+    "rpc": "https://test.rpc.fastnear.com",
+    "method": "query",
+    "request_type": "call_function",
+    "finality": "final",
+    "account_id": "gnanam1990-routespec.testnet",
+    "method_name": "get_certificate",
+    "args": {
+      "id": 0
+    }
+  },
+  "block_height": 277596155,
+  "block_hash": "4L4JNhW1CfDcUV9zkaJRHqxuyqDPtZUPQ8p4mdmFbEZK",
+  "result": {
+    "id": 0,
+    "registry": "gnanam1990-routespec.testnet",
+    "project": "gnanam1990/routespec-near",
+    "bundle_digest": "sha256:7b29fdec98e5065b2b6e4e983211b3bec76ab47150d0b4616e0484599863c191",
+    "verdict": "PASS",
+    "corpus_digest": "sha256:1f16f867a7afac513a75c68e88f6ebb2be210a6d0c28b24e424a0d0f11f1c2e4",
+    "artifact_digest": "sha256:5a7de97b69c3fd26210951e03de0d8189dc4a2a325868cc5d041a5878b31fe71",
+    "commit": "d38879b3d1dd1d2faca481ae29e8db70127be272",
+    "timestamp_ms": 1794623116591,
+    "attester": "ed25519:664yZqbt7371fnDajRZtqppRSDyPU3xiYArLcfeoV9Wx",
+    "signature": "x65Iqo3b6EO9FRS6owzEwYwVCO0CKZiAV5eosCLl3aMSgQ8gp//CWNjs124oKZ89QQtx28dCyObtvmV2oBubCw==",
+    "published_at_ms": 1794623335736,
+    "published_block_height": 277595799,
+    "attester_revoked": false,
+    "attester_revoked_at_ms": null
+  }
+}

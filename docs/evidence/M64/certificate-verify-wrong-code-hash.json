@@ -1,0 +1,15 @@
+{
+  "ok": false,
+  "command": "certificate verify",
+  "cli": "routespec-cli@1.0.0",
+  "exitCode": 6,
+  "error": {
+    "code": "RS_REGISTRY_REJECTED",
+    "message": "The registry account runs different code than expected.",
+    "details": {
+      "reason": "REGISTRY_CODE_HASH_MISMATCH",
+      "codeHash": "DgYXio822TH3CGJqfKU8gDFFSSqmxurWAwG1i4Jhqo5P"
+    },
+    "recoverable": false
+  }
+}

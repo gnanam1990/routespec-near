@@ -8,17 +8,15 @@ have lost or duplicated a cross-chain order.
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![RouteSpec Certified](https://img.shields.io/endpoint?url=https%3A%2F%2Fgnanam1990.github.io%2Froutespec-near%2Fbadge%2Ftestnet.json)](https://gnanam1990.github.io/routespec-near/?project=gnanam1990%2Froutespec-near&network=testnet)
 
-Demo video: **pending (owner)**. Not recorded yet; until it is, the judge path below is the demo.
+Demo video (2 min, captions): https://gnanam1990.github.io/routespec-near/video/routespec-demo.mp4
 
-- **Verify page and console demo (no install):** `https://gnanam1990.github.io/routespec-near/`
-  (verify page) and `https://gnanam1990.github.io/routespec-near/console/` (read-only console
-  recorded from a real contained run). Published after the `routespec-pages` workflow runs with
-  GitHub Pages enabled; **not live yet, both URLs return 404**. The deploy job fails until Pages is
-  switched on in the repository settings (Source: GitHub Actions), an owner step
-  ([M49](docs/status/M49.md), [M54](docs/status/M54.md)). The CI badge reflects the latest pushed
-  commit; see [Honest status](#honest-status). The "RouteSpec Certified" badge is read from the
-  testnet registry by that workflow, so its image shows only once Pages is live; the same check,
-  run read-only on 2026-11-14, gives `certified PASS` ([M64](docs/status/M64.md)).
+- **Verify page and console demo (no install):** https://gnanam1990.github.io/routespec-near/
+  (verify page) and https://gnanam1990.github.io/routespec-near/console/ (read-only console
+  recorded from a real contained run). Both are live on GitHub Pages, published by the
+  `routespec-pages` workflow on every push to `main` ([M49](docs/status/M49.md),
+  [M54](docs/status/M54.md)). The CI badge reflects the latest pushed commit; see
+  [Honest status](#honest-status). The "RouteSpec Certified" badge is read from the testnet
+  registry by that workflow and shows `certified PASS` ([M64](docs/status/M64.md)).
 - **Hosted app:** pending. RouteSpec is local-first; the judge path below runs on your machine.
 - **Engineering reference:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Evidence per module:
   [`docs/status/`](docs/status/). Claim record: [`BUILD-STATUS.md`](BUILD-STATUS.md).
@@ -128,7 +126,7 @@ curl -s https://test.rpc.fastnear.com -H 'content-type: application/json' -d '{"
 ```
 
 (`eyJpZCI6MH0=` is `{"id":0}`; the result bytes are the certificate JSON.) The verify page
-([config](apps/verify/public/config.json)) reads the same registry once Pages is live.
+([config](apps/verify/public/config.json)) reads the same registry in your browser.
 
 Every recorded run that touched NEAR, and where it ran:
 
@@ -253,13 +251,13 @@ step (publish, deploy, a key, or a second person).
 - **One pinned official SDK example run contained**; it stopped at `GET /v0/tokens`, so no invariant was evaluated (M48): [M48](docs/status/M48.md).
 - **Observed-incident corpus and read-only Explorer importer**; live import pending an Explorer API key, corpus has 0 records (M50): [M50](docs/status/M50.md).
 - **On-chain release certificates and attester registry**, sandbox-tested and deployed on NEAR testnet with the first PASS certificate; mainnet pending (M47, M47A, M64): [contract](contracts/routespec-registry/), [M47](docs/status/M47.md), [M64](docs/status/M64.md).
-- **"RouteSpec Certified" badge and static verify page**, sandbox-tested; the badge check reads `certified PASS` from testnet (M64); Pages publish pending, so the badge image above shows once Pages is live (M49): [verify](apps/verify/), [M49](docs/status/M49.md).
+- **"RouteSpec Certified" badge and static verify page**, sandbox-tested; the badge check reads `certified PASS` from testnet (M64); published on GitHub Pages (M49): [verify](apps/verify/), [M49](docs/status/M49.md).
 - **Fix patterns**: for a FAIL or REVIEW, the SDK calls found and a suggested diff (M53): [fix-patterns](packages/fix-patterns/src/), [example](docs/demo/m53-fix-advice-hedging.md).
 - **MCP server and coding-agent skill** (`routespec mcp`, five tools); scripted session shows a real FAIL then PASS (M52): [skill](examples/agent-skill/SKILL.md), [transcript](examples/agent-skill/demo/TRANSCRIPT.md).
 - **Delivery and upkeep**: clean-clone end-to-end delivery tests (M12), dependency upgrades (M13),
   CI runner fix (M15), consolidation (M18), reviewer kits (M19, [kits](docs/review-kits/README.md)),
   README, screening and console polish (M40 to M46), registry audit pin (M49A): [BUILD-STATUS](BUILD-STATUS.md).
-- **Distribution**: npm package, Marketplace action, recorded console demo, `pnpm judge`; npm publish, Marketplace listing and Pages deploy pending (M54): [M54](docs/status/M54.md).
+- **Distribution**: npm package, Marketplace action, recorded console demo, `pnpm judge`; console demo live on GitHub Pages; npm publish and Marketplace listing pending (M54): [M54](docs/status/M54.md).
 
 ## NEAR integration: exactly what is used
 
@@ -307,14 +305,14 @@ hostile code inside the CI action process is not contained).
 
 - **Product journey (FAIL, REVIEW, REVIEW)**. Where it ran: local, uncontained, fresh clone, Windows 11, 2026-11-14. State: real kernel verdicts over real client processes; 1Click service **simulated**.
 - **Contained journey (corrected PASS)**. Where it ran: local, Docker Engine in WSL 2. State: real; plain Linux Docker and rootless engines NOT_RUN.
-- **`pnpm run check`**. Where it ran: local and GitHub Actions (ubuntu, windows, macos). State: green locally on the m61 fixes (counts and repeat runs below); hosted `ci` green on `ab9b89f` and `bfd3065`, **red on `425d48e`**; the fixes for that red run are **not pushed yet, so hosted `ci` has not run on them** (see below).
+- **`pnpm run check`**. Where it ran: local and GitHub Actions (ubuntu, windows, macos). State: green locally on the m61 fixes (counts and repeat runs below); hosted `ci` red on `425d48e` and `64bcc5a`, **green on `73e0311`** on all three runners (see below).
 - **Official 1Click API**. Where it ran: real, `dry: true` only. State: `OFFICIAL_ENDPOINT_COMPATIBLE`; matrix `NO_DRIFT` 24/26.
-- **Registry contract**. Where it ran: local nearcore sandbox; NEAR testnet. State: tested; deployed on testnet at `gnanam1990-routespec.testnet` with one enrolled attester and certificate `0` (PASS), verified read-only ([M64](docs/status/M64.md)); **mainnet deployment and certificate pending (owner)**; the `routespec-certificate` workflow on hosted runners not run yet.
-- **Verify page, console demo**. Where it ran: built and driven in Chromium locally. State: **Pages publish pending** (both URLs return 404 until Pages is enabled; owner step).
+- **Registry contract**. Where it ran: local nearcore sandbox; NEAR testnet. State: tested; deployed on testnet at `gnanam1990-routespec.testnet` with one enrolled attester and certificate `0` (PASS), verified read-only ([M64](docs/status/M64.md)); **mainnet deployment and certificate pending (owner)**; the `routespec-certificate` workflow succeeded on hosted runners on `73e0311`.
+- **Verify page, console demo**. Where it ran: built and driven in Chromium locally; GitHub Pages. State: live at https://gnanam1990.github.io/routespec-near/ and `/console/`, published by `routespec-pages`.
 - **Explorer import**. Where it ran: importer tested on a fixture. State: **live import pending** (Explorer API key).
 - **npm package, Marketplace action**. Where it ran: packed and installed offline locally. State: **publish pending (owner)**.
 - **NEAR testnet / mainnet transactions**. Where it ran: NEAR testnet. State: three owner-signed testnet transactions (deploy, enrol attester, publish certificate), listed in [See it on chain](#see-it-on-chain); none on mainnet; RouteSpec itself sends none.
-- **Demo video**. Where it ran: none. State: **pending (owner)**; not recorded.
+- **Demo video**. Where it ran: GitHub Pages. State: published, 2 min with burned-in captions and no audio: https://gnanam1990.github.io/routespec-near/video/routespec-demo.mp4.
 
 Hosted CI: `ci` [run 43272644091](https://github.com/gnanam1990/routespec-near/actions/runs/43272644091)
 (`ab9b89f`) and [run 43357797047](https://github.com/gnanam1990/routespec-near/actions/runs/43357797047)
@@ -327,8 +325,12 @@ confined example loader refused the pinned tree because the temp directory sits 
 on Windows one gate process in `m53-fix-advice` exited 1 instead of 2, which is consistent with the
 same uncaught `EPIPE` but was not reproduced locally. M61 fixes the link case (with a regression
 test) and the `EPIPE` path, and removes the local timing and file-replace flakes described below.
-It is not pushed, so no hosted run on it exists yet. The `routespec-pages` deploy job failed on
-the same commit, so the Pages site is not live.
+With M61 and M63 merged, `ci` on `64bcc5a`
+([run 43547994609](https://github.com/gnanam1990/routespec-near/actions/runs/43547994609)) still
+failed; after M65, `ci` on `73e0311`
+([run 43554951646](https://github.com/gnanam1990/routespec-near/actions/runs/43554951646)) was
+green on all three runners, as were `routespec-gate`, `routespec-certificate` and
+`routespec-pages` on that commit. The Pages site is live.
 
 Local `pnpm run check` on the m61 fixes (Windows 11): exit 0,
 `Test Files 122 passed | 1 skipped (123)`, `Tests 1010 passed | 6 skipped (1016)`, secret scan

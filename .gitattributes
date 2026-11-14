@@ -3,3 +3,4 @@
 *.wasm binary
 *.tar binary
 *.tgz binary
+*.mp4 binary

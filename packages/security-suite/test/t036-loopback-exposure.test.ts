@@ -107,6 +107,8 @@ afterAll(async () => {
 });
 
 describe('T-036 — Local listeners reject non-loopback exposure', () => {
+  // The two OS-level checks below ask the OS for its socket table and probe every interface
+  // address (1.5 s each); on a host with many virtual adapters that alone takes tens of seconds.
   it('the OS reports every RouteSpec listening socket on a loopback address only', () => {
     const byPid = new Map<number, ListeningSocket[]>();
     for (const pid of new Set(listeners.map((l) => l.pid))) byPid.set(pid, listeningSockets(pid));
@@ -120,7 +122,7 @@ describe('T-036 — Local listeners reject non-loopback exposure', () => {
       for (const s of sockets)
         expect(LOOPBACK.has(s.address), `pid ${pid} port ${s.port} on ${s.address}`).toBe(true);
     }
-  });
+  }, 180_000);
 
   it('connections through every non-loopback interface address are refused', async (ctx) => {
     const external = externalAddresses();
@@ -139,7 +141,7 @@ describe('T-036 — Local listeners reject non-loopback exposure', () => {
         expect(result, `${l.label} via ${a.family} ${a.address}`).not.toBe('CONNECTED');
       }
     }
-  });
+  }, 180_000);
 
   it('wildcard, LAN, and look-alike bind addresses are refused before any socket opens', async () => {
     const before = listeningSockets(process.pid).length;

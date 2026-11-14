@@ -96,7 +96,7 @@ export async function onCase(
     });
   const send = (msg: Record<string, unknown>) => {
     const p = wait(`${String(msg['type'])}-done`);
-    child.send(msg);
+    child.send(msg, () => undefined);
     return p;
   };
   try {
@@ -109,7 +109,7 @@ export async function onCase(
       );
     }
     control.onCredentials((credentials) => {
-      if (child.connected) child.send({ type: 'credentials', credentials });
+      if (child.connected) child.send({ type: 'credentials', credentials }, () => undefined);
     });
     if (control.signal.aborted) return { cancelled: 'LAUNCHER_ABORTED' };
     await send({ type: 'attach', origin: handoff.proxyOrigin, credentials: handoff.credentials });

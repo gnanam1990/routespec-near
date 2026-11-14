@@ -7,12 +7,15 @@ have lost or duplicated a cross-chain order.
 [![ci](https://github.com/gnanam1990/routespec-near/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gnanam1990/routespec-near/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Demo video: <added after recording>
+Demo video: **pending (owner)**. Not recorded yet; until it is, the judge path below is the demo.
 
 - **Verify page and console demo (no install):** `https://gnanam1990.github.io/routespec-near/`
   (verify page) and `https://gnanam1990.github.io/routespec-near/console/` (read-only console
   recorded from a real contained run). Published after the `routespec-pages` workflow runs with
-  GitHub Pages enabled; not live yet ([M49](docs/status/M49.md), [M54](docs/status/M54.md)).
+  GitHub Pages enabled; **not live yet, both URLs return 404**. The deploy job fails until Pages is
+  switched on in the repository settings (Source: GitHub Actions), an owner step
+  ([M49](docs/status/M49.md), [M54](docs/status/M54.md)). The CI badge reflects the latest pushed
+  commit; see [Honest status](#honest-status).
 - **Hosted app:** pending. RouteSpec is local-first; the judge path below runs on your machine.
 - **Engineering reference:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Evidence per module:
   [`docs/status/`](docs/status/). Claim record: [`BUILD-STATUS.md`](BUILD-STATUS.md).
@@ -125,11 +128,13 @@ must equal `DgYXio822TH3CGJqfKU8gDFFSSqmxurWAwG1i4Jhqo5P`.
 ## Try it in 10 minutes
 
 Needs Node.js 22.18 or later, pnpm 10 and git. No Docker, no account, no API key, no network after
-install. Every command and output below was run from a fresh local clone of `main` (`425d48e`) on
-Windows 11 (Git Bash) on 2026-11-13, with pnpm already installed. CI runs `pnpm run check` on Linux, macOS and Windows.
+install. Every command and output below was run from a fresh local clone of the code commit
+`d8ce7b9` (the m61 screening fixes; later commits change only documentation) on Windows 11 on
+2026-11-14, with pnpm already installed. CI runs `pnpm run check` on Linux, macOS and Windows.
+Times vary a lot with the host: treat the numbers below as one sample, not a promise.
 
-**1. Clone, install, run the one-command judge check** (44 seconds here with a warm pnpm
-store; a first package download takes longer)
+**1. Clone, install, run the one-command judge check** (45-93 seconds in three fresh-clone runs,
+warm pnpm store; a first package download takes longer)
 
 ```sh
 git clone https://github.com/gnanam1990/routespec-near.git routespec
@@ -145,7 +150,7 @@ whole product journey, checks the recorded console demo and its evidence bundle,
 sample client with the npm package installed offline. Expected (abridged; times from this run):
 
 ```text
-PASS    build        12.4s  tsc -b exit 0
+PASS    build        14.9s  tsc -b exit 0
 hedging client, slow-answer corpus: gate decision FAIL
   case 0 slow-commit-answer: client HEDGED (second quote and deposit submitted while the first was unanswered; run operations 2) | INV-03 FAIL | ...
 baseline client, release corpus: gate decision REVIEW
@@ -154,18 +159,20 @@ corrected client, promoted corpus: gate decision REVIEW
 capture as release evidence: refused 422 RS_CAPTURE_NOT_RELEASE_EVIDENCE (DECLARED_HOOKS_ONLY, ...)
 evidence bundle verified offline: true
 crash recovery: epoch 1 -> 2, stale token RS_TOKEN_REVOKED, second mutation RS_TOKEN_PHASE_DENIED
-PASS    journey       8.8s  containment UNCONTAINED; baseline REVIEW, hedging FAIL, corrected REVIEW; bundle verified offline true
+PASS    journey       9.3s  containment UNCONTAINED; baseline REVIEW, hedging FAIL, corrected REVIEW; bundle verified offline true
 SKIPPED contained     0.0s  no container engine configured (set ROUTESPEC_CONTAINER_CLI or pass --contained)
 PASS    demo          0.4s  recorded from a CONTAINED run at 4fe98d17dbf0; bundle PASS, verified true
-PASS    package      17.5s  routespec@0.1.0 (1377 files, ...) installed offline; self-gate PASS
+PASS    package      19.5s  routespec@0.1.0 (1377 files, ...) installed offline; self-gate PASS
 routespec judge: all steps passed or were skipped (record: .data/judge/judge.json)
 ```
 
 Exit code 0. A step is PASS only when the product returned what this README says; the judge
-script never computes a verdict itself.
+script never computes a verdict itself. The journey step took 8-50 s and the package step
+17-51 s across runs; a busy host is slower, not stuck.
 
-**2. Optional: the contained run where the corrected client gets PASS** (about 75 seconds, needs a
-Linux container engine and `docker pull node:22-bookworm-slim` once)
+**2. Optional: the contained run where the corrected client gets PASS** (the contained step alone
+took 60-145 s in four runs, depending on host and WSL; needs a Linux container engine and
+`docker pull node:22-bookworm-slim` once)
 
 ```sh
 export ROUTESPEC_CONTAINER_CLI='["docker"]'          # Docker Engine on Linux
@@ -177,7 +184,7 @@ pnpm judge --skip-package
 Expected:
 
 ```text
-PASS    contained    62.5s  containment CONTAINED; baseline REVIEW, hedging FAIL, corrected PASS; bundle verified offline true
+PASS    contained    65.1s  containment CONTAINED; baseline REVIEW, hedging FAIL, corrected PASS; bundle verified offline true
 ```
 
 Only the WSL 2 form was run for this record; the plain Linux `["docker"]` form was not. Engine
@@ -194,6 +201,9 @@ It prints one JSON line with the origin, then `routespec: console http://127.0.0
 Open that URL (the token leaves the address bar on load). Releases shows the gate runs for
 `release-candidate-1`; the FAIL row is the hedging build, and "Open gate run" shows its case with
 INV-03 FAIL. Use `.data/judge/journey-contained/data` after step 2 to see the PASS. Stop with Ctrl+C.
+Only one console (or CLI process) can open a data directory at a time. A console started right
+after another one stopped waits up to 8 seconds for the old process to release the journal; if a
+live process still holds it, it exits with `RS_WRITER_LOCKED` and the holder's process id.
 
 **4. The full test suite**
 
@@ -279,28 +289,39 @@ hostile code inside the CI action process is not contained).
 
 ## Honest status
 
-- **Product journey (FAIL, REVIEW, REVIEW)**. Where it ran: local, uncontained, fresh clone, Windows 11, 2026-11-13. State: real kernel verdicts over real client processes; 1Click service **simulated**.
+- **Product journey (FAIL, REVIEW, REVIEW)**. Where it ran: local, uncontained, fresh clone, Windows 11, 2026-11-14. State: real kernel verdicts over real client processes; 1Click service **simulated**.
 - **Contained journey (corrected PASS)**. Where it ran: local, Docker Engine in WSL 2. State: real; plain Linux Docker and rootless engines NOT_RUN.
-- **`pnpm run check`**. Where it ran: local and GitHub Actions (ubuntu, windows, macos). State: green locally (counts below); hosted `ci` green on `ab9b89f` and `bfd3065`, **red on `425d48e`** (see below).
+- **`pnpm run check`**. Where it ran: local and GitHub Actions (ubuntu, windows, macos). State: green locally on the m61 fixes (counts and repeat runs below); hosted `ci` green on `ab9b89f` and `bfd3065`, **red on `425d48e`**; the fixes for that red run are **not pushed yet, so hosted `ci` has not run on them** (see below).
 - **Official 1Click API**. Where it ran: real, `dry: true` only. State: `OFFICIAL_ENDPOINT_COMPATIBLE`; matrix `NO_DRIFT` 24/26.
 - **Registry contract**. Where it ran: local nearcore sandbox. State: tested; **testnet deployment, enrolment, first certificate pending (owner)**; **mainnet certificate publish pending**.
-- **Verify page, console demo**. Where it ran: built and driven in Chromium locally. State: **Pages publish pending**.
+- **Verify page, console demo**. Where it ran: built and driven in Chromium locally. State: **Pages publish pending** (both URLs return 404 until Pages is enabled; owner step).
 - **Explorer import**. Where it ran: importer tested on a fixture. State: **live import pending** (Explorer API key).
 - **npm package, Marketplace action**. Where it ran: packed and installed offline locally. State: **publish pending (owner)**.
 - **NEAR testnet / mainnet transactions**. Where it ran: none. State: none sent.
+- **Demo video**. Where it ran: none. State: **pending (owner)**; not recorded.
 
 Hosted CI: `ci` [run 43272644091](https://github.com/gnanam1990/routespec-near/actions/runs/43272644091)
 (`ab9b89f`) and [run 43357797047](https://github.com/gnanam1990/routespec-near/actions/runs/43357797047)
 (`bfd3065`) were green on all three runners, as were the matching `routespec-gate` runs. On the
 latest pushed commit `425d48e` the `check` step of `ci` failed on all three runners
 ([run 43423876752](https://github.com/gnanam1990/routespec-near/actions/runs/43423876752)) while
-`routespec-gate` and `routespec-certificate` succeeded; the job log needs repository access, so the
-cause was not read for this record. The `routespec-pages` deploy job failed on the same commit,
-so the Pages site is not live.
+`routespec-gate` and `routespec-certificate` succeeded. The job logs, read for M61: on macOS the
+confined example loader refused the pinned tree because the temp directory sits behind a link
+(`/var` -> `/private/var`); on ubuntu an IPC send to an exiting child raised an uncaught `EPIPE`;
+on Windows one gate process in `m53-fix-advice` exited 1 instead of 2, which is consistent with the
+same uncaught `EPIPE` but was not reproduced locally. M61 fixes the link case (with a regression
+test) and the `EPIPE` path, and removes the local timing and file-replace flakes described below.
+It is not pushed, so no hosted run on it exists yet. The `routespec-pages` deploy job failed on
+the same commit, so the Pages site is not live.
 
-Local `pnpm run check` on `425d48e` (the code this README describes; Windows 11, fresh clone):
-exit 0, `Test Files 121 passed | 1 skipped (122)`, `Tests 1007 passed | 6 skipped (1013)`,
-`secret-scan: clean (744 files scanned, 8 rules)`.
+Local `pnpm run check` on the m61 fixes (Windows 11): exit 0,
+`Test Files 122 passed | 1 skipped (123)`, `Tests 1010 passed | 6 skipped (1016)`, secret scan
+clean. Before the fixes this suite was **not reliably green**: a fresh-clone screening run of
+`796c548` failed 7 of 1013 tests (lease expiries and 60 s timeouts under load); after the timing fixes,
+6 of 22 full local suite runs still failed one confirmed export overwrite (`EPERM` from rename, even with a 30 s
+retry: a hard-link publish left the file delete-pending on Windows). With the fixes, 8 of 8
+consecutive full Vitest runs on a fresh clone passed. That is evidence of a fix, not proof that no
+flake remains; see [M61](docs/status/M61.md).
 
 **Claim level.** Per [`BUILD-STATUS.md`](BUILD-STATUS.md), the specification's strict label
 `WORKING_LOCAL` is **not claimed**. Of its gates RP-01, RP-03, RP-04, RP-05 and RP-08 are met in this

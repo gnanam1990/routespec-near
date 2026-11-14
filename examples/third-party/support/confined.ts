@@ -14,7 +14,7 @@
  * - `observeSdkCalls` and `captureConsole`: record which official SDK service methods the
  *   example called and what it printed. Observation only; every call runs unchanged.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { createRequire, registerHooks } from 'node:module';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -75,6 +75,11 @@ export interface LoadRecord {
 export async function loadPinnedEntry(pin: PinnedSource, options: LoadOptions): Promise<LoadRecord> {
   const dir = options.dir ?? sourceDir(REPO_ROOT, pin);
   const dirUrl = pathToFileURL(dir).href.replace(/\/?$/, '/');
+  // Node's module loader names a file by its real path. Where the directory sits behind a
+  // symbolic link (macOS: /var -> /private/var) the URLs the hooks see start with the real path,
+  // so both spellings belong to the pinned tree; otherwise its imports would escape the hooks.
+  const realDirUrl = pathToFileURL(realpathSync(dir)).href.replace(/\/?$/, '/');
+  const prefixes = realDirUrl === dirUrl ? [dirUrl] : [dirUrl, realDirUrl];
   const pinned = new Map(pin.files.map((f) => [f.path, f.sha256]));
   const record: LoadRecord = {
     entry: pin.entry,
@@ -84,8 +89,9 @@ export async function loadPinnedEntry(pin: PinnedSource, options: LoadOptions): 
   };
   const ts = createRequire(import.meta.url)('typescript') as TypeScriptApi;
   const relOf = (url: string): string | null => {
-    if (!url.startsWith(dirUrl)) return null;
-    return decodeURIComponent(url.slice(dirUrl.length).split(/[?#]/)[0] ?? '');
+    const prefix = prefixes.find((p) => url.startsWith(p));
+    if (prefix === undefined) return null;
+    return decodeURIComponent(url.slice(prefix.length).split(/[?#]/)[0] ?? '');
   };
   const deny = (specifier: string, from: string): never => {
     record.refused.push({ specifier: specifier.slice(0, 200), from });

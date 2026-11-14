@@ -67,8 +67,10 @@ export function runWithLauncher(options: LauncherOptions): Promise<LauncherResul
     string,
     { listeners: Array<(c: LaunchCredentials) => void>; abort: AbortController }
   >();
+  // A send to a child that is already exiting fails asynchronously (EPIPE, channel closed). The
+  // callback takes that error: the child's own exit is what the launcher reports, not a crash here.
   const reply = (msg: Record<string, unknown>) => {
-    if (child.connected) child.send({ protocol: PROTOCOL, ...msg });
+    if (child.connected) child.send({ protocol: PROTOCOL, ...msg }, () => undefined);
   };
   child.on('message', (raw: unknown) => {
     const msg = raw as Record<string, unknown>;

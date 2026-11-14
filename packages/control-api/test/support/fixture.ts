@@ -396,7 +396,7 @@ export class Subject {
   }
   async send(msg: Record<string, unknown>): Promise<Record<string, unknown>> {
     const p = this.wait(`${String(msg['type'])}-done`);
-    this.child.send(msg);
+    this.child.send(msg, () => undefined);
     return p;
   }
   attach(origin: string, start: Record<string, unknown>): Promise<Record<string, unknown>> {

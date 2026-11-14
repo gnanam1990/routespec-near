@@ -191,7 +191,10 @@ production readiness is blocked.
 
 ## 9. Release certificate registry (M47)
 
-Nothing is deployed yet. The steps, with exact PowerShell commands, are in
+**Testnet: done (M64, 2026-11-14).** `gnanam1990-routespec.testnet` runs the audited build, one
+attester is enrolled and certificate `0` (PASS) is published; transaction hashes and the read-only
+re-verification are in `docs/status/M64.md`. Still open: step 5 (the hosted workflow) and step 6
+(mainnet). The steps, with exact PowerShell commands, are in
 `docs/runbooks/release-certificates.md`:
 
 1. Build the deployable wasm (`pnpm run registry:reproduce`) and check that its SHA-256 is
@@ -208,7 +211,8 @@ Nothing is deployed yet. The steps, with exact PowerShell commands, are in
 
 ## 10. Certified badge and verify page (M49)
 
-After the first certificate is published (section 9), enable GitHub Pages with GitHub Actions as
+The first certificate is published (section 9), and the badge check already reads
+`certified PASS` (M64). Enable GitHub Pages with GitHub Actions as
 the source and run the `routespec-pages` workflow; optionally pin the attester key with the
 `ROUTESPEC_BADGE_ATTESTERS` variable. Exact commands: `docs/runbooks/certified-badge.md`. Until
-then the badge says "unverified" and the page says the registry account does not exist.
+then the README badge image does not render (the badge JSON is served by Pages).

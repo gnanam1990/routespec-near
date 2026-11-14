@@ -1,0 +1,56 @@
+{
+  "ok": false,
+  "command": "certificate verify",
+  "cli": "routespec-cli@1.0.0",
+  "exitCode": 3,
+  "bundleDigest": "sha256:7b29fdec98e5065b2b6e4e983211b3bec76ab47150d0b4616e0484599863c191",
+  "bundle": {
+    "verified": true,
+    "entryCount": 16,
+    "evidenceUse": "RELEASE_EVIDENCE"
+  },
+  "registry": {
+    "accountId": "gnanam1990-routespec.testnet",
+    "network": "testnet",
+    "contract": "routespec-registry",
+    "version": "1.0.0",
+    "codeHash": "DgYXio822TH3CGJqfKU8gDFFSSqmxurWAwG1i4Jhqo5P",
+    "ownerId": "gnanam1990-routespec.testnet",
+    "readAtBlockHeight": 277596116
+  },
+  "release": {
+    "decision": "REVIEW",
+    "policy": "REQUIRE_ONCHAIN_ATTESTER",
+    "localDecision": "PASS",
+    "acceptedCertificateIds": [],
+    "findings": ["ATTESTER_NOT_TRUSTED", "ONCHAIN_ATTESTATION_REQUIRED"],
+    "trustedAttesters": ["ed25519:CFirmQT8k5CrEdGTfttsYZ7EuneoBk7tX7Dt5Lv7H4uq"]
+  },
+  "certificates": [
+    {
+      "id": 0,
+      "registry": "gnanam1990-routespec.testnet",
+      "project": "gnanam1990/routespec-near",
+      "bundleDigest": "sha256:7b29fdec98e5065b2b6e4e983211b3bec76ab47150d0b4616e0484599863c191",
+      "verdict": "PASS",
+      "corpusDigest": "sha256:1f16f867a7afac513a75c68e88f6ebb2be210a6d0c28b24e424a0d0f11f1c2e4",
+      "artifactDigest": "sha256:5a7de97b69c3fd26210951e03de0d8189dc4a2a325868cc5d041a5878b31fe71",
+      "commit": "d38879b3d1dd1d2faca481ae29e8db70127be272",
+      "timestampMs": 1794623116591,
+      "attester": "ed25519:664yZqbt7371fnDajRZtqppRSDyPU3xiYArLcfeoV9Wx",
+      "signature": "x65Iqo3b6EO9FRS6owzEwYwVCO0CKZiAV5eosCLl3aMSgQ8gp//CWNjs124oKZ89QQtx28dCyObtvmV2oBubCw==",
+      "publishedAtMs": 1794623335736,
+      "publishedBlockHeight": 277595799,
+      "attesterRevoked": false,
+      "attesterRevokedAtMs": null,
+      "assessment": {
+        "id": 0,
+        "attester": "ed25519:664yZqbt7371fnDajRZtqppRSDyPU3xiYArLcfeoV9Wx",
+        "verdict": "PASS",
+        "accepted": false,
+        "findings": ["ATTESTER_NOT_TRUSTED"]
+      }
+    }
+  ],
+  "note": "Signatures were verified locally. Enrolment and revocation are as reported by the RPC endpoint."
+}
